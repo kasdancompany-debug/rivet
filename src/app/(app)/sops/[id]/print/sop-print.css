@@ -1,0 +1,114 @@
+/* Print-optimized standard (SOP) sheet — loaded only on /sops/[id]/print */
+
+.sop-print-doc {
+  color: var(--foreground);
+}
+
+.sop-print-doc .sop-print-muted {
+  color: var(--muted-foreground);
+}
+
+.sop-print-doc .sop-print-rule {
+  border-top: 1px solid var(--border);
+  margin: 1.25rem 0;
+}
+
+.sop-print-doc .sop-print-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sop-print-doc .sop-print-step {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sop-print-doc .sop-print-step:last-child {
+  border-bottom: none;
+}
+
+.sop-print-doc .sop-print-step-num {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.sop-print-doc .sop-print-thumb {
+  max-height: 140px;
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+@media print {
+  @page {
+    margin: 12mm 14mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .sop-print-doc {
+    font-size: 10.5pt;
+    line-height: 1.45;
+    color: #111 !important;
+    background: #fff !important;
+    max-width: none !important;
+  }
+
+  .sop-print-doc .sop-print-muted {
+    color: #444 !important;
+  }
+
+  .sop-print-doc .sop-print-rule,
+  .sop-print-doc .sop-print-step {
+    border-color: #ccc !important;
+  }
+
+  .sop-print-doc h1 {
+    font-size: 18pt;
+    line-height: 1.2;
+    margin: 0 0 0.35em;
+  }
+
+  .sop-print-doc h2 {
+    font-size: 12pt;
+    margin: 1em 0 0.35em;
+  }
+
+  .sop-print-doc .sop-print-thumb {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Video elements rarely print; rely on note + QR back to live standard */
+  .sop-print-doc video {
+    display: none !important;
+  }
+
+  .sop-print-doc a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  .sop-print-doc .sop-print-qr {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+@media screen {
+  .sop-print-doc {
+    max-width: 42rem;
+    padding-bottom: 2rem;
+  }
+}
