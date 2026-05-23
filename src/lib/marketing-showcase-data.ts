@@ -14,7 +14,7 @@ export const LANDING_DEMO_HEATMAP: RivetCategoryScore[] = [
     label: "Product Quality",
     dependencyScore: 71,
     band: "fragile",
-    hint: "Line variance when you step off.",
+    hint: "Process variance when you step away.",
   },
   {
     id: "team_readiness",
@@ -25,7 +25,7 @@ export const LANDING_DEMO_HEATMAP: RivetCategoryScore[] = [
   },
   {
     id: "customer_experience",
-    label: "Guest Experience",
+    label: "Client experience",
     dependencyScore: 58,
     band: "improving",
     hint: "Recovery depends on who is working.",

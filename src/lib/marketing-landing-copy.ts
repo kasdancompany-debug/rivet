@@ -1,36 +1,40 @@
+import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
+import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
 import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
 
 /** Long-form marketing landing — Rivet positioning. */
 export { EMOTIONAL_PROMISE }
 
 export const LANDING_POSITIONING_LINE =
-  "Built for live-service and owner-led floors—not another login you forget."
+  "For dealerships, gyms, contractors, retail, and owner-led teams who are done carrying the operation in their head."
 
 export const LANDING_OG_TITLE = `Rivet — ${EMOTIONAL_PROMISE}`
 
 export const LANDING_META_DESCRIPTION =
-  "$799 CAD once. Operational infrastructure for teams still running on founder memory. No subscription."
+  "$799 CAD once. Document procedures, track training, log owner interruptions, and see if your business can run without you. No monthly subscription."
 
 export const LANDING_HEADER_SIGN_IN = "Sign in" as const
 
 export const LANDING_CTA = {
   primary: "Get Rivet",
-  secondary: "View layers",
+  secondary: "Take Free Scan",
+  tertiary: "View Layers",
 } as const
 
-/** Free diagnostic — linked from hero + pricing; not a substitute for the paid install CTA. */
+/** Free diagnostic — secondary CTA; not a substitute for the paid license. */
 export const LANDING_SCAN_CTA = {
-  label: "Run the free Rivet Scan",
-  subline: "Get your Owner Dependency Score and what it is costing you per year—in two minutes.",
+  label: LANDING_CTA.secondary,
+  subline: "Owner Dependency Score · about 2 minutes · no account",
 } as const
 
 export const LANDING_HERO = {
-  eyebrow: "Operations · Rivet",
-  headline: "If every answer still routes through you,\nthe business is not transferable yet.",
+  eyebrow: "For owner-operators",
+  headline: "Get your business\nout of your head.",
   subheadline:
-    "Rivet installs structure the floor can hold—standards, execution proof, and dependency reads without hunting you for the missing line.",
+    "Write down how work actually runs, track training gaps, log owner interruptions, and see whether the team could hold a week without you on the phone.",
   ctaPrimary: LANDING_CTA.primary,
   ctaSecondary: LANDING_CTA.secondary,
+  ctaTertiary: LANDING_CTA.tertiary,
   trustChips: ["$799 CAD once", "No monthly subscription", "Lifetime access"] as const,
 } as const
 
@@ -41,176 +45,198 @@ export const LANDING_EXISTING_WORKSPACE_CHECKOUT = {
   href: "/login?next=/subscribe",
 } as const
 
-/** Single dark-band narrative: spine + compact diagnosis (no second section). */
+/** Week-in-the-life narrative — owner interruptions, not abstract “signals.” */
 export const LANDING_OWNER_SPINE = {
-  eyebrow: "Signal · 7d window",
-  title: "The week is not busy. You are the router.",
-  subtitle: "Noise becomes legible when the spine is visible.",
+  eyebrow: "A typical week",
+  title: "Your phone is still the operations manual.",
+  subtitle: "When answers live in your head, the same questions and fires find you every day.",
   events: [
-    { time: "7:14 AM", text: "Where is the prep list?" },
-    { time: "8:42 AM", text: "Can we comp this?" },
-    { time: "10:13 AM", text: "Who closes tonight?" },
-    { time: "11:52 AM", text: "Fridge temp seems high" },
+    { time: "7:14 AM", text: "Where is the onboarding checklist?" },
+    { time: "8:42 AM", text: "Did the estimate get sent?" },
+    { time: "10:13 AM", text: "Who owns this task?" },
+    { time: "11:52 AM", text: "Client follow-up overdue" },
   ] as const,
-  statLine: "17 owner pings this week",
-  statDelta: "↑ 32% week over week",
-  traceTitle: "Most consolidate to",
-  traces: ["Gaps in published plays", "Unsigned certifications", "Unnamed owners on records"] as const,
-  diagnosisEyebrow: "Trace · same window",
+  statLine: "17 owner pulls logged this week",
+  statDelta: "Same themes repeat when nothing is written down",
+  traceTitle: "Usually because",
+  traces: [
+    "Procedures not written (or not findable)",
+    "Training not tied to real tasks",
+    "No named owner on recurring decisions",
+  ] as const,
+  diagnosisEyebrow: "Examples",
   diagnosis: [
-    { id: "ISS-218", line: "Prep publish timing → no open play on file" },
-    { id: "ISS-229", line: "Module #ESP-01 → attestation gate open" },
-    { id: "ISS-241", line: "Waste line → no named closer owner" },
+    { id: "SOP", line: "Opening steps still live in memory—not in Rivet" },
+    { id: "TRN", line: "New hire shadowing you instead of a module" },
+    { id: "OWN", line: "Key decisions still wait on your OK" },
   ] as const,
-  footnote: "Illustrative · anonymized",
+  footnote: "Illustrative week · anonymized",
 } as const
 
 export const LANDING_YOU_FEEL_THIS = {
-  eyebrow: "Field signal",
+  eyebrow: "Sound familiar?",
   title: "If this is your week, you are not alone.",
   cards: [
-    "The same questions recycle every shift",
-    "Training lives in memory, not records",
-    "Work still finds your phone first",
+    "Staff ask you the same questions every week",
+    "Training happens when you have time—not on paper",
+    "You cannot leave without the phone lighting up",
   ],
 } as const
 
-/** Operational layers — not “features.” */
+/** What v1 actually ships — five pillars aligned to product scope. */
 export const LANDING_INSTALLS = {
-  title: "What $799 installs.",
-  lead: "Five layers. One purchase. Structure your team can run.",
+  title: "What $799 puts in your workspace",
+  lead: "Five tools owners use in week one—no separate checklist app, no mystery dashboards.",
   pillars: [
     {
-      title: "Standards your team can run",
-      sentence: "Plays for open, close, and service—short enough to follow when the line is hot.",
+      title: "Written procedures (SOPs)",
+      sentence:
+        "Capture and edit how open, close, and daily work actually run—so the team reads the same steps, not your memory.",
     },
     {
-      title: "Daily execution proof",
-      sentence: "Shift lines with names and timestamps—gaps show before the guest does.",
+      title: "Owner interruption log",
+      sentence:
+        "Record when the team pulls you in—kind, minutes, pattern—so you see what still routes through you each week.",
     },
     {
-      title: "Training tied to real work",
-      sentence: "Modules anchored to the procedures you run—not a binder nobody opens under pressure.",
+      title: "Training tied to your SOPs",
+      sentence:
+        "Build modules linked to real procedures and track who has completed them—not a binder nobody opens under pressure.",
     },
     {
-      title: "Bottleneck tracking",
-      sentence: "What still hunts you gets logged, owned, and cleared—instead of recycling as texts.",
+      title: "Bottlenecks (issues)",
+      sentence:
+        "Log what still hunts you, who owns it, and what is open—instead of recycling the same texts.",
     },
     {
-      title: "Rivet Index",
-      sentence: "One read on whether the place can hold a week without you in the building.",
+      title: "Escape readiness + overview",
+      sentence:
+        "One score for “could this run a week without me?” plus an owner overview: interruptions, missing procedures, training gaps.",
     },
+  ],
+} as const
+
+/** Illustrative owner overview metrics for marketing — not live workspace data. */
+export const LANDING_WORKSPACE_SNAPSHOT = {
+  title: "Inside a Rivet workspace",
+  disclaimer: "Illustrative workspace for demonstration",
+  workspaceLabel: "Workspace · Oak Ridge",
+  metrics: [
+    { id: "sops", label: "SOPs", value: "142" },
+    { id: "training", label: "Training completion", value: "81%" },
+    { id: "bottlenecks", label: "Open bottlenecks", value: "6" },
+    { id: "interrupts", label: "Owner interruptions/week", value: "12" },
+    { id: "escape", label: "Escape readiness score", value: "72%" },
   ],
 } as const
 
 /** Illustrative escape readiness for marketing (not live workspace data). */
-export const LANDING_ESCAPE_READINESS_DEMO = {
-  headlineQuestion: "Can your business survive if you disappear for a week?",
+export const LANDING_ESCAPE_READINESS_DEMO: EscapeReadinessView = finalizeEscapeReadinessView({
   score: 41,
-  band: "fragile" as const,
+  band: "fragile",
   verdict:
-    "A week away would stress the business: critical paths and staffing depth are still thin.",
+    "Five days away would stress the business: documentation, issues, and interrupts still route through you.",
   demo: true,
+  progress: [
+    { date: "2026-05-01", score: 34 },
+    { date: "2026-05-04", score: 36 },
+    { date: "2026-05-07", score: 38 },
+    { date: "2026-05-10", score: 39 },
+    { date: "2026-05-13", score: 40 },
+    { date: "2026-05-16", score: 41 },
+  ],
   factors: [
     {
-      id: "procedures" as const,
-      label: "Procedures complete",
+      id: "sop_coverage",
+      label: "SOP coverage",
       percent: 52,
-      hint: "Documentation depth averages 52% across active plays—several load-bearing tasks still lack steps.",
+      hint: "Roughly half of critical tasks have clear written steps—not enough to step away calmly.",
     },
     {
-      id: "training" as const,
+      id: "training_coverage",
       label: "Training coverage",
       percent: 61,
-      hint: "Average module completion is about 61%—not enough backup before you step away.",
+      hint: "Some modules done; several roles still depend on you showing them in person.",
     },
     {
-      id: "owner_dependencies" as const,
-      label: "Critical owner dependencies",
+      id: "unresolved_issues",
+      label: "Unresolved issues",
       percent: 38,
-      hint: "3 high–owner-dependency plays still lack runnable steps; 4 issues still need you.",
+      hint: "Open issues still default to you when something goes wrong.",
     },
     {
-      id: "staffing" as const,
-      label: "Staffing risk",
+      id: "owner_interruptions",
+      label: "Owner interruptions",
+      percent: 32,
+      hint: "Texts and walk-ups still spike every week you try to step back.",
+    },
+    {
+      id: "undocumented_procedures",
+      label: "Undocumented procedures",
       percent: 44,
-      hint: "2 teammates not cleared to open alone—first call-out puts the week back on your phone.",
+      hint: "Several plays still live only in your head—not written down in Rivet.",
     },
   ],
-}
+})
 
 export const LANDING_RESULTS = {
   eyebrow: "Results",
-  title: "Measurable outcomes owners actually track",
-  lead: "Not vanity dashboards—four numbers that move when plays, teaching, and interrupts get structured on the floor.",
-  scenario: "Example · neighbourhood café · 14 staff · 90 days after install",
-  beforeCard: {
-    heading: "Before",
-    snapshot: "You are the default answer. Training happens when someone is free—and standards live in your head.",
+  title: "What $799 is buying—in plain numbers",
+  lead: "Not a testimonial. A worked example of what changes when procedures, training, and interrupts are on the record instead of in your head.",
+  exampleBadge: "Example outcome",
+  patternNote: "Based on common owner-operated business patterns",
+  scenario: "Illustrative · owner-led team · ~12 people · first 90 days with Rivet",
+  beforeRivet: {
+    heading: "Before Rivet",
+    summary: "You are the system. Everyone routes judgment through you.",
+    items: [
+      "22 owner interruptions per week (texts, calls, walk-ups)",
+      "Training lived in memory—same lessons repeated every hire",
+      "Procedures changed by whoever was working that day",
+    ],
   },
-  afterCard: {
-    heading: "After",
-    snapshot: "The floor runs the plays. You see gaps in the index before they become another week on your phone.",
+  afterRivet: {
+    heading: "After Rivet",
+    summary: "The team has a source of truth. You see load before it becomes another fire.",
+    items: [
+      "7 owner interruptions per week (logged, so you can see the trend)",
+      "SOPs visible where staff actually work",
+      "Staff training tracked against real procedures",
+      "Repeat issues logged with an owner—not recycled in chat",
+    ],
   },
-  deltaHeading: "Typical shift",
-  metrics: [
-    {
-      id: "interrupts",
-      label: "Owner interruptions",
-      hint: "Logged pulls per week",
-      unit: "count" as const,
-      before: 42,
-      after: 12,
-      deltaLabel: "−71%",
-      deltaDirection: "down" as const,
-    },
-    {
-      id: "training_time",
-      label: "Training time",
-      hint: "Owner hours teaching per week",
-      unit: "hours" as const,
-      before: 11,
-      after: 3,
-      deltaLabel: "−8 hrs",
-      deltaDirection: "down" as const,
-    },
-    {
-      id: "procedures",
-      label: "Procedures documented",
-      hint: "Critical floor tasks with published steps",
-      unit: "fraction" as const,
-      before: { of: 9, total: 28 },
-      after: { of: 26, total: 28 },
-      deltaLabel: "+17 plays",
-      deltaDirection: "up" as const,
-    },
-    {
-      id: "consistency",
-      label: "Consistency score",
-      hint: "Rivet execution + standards depth composite",
-      unit: "percent" as const,
-      before: 58,
-      after: 87,
-      deltaLabel: "+29 pts",
-      deltaDirection: "up" as const,
-    },
-  ],
+  financial: {
+    heading: "Example math (not a guarantee)",
+    steps: [
+      "15 fewer owner interruptions per week in this example",
+      "~12 minutes each to answer, decide, or fix on the spot",
+      "≈ 3 owner hours per week back (15 × 12 min)",
+      "× 50 working weeks × $50/hr owner-equivalent (example rate)",
+    ],
+    annualExampleLabel: "Illustrative annual owner time at risk",
+    annualExampleAmount: "$7,500",
+    licenseLabel: "Rivet license",
+    licenseAmount: "$799",
+    licenseNote: "CAD · one-time · no monthly subscription",
+    punchline:
+      "If logging and documenting work pulls even a fraction of that time off your plate, the license is not the expensive line item—the interrupts are.",
+  },
   disclaimer:
-    "Illustrative composite from operator interviews and early installs—not a guarantee. Your Rivet Index and pulse metrics update from your workspace once you are live.",
+    "Example outcome only. Not a customer case study. Your workspace tracks your real interruption count, training completion, and escape readiness after install.",
 } as const
 
 export const LANDING_BEFORE_AFTER = {
-  eyebrow: "Operational state",
-  title: "Before vs. after",
+  eyebrow: "Before and after",
+  title: "From memory to something the team can run",
   before: [
-    "Quality follows whoever showed up that day",
-    "Judgment calls still land in your texts",
-    "Training depends on who is teaching",
+    "Quality depends on who showed up and what you remembered to say",
+    "The same questions hit your phone every day",
+    "Training is “watch me” until it sticks",
   ],
   after: [
-    "Plays live where the team can read them",
-    "Exceptions become owned tickets with receipts",
-    "Modules lock to the procedures you publish",
+    "Procedures live where staff can read them",
+    "Interruptions and bottlenecks are logged with owners",
+    "Training modules link to the work you actually run",
   ],
 } as const
 
@@ -218,55 +244,60 @@ export const LANDING_PRICING = {
   cardTitle: "What $799 gets you",
   priceDisplay: "$799",
   currencyLabel: "CAD · one-time",
-  installmentLine: "Or 3 payments of $299 CAD.",
+  installmentLine: null as string | null,
   includes: [
-    "Unlimited SOPs",
-    "Staff training",
+    "Unlimited SOPs + standards capture",
     "Owner interruption tracking",
-    "Industry templates",
-    "Escape plan score",
-    "One year updates",
+    "Training modules & progress",
+    "Industry starter templates",
+    "Escape readiness score",
+    "Owner overview (Rivet Index)",
+    "One year of updates",
     "Lifetime access",
   ],
   paysForItselfHeading: "Pays for itself if it saves:",
   paysForItselfItems: [
-    "4 owner hours/month",
-    "one employee retraining cycle",
-    "one major mistake",
+    "four owner hours a month",
+    "one retraining cycle you do not repeat",
+    "one expensive mistake you avoid",
   ],
-  microcopy: "Buy once. No subscription on your playbook.",
+  microcopy: "One payment. Full workspace. No monthly subscription.",
   ctaPrimary: LANDING_CTA.primary,
 } as const
 
 export const LANDING_PRICING_SECTION = {
   eyebrow: "Pricing",
-  title: "$799 once. Everything your floor needs to run without you in the loop.",
+  title: "$799 once. Everything in v1—no monthly fee.",
 } as const
 
-export const LANDING_FAQ_TITLE = "Technical questions" as const
+export const LANDING_FAQ_TITLE = "Questions" as const
 
 export const LANDING_FOOTER_TRUST =
-  "Built from owner-led floors. Designed for live pressure—opens, closes, drift."
+  "Built with owner-operators who were tired of being the default answer."
 
 export const LANDING_FOOTER_TAGLINE =
-  "Rivet — operational infrastructure. Not another rented dashboard."
+  "Rivet — get your business out of your head."
 
 export const LANDING_FINAL_CTA = {
-  title: "Install the bar. Prove the shifts.",
-  body: "Rivet reinforces the operation when the structure is visible.",
+  title: "Stop carrying the operation in your head.",
+  body: "Document it once. Train against it. See if the business can run without you on the phone.",
 } as const
 
 export const LANDING_FAQ = [
   {
     q: "Is this a subscription?",
-    a: "No. One payment in CAD, lifetime access, one year of updates included.",
+    a: "No. One payment in CAD. Lifetime access to your workspace, with one year of product updates included.",
   },
   {
     q: "What is Rivet—not payroll or POS?",
-    a: "It is how work gets done: plays, proof, training, bottlenecks. Pay and tickets live elsewhere.",
+    a: "It is how you document work, train the team, log owner interruptions, and track bottlenecks. Payrolls and tickets stay in your other tools.",
+  },
+  {
+    q: "Is there a staff mobile app?",
+    a: "v1 is a web workspace for the owner (and team leads you invite). There is no separate daily checklist app in this release.",
   },
   {
     q: "Why $799?",
-    a: "Because inconsistency and single-point failure are expensive. This buys a durable way to transfer load—with receipts—not another tab you cancel.",
+    a: "Because staying the default answer is expensive. This buys a durable workspace for procedures, training, and owner-load—not another tab you cancel.",
   },
 ] as const

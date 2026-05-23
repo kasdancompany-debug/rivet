@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { recommendedNextSteps } from "@/lib/operational-scan/recommended-next-steps"
+import { recommendedFirstFixes, recommendedNextSteps } from "@/lib/operational-scan/recommended-next-steps"
 import { computeOperationalScanScores, type OperationalScanAnswers } from "@/lib/operational-scan/score"
 
 const base: OperationalScanAnswers = {
@@ -9,19 +9,25 @@ const base: OperationalScanAnswers = {
   industry: "Retail",
   email: "a@b.co",
   staffQuestionsPerWeek: "16-30",
+  ownerTextsCallsPerWeek: "31-50",
   staffCanOpenWithoutOwner: "no",
   staffCanCloseWithoutOwner: "partial",
   undocumentedProcedures: "6-15",
+  trainingConsistency: "none",
   canRunFiveDaysWithoutOwner: "no",
-  trainingProcessExists: false,
-  ownerInterruptions: "daily",
+  repeatedMistakesIssues: "daily",
 }
 
-describe("recommendedNextSteps v2", () => {
-  it("returns actionable steps", () => {
+describe("recommendedFirstFixes v3", () => {
+  it("returns exactly three actionable fixes", () => {
     const result = computeOperationalScanScores(base)
-    const steps = recommendedNextSteps(result, base)
-    expect(steps.length).toBeGreaterThanOrEqual(2)
-    expect(steps.some((s) => s.toLowerCase().includes("open") || s.toLowerCase().includes("training"))).toBe(true)
+    const fixes = recommendedFirstFixes(result, base)
+    expect(fixes).toHaveLength(3)
+    expect(fixes.every((s) => s.length > 20)).toBe(true)
+  })
+
+  it("recommendedNextSteps matches first fixes", () => {
+    const result = computeOperationalScanScores(base)
+    expect(recommendedNextSteps(result, base)).toEqual(recommendedFirstFixes(result, base))
   })
 })

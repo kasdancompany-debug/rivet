@@ -9,7 +9,16 @@ import { COPY } from "@/lib/interface-copy"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export function SubscribeClient({ email, billingCanceled = false }: { email: string; billingCanceled?: boolean }) {
+export function SubscribeClient({
+  email,
+  billingCanceled = false,
+  checkoutDisabledMessage = null,
+}: {
+  email: string
+  billingCanceled?: boolean
+  /** When billing env is incomplete, Checkout is blocked with this message. */
+  checkoutDisabledMessage?: string | null
+}) {
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
 
@@ -29,8 +38,8 @@ export function SubscribeClient({ email, billingCanceled = false }: { email: str
     <div className="mx-auto max-w-lg space-y-8">
       <AppPageHeader
         eyebrow="Billing"
-        title="Unlock Rivet for your workspace"
-        description="One-time license in Canadian dollars. After Stripe confirms payment, you will land on Overview—access updates within a few seconds."
+        title="Unlock your Rivet workspace"
+        description="One-time $799 CAD payment. After Stripe confirms, you return here while we unlock your workspace—usually within a few seconds."
       />
 
       <Card className="border-border/60 bg-card/90 shadow-sm">
@@ -41,11 +50,19 @@ export function SubscribeClient({ email, billingCanceled = false }: { email: str
               Signed in as <span className="font-medium text-foreground">{email || "your account"}</span>.
             </span>
             <span className="block text-muted-foreground">
-              Installment options can be offered manually later—Checkout here is the full one-time payment.
+              Includes procedures, training, owner-interruption log, bottlenecks, escape readiness score, and owner overview. One payment—no monthly subscription.
             </span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {checkoutDisabledMessage ? (
+            <p
+              className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2 text-sm text-amber-950 dark:text-amber-100/90"
+              role="status"
+            >
+              {checkoutDisabledMessage}
+            </p>
+          ) : null}
           {billingCanceled ? (
             <p
               className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2 text-sm text-amber-950 dark:text-amber-100/90"
@@ -63,7 +80,13 @@ export function SubscribeClient({ email, billingCanceled = false }: { email: str
               {error}
             </p>
           ) : null}
-          <Button type="button" size="lg" className="h-11 w-full" disabled={pending} onClick={startCheckout}>
+          <Button
+            type="button"
+            size="lg"
+            className="h-11 w-full"
+            disabled={pending || Boolean(checkoutDisabledMessage)}
+            onClick={startCheckout}
+          >
             {pending ? "Starting checkout…" : "Continue to Stripe Checkout"}
           </Button>
           <p className="text-center text-xs text-muted-foreground">

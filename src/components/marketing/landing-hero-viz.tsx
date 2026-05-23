@@ -3,13 +3,13 @@ import { cn } from "@/lib/utils"
 import { LandingHeroLiveContext } from "@/components/marketing/landing-hero-live-context"
 
 const FEED = [
-  "11:52 · waste · ISS-241 · owner unassigned",
-  "08:42 · prep · play not published · blocks TR-OPEN",
-  "06:31 · safe · SR-0421 · dual sign-off pending",
+  "11:52 · interrupt · who owns this task?",
+  "08:42 · repeat Q · onboarding checklist",
+  "06:31 · bottleneck · client follow-up overdue",
 ] as const
 
 /**
- * Hero specimen — dependency surface + execution telemetry (restrained motion).
+ * Hero specimen — owner load routing (illustrative).
  */
 function RoutingSurfaceDiagram() {
   return (
@@ -106,7 +106,7 @@ function RoutingSurfaceDiagram() {
           fontFamily="ui-monospace, monospace"
           letterSpacing="0.18em"
         >
-          SIGNAL SURFACE
+          OWNER LOAD
         </text>
         <text
           x="320"
@@ -161,7 +161,7 @@ export function LandingHeroOperationalViz() {
 
       <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2 sm:px-4">
         <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-          Workspace · Bridge St
+          Workspace · Oak Ridge
         </span>
         <span className="font-mono text-[9px] tabular-nums text-zinc-600">Rel 2026.05.12</span>
         <span className="inline-flex items-center gap-1.5 rounded border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-300">
@@ -188,9 +188,9 @@ export function LandingHeroOperationalViz() {
         </div>
         <div className="grid grid-cols-3 gap-2 sm:col-span-8 sm:gap-3">
           <div className="rounded-md border border-rose-500/18 bg-rose-950/20 p-2.5 sm:p-3">
-            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-rose-300/85">Continuity</p>
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-rose-300/85">Escape readiness</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-rose-100 sm:text-2xl">28%</p>
-            <p className="mt-0.5 text-[10px] leading-snug text-zinc-500">Coverage vs published bar</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-zinc-500">Could run a week without you</p>
           </div>
           <div className="rounded-md border border-white/[0.06] bg-white/[0.02] p-2.5 sm:p-3">
             <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">Index</p>

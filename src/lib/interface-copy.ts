@@ -1,6 +1,5 @@
 /**
- * Rivet product copy — operational load, structural gaps, floor-grounded language.
- * Prefer importing from here over scattering new UI strings.
+ * Rivet product copy — plain owner language. Prefer importing from here over scattering UI strings.
  */
 
 export const COPY = {
@@ -20,14 +19,14 @@ export const COPY = {
     eyebrow: "Step 1 · Workspace",
     title: "Name the operation Rivet will track",
     lead:
-      "One field, then you pick your industry template—Rivet installs standards, training, and workflows in under a minute.",
+      "Name your business first—next you pick your type and Rivet installs five SOPs, three training modules, and starter workflows so nothing is empty.",
     cardTitle: "Workspace",
     cardDescription:
       "This record is what standards, training, and proof attach to. You can refine the name later in Settings.",
     nameLabel: "Business name",
     namePlaceholder: "e.g. Northside Cafe",
     industryLabel: "How do you mainly run?",
-    footerHint: "Next: pick your business type and we preload your foundation—no empty library.",
+    footerHint: "Next: pick one of eight business types—we install SOPs, training, and workflows automatically.",
     submit: "Continue",
     submitting: "Creating workspace…",
   },
@@ -93,27 +92,27 @@ export const COPY = {
   },
 
   hero: {
-    eyebrow: "Owner reliance",
+    eyebrow: "Overview",
     preview: "Preview",
-    relianceSub: "Higher = more of the day still waits on you.",
-    autonomyLabel: "Can run without you",
-    weekLabel: "This week",
-    weekHint: "Logged pulls on you · UTC week",
-    weekHoursLeak: (hours: number) => `≈ ${hours} h on the clock`,
+    relianceSub: "Higher = more still depends on you.",
+    autonomyLabel: "Escape readiness",
+    weekLabel: "Owner interruptions",
+    weekHint: "Logged this week",
+    weekHoursLeak: (hours: number) => `≈ ${hours} h of your time`,
     verdictQuestion: "Can the business run without you today?",
-    trendLabel: "7-day trend",
-    trendHint: "Room to run without you · UTC",
-    trendEmpty: "No history here yet.",
+    trendLabel: "Escape readiness (7 days)",
+    trendHint: "Higher bars = easier week without you",
+    trendEmpty: "No history yet.",
     bands: {
-      critical: "Heavy on you",
-      fragile: "Structural strain",
-      improving: "Loosening up",
-      stable: "Holding",
-      transferable: "Traveling",
+      critical: "Very high load on you",
+      fragile: "High load on you",
+      improving: "Getting better",
+      stable: "Mostly OK",
+      transferable: "Low load on you",
     },
-    notScoredBadge: "Not scored",
+    notScoredBadge: "Not scored yet",
     rivetEmptyPrimary: "—",
-    rivetEmptySub: "Add runs, standards, and teaching to unlock the index.",
+    rivetEmptySub: "Add procedures, training, or a reality check to see your Rivet Score.",
   },
 
   dashboard: {
@@ -124,9 +123,9 @@ export const COPY = {
     loadErrorTitle: "Overview could not load",
     loadErrorBody:
       "Your session is unchanged. Retry once—if this keeps happening, open Settings or sign out and back in while we check connectivity.",
-    criticalHeading: "What still needs you",
-    criticalAllLink: "Everything flagged for you",
-    criticalEmpty: "Nothing owner-critical in this slice—breathe once, then keep reinforcing.",
+    criticalHeading: "Needs your attention",
+    criticalAllLink: "See all open issues",
+    criticalEmpty: "Nothing urgent flagged right now.",
     badgeBottleneck: "Bottleneck",
     badgeStandard: "Standard",
     badgeRisk: "Risk",
@@ -134,7 +133,7 @@ export const COPY = {
     badgeGap: "Thin write-up",
     statusOpen: "Open",
     statusProgress: "In motion",
-    nextEyebrow: "Next move",
+    nextEyebrow: "Do this next",
     proofHeading: "Execution proof",
     proofFullLink: "See full proof",
     proofEmpty:
@@ -147,36 +146,38 @@ export const COPY = {
     teamSignals: "What the score sees",
     teamSignalTeam: "People depth",
     teamSignalTrain: "Teaching depth",
-    depthHeading: "Under the hood",
-    depthExpand: "Where load sits by slice",
-    depthExpandHint: "· tap to open",
-    depthHeatHint: "Darker = more still tied to you in that slice.",
+    depthHeading: "Rivet Score breakdown",
+    depthExpand: "See what drives your score",
+    depthExpandHint: "optional detail",
+    depthHeatHint: "Darker = more still depends on you in that area.",
     warningsHeading: "Heads up",
     metrics: {
-      standards: "Standards depth",
-      training: "Teaching done",
-      bottlenecks: "Open bottlenecks",
-      onYou: "Still on you",
+      standards: "Procedures written",
+      training: "Training done",
+      bottlenecks: "Open issues",
+      onYou: "Waiting on you",
     },
-    pulseHeading: "Operational pulse",
+    pulseHeading: "At a glance",
     pulse: {
       ownerInterruptions: "Owner interruptions this week",
       proceduresMissing: "Procedures missing",
       trainingCompletion: "Training completion",
-      issuesUnresolved: "Issues unresolved",
-      surviveWithoutOwner: "Survive a week away?",
-      rivetScore: "Rivet score",
+      issuesUnresolved: "Unresolved issues",
+      escapeReadiness: "Escape readiness",
+      rivetScore: "Rivet Score",
     },
+    pulseRivetHint: "Higher = more depends on you",
+    pulseEscapeHint: "Higher = more likely five days away holds",
     metricNoData: "No data yet",
-    scoreInsufficientFounderLabel: "Not scored — add operating signal to measure owner load.",
+    scoreInsufficientFounderLabel: "Not scored yet — add procedures, training, or issues to calculate.",
     scoreInsufficientRiskCaption:
-      "Rivet is waiting on more floor signal (runs, standards, teaching, or bottlenecks) before it calls concentration levels.",
+      "Add a few procedures, training modules, or logged interruptions so Rivet can score your business.",
     executionProofEmpty:
       "No completed checklist runs on record yet—finish a daily run on the floor so execution shows up here.",
     executionProofRun: "Completed run",
     teamSignalsEmpty:
       "Category scores need training assignments or readiness rows to describe people and teaching depth.",
-    marketingDemoCaption: "Illustrative numbers for marketing preview only — your live dashboard never fabricates metrics.",
+    marketingDemoCaption: "Illustrative preview only—your live overview uses your workspace, not made-up numbers.",
     setupGateTitle: "Link your business to load this overview",
     setupGateBody:
       "Scores, heatmaps, and proof pull from your workspace on the record. Until then, nothing here is estimated—we leave the numbers blank on purpose.",
@@ -185,7 +186,7 @@ export const COPY = {
     setupGateFootnote:
       "The full overview—including transfer signals drawn from your workspace—loads after you link a business in Settings.",
     setupScoreMessage:
-      "Your Rivet Index appears after you link a business. We do not fabricate dependency reads for an empty workspace.",
+      "Your Rivet Score appears after you link a business. We do not make up numbers for an empty workspace.",
     setupCategoryHint: "Fills in once the workspace is linked.",
     setupFounderLabel: "Not measured without a linked business.",
     setupRiskCaption: "No floor read yet.",
@@ -226,8 +227,8 @@ export const COPY = {
   },
 
   heatmap: {
-    title: "Load by slice",
-    subtitle: "Darker = more of that slice still rides on you.",
+    title: "Score by area",
+    subtitle: "Darker = more still depends on you in that area.",
   },
 
   issues: {

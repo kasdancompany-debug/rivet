@@ -9,18 +9,18 @@ export function bandFromScoreForEscape(score: number): EscapeReadinessBand {
 
 export function verdictForEscapeScore(score: number | null): string {
   if (score == null) {
-    return "Add standards, training assignments, and readiness rows so Rivet can score a real week away—not a guess."
+    return "Add standards, training, and interruption logs so Rivet can score five days away—not a guess."
   }
   if (score >= 78) {
-    return "A week away is plausible: plays, teaching, and backups are carrying most load-bearing paths."
+    return "Five days away is plausible: SOPs, training, and fewer interrupts are carrying most load-bearing paths."
   }
   if (score >= 58) {
-    return "Routine days could hold—but exceptions, vendor calls, and quality still snap back to you."
+    return "Routine days could hold for five days—but exceptions, vendor calls, and quality still snap back to you."
   }
   if (score >= 38) {
-    return "A week away would stress the business: critical paths and staffing depth are still thin."
+    return "Five days away would stress the business: documentation, issues, and interrupts still route through you."
   }
-  return "A week away is not credible today—too many procedures, dependencies, and gaps still route through you."
+  return "Five days away is not credible today—too much still depends on you being reachable."
 }
 
 export function escapeBandLabel(band: EscapeReadinessBand): string {

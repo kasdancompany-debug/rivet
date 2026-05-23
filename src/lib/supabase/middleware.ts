@@ -1,12 +1,13 @@
 import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
 
-import { isBillingEnforced, isBillingExemptPath } from "@/lib/billing/config"
+import { isBillingExemptPath, shouldEnforceBillingGate } from "@/lib/billing/config"
 import { isDevAuthBypassEnabled } from "@/lib/dev-auth-bypass"
 import {
   isApiOrStaticPath,
   isPathExemptFromBusinessRequirement,
   isPathExemptFromRealityCheck,
+  isPathExemptFromTemplateInstall,
 } from "@/lib/onboarding/paths"
 import { createSupabaseFetch, MIDDLEWARE_SUPABASE_FETCH_MS } from "@/lib/supabase/fetch-with-timeout"
 import { nextResponseCloningRequestWithReturnTo } from "@/lib/supabase/middleware-request-headers"
@@ -100,12 +101,14 @@ export async function updateSession(request: NextRequest) {
   const businessId = prof?.business_id as string | null | undefined
 
   const needsBillingGate =
-    Boolean(businessId) && isBillingEnforced() && !isBillingExemptPath(pathname)
+    Boolean(businessId) && shouldEnforceBillingGate() && !isBillingExemptPath(pathname)
+  const needsTemplateGate =
+    Boolean(businessId) && !isApiOrStaticPath(pathname) && !isPathExemptFromTemplateInstall(pathname)
   const needsRealityGate =
     Boolean(businessId) && !isApiOrStaticPath(pathname) && !isPathExemptFromRealityCheck(pathname)
 
-  if (needsBillingGate || needsRealityGate) {
-    const [purchaseRes, realityRes] = await Promise.all([
+  if (needsBillingGate || needsTemplateGate || needsRealityGate) {
+    const [purchaseRes, businessRes, realityRes] = await Promise.all([
       needsBillingGate
         ? supabase
             .from("rivet_purchases")
@@ -115,6 +118,13 @@ export async function updateSession(request: NextRequest) {
             .limit(1)
             .maybeSingle()
         : Promise.resolve({ data: { id: "skip" }, error: null }),
+      needsTemplateGate
+        ? supabase
+            .from("businesses")
+            .select("template_installed_at")
+            .eq("id", businessId!)
+            .maybeSingle()
+        : Promise.resolve({ data: { template_installed_at: "skip" }, error: null }),
       needsRealityGate
         ? supabase
             .from("reality_checks")
@@ -127,8 +137,12 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL("/subscribe", request.url))
     }
 
-    if (needsRealityGate && !realityRes.error && (realityRes.count ?? 0) === 0) {
+    if (needsTemplateGate && !businessRes.error && !businessRes.data?.template_installed_at) {
       return NextResponse.redirect(new URL("/onboarding", request.url))
+    }
+
+    if (needsRealityGate && !realityRes.error && (realityRes.count ?? 0) === 0) {
+      return NextResponse.redirect(new URL("/onboarding?phase=reality-check", request.url))
     }
   }
 

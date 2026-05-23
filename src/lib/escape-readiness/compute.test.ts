@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { computeEscapeReadiness } from "@/lib/escape-readiness/compute"
 import { computeEscapeReadinessFromScan } from "@/lib/escape-readiness/compute-from-scan"
+import { ESCAPE_READINESS_HEADLINE } from "@/lib/escape-readiness/copy"
 import type { RivetIndexComputeContext } from "@/lib/rivet-score/compute"
 import type { OperationalScanAnswers } from "@/lib/operational-scan/score"
 
@@ -36,23 +37,24 @@ describe("computeEscapeReadiness", () => {
   it("returns null score when no signal exists", () => {
     const view = computeEscapeReadiness(baseCtx())
     expect(view.score).toBeNull()
-    expect(view.factors).toHaveLength(4)
+    expect(view.factors).toHaveLength(5)
+    expect(view.topFixes).toHaveLength(3)
   })
 
-  it("averages four factor inputs into escape readiness score", () => {
+  it("averages five factor inputs into escape readiness score", () => {
     const view = computeEscapeReadiness(
       baseCtx({
         standardsDepthPercent: 80,
         trainingProgressPercent: 70,
         standards: [{ id: "1", status: "active", owner_dependency_level: 2 } as never],
         stepCountBySopId: new Map([["1", 3]]),
-        readinessRows: [{ open_alone: "fully_ready" } as never],
-        teamProfileCount: 3,
+        ownerInterruptionsThisWeekCount: 0,
       })
     )
     expect(view.score).not.toBeNull()
     expect(view.score).toBeGreaterThan(50)
-    expect(view.headlineQuestion).toContain("disappear for a week")
+    expect(view.headlineQuestion).toBe(ESCAPE_READINESS_HEADLINE)
+    expect(view.biggestRisk).not.toBeNull()
   })
 })
 
@@ -63,23 +65,27 @@ describe("computeEscapeReadinessFromScan", () => {
     industry: "cafe",
     email: "a@b.com",
     staffQuestionsPerWeek: "16-30",
+    ownerTextsCallsPerWeek: "16-30",
     staffCanOpenWithoutOwner: "partial",
     staffCanCloseWithoutOwner: "no",
     undocumentedProcedures: "6-15",
+    trainingConsistency: "rarely",
     canRunFiveDaysWithoutOwner: "no",
-    trainingProcessExists: false,
-    ownerInterruptions: "daily",
+    repeatedMistakesIssues: "weekly",
   }
 
-  it("produces four factors and a composite score", () => {
+  it("produces five factors, composite score, and top fixes", () => {
     const view = computeEscapeReadinessFromScan(answers)
     expect(view.score).toBeGreaterThan(0)
     expect(view.score).toBeLessThan(100)
     expect(view.factors.map((f) => f.id)).toEqual([
-      "procedures",
-      "training",
-      "owner_dependencies",
-      "staffing",
+      "sop_coverage",
+      "training_coverage",
+      "unresolved_issues",
+      "owner_interruptions",
+      "undocumented_procedures",
     ])
+    expect(view.topFixes).toHaveLength(3)
+    expect(view.tagline).toContain("run without everything going through you")
   })
 })

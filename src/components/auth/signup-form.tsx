@@ -4,20 +4,22 @@ import { useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { mapAuthErrorToMessage } from "@/lib/auth/error-messages"
-import { isSupabaseConfiguredClient } from "@/lib/supabase/config"
+import {
+  isSupabaseConfiguredClient,
+  supabaseNotConfiguredMessage,
+} from "@/lib/supabase/config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-const MISSING_SUPABASE_MSG =
-  "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local, then restart npm run dev."
 
 export function SignupForm({ supabaseConfigured }: { supabaseConfigured?: boolean }) {
   const configured = supabaseConfigured ?? isSupabaseConfiguredClient()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(configured ? null : MISSING_SUPABASE_MSG)
+  const [error, setError] = useState<string | null>(
+    configured ? null : supabaseNotConfiguredMessage(true)
+  )
   const [info, setInfo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 

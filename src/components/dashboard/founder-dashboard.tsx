@@ -22,6 +22,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { DashboardPulseMetrics } from "@/components/dashboard/dashboard-pulse-metrics"
 import { OwnerRelianceHero } from "@/components/dashboard/owner-reliance-hero"
+import { FirstDayChecklist } from "@/components/dashboard/first-day-checklist"
+import { EscapeReadinessPanel } from "@/components/escape-readiness/escape-readiness-panel"
 import { DependencyHeatmap } from "@/components/operational/dependency-heatmap"
 
 const MAX_CRITICAL = 3
@@ -137,15 +139,16 @@ export function FounderDashboard({
   }
 
   const critical = buildCriticalCards(model)
-  const executionProof = model.executionProof
-  const teamReadiness = model.rivetIndex.categories.find((c) => c.id === "team_readiness")
-  const trainingCat = model.rivetIndex.categories.find((c) => c.id === "training_systems")
 
   return (
     <div className="space-y-10 pb-12 sm:space-y-12">
       {checkoutBanner}
-      <OwnerRelianceHero model={model} />
+      {model.firstDayChecklist ? <FirstDayChecklist model={model.firstDayChecklist} /> : null}
       <DashboardPulseMetrics model={model} />
+      <div id="first-day-escape" className="scroll-mt-24">
+        <EscapeReadinessPanel model={model.escapeReadiness} />
+      </div>
+      <OwnerRelianceHero model={model} />
 
       {model.needsFirstStandard ? (
         <Card className="border-dashed border-emerald-500/25 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.06]">
@@ -274,103 +277,6 @@ export function FounderDashboard({
         </div>
       </section>
 
-      <section aria-labelledby="proof-heading" className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="proof-heading" className="rivet-section-label">
-            {COPY.dashboard.proofHeading}
-          </h2>
-          <Link
-            href="/escape-plan"
-            className="text-[13px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            {COPY.dashboard.proofFullLink}
-          </Link>
-        </div>
-        {executionProof.length === 0 ? (
-          <p className="rivet-panel-inset border-dashed px-4 py-3.5 text-sm text-muted-foreground">
-            {COPY.dashboard.executionProofEmpty}
-          </p>
-        ) : (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {executionProof.map((row) => (
-              <li key={row.id}>
-                <Link
-                  href={row.href}
-                  className="flex h-full flex-col rounded-lg border border-border/50 bg-card px-4 py-3.5 transition-colors hover:border-border hover:bg-muted/15"
-                >
-                  <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                    {COPY.dashboard.executionProofRun}
-                  </span>
-                  <span className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-foreground">
-                    {row.checklistTitle?.trim() ||
-                      (row.checklistType ? `${row.checklistType} checklist` : "Daily checklist")}
-                  </span>
-                  <span className="mt-auto pt-2 font-mono text-[0.65rem] text-muted-foreground tabular-nums">
-                    {formatExecutionProofStamp(row.completedAt, row.shiftDate)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section aria-labelledby="team-heading" className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="team-heading" className="rivet-section-label">
-            {COPY.dashboard.teamHeading}
-          </h2>
-          <Link
-            href="/training"
-            className="text-[13px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            {COPY.dashboard.teamLink}
-          </Link>
-        </div>
-        <div className="rivet-panel overflow-hidden">
-          <div className="grid divide-y divide-border/40 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-            <div className="px-5 py-5">
-              <p className="rivet-section-label">{COPY.dashboard.teamTrainingDone}</p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
-                {model.trainingProgressPercent ?? "—"}
-                {model.trainingProgressPercent != null ? <span className="text-lg font-medium text-muted-foreground">%</span> : null}
-              </p>
-            </div>
-            <div className="px-5 py-5">
-              <p className="rivet-section-label">{COPY.dashboard.teamReadinessAvg}</p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
-                {model.staffReadinessPercent ?? "—"}
-                {model.staffReadinessPercent != null ? <span className="text-lg font-medium text-muted-foreground">%</span> : null}
-              </p>
-            </div>
-            <div className="px-5 py-5 sm:col-span-2 lg:col-span-2 lg:border-t-0 lg:pl-6">
-              <p className="rivet-section-label">{COPY.dashboard.teamSignals}</p>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">
-                {teamReadiness?.dependencyScore != null || trainingCat?.dependencyScore != null ? (
-                  <>
-                    {teamReadiness?.dependencyScore != null ? (
-                      <>
-                        <span className="font-medium">{COPY.dashboard.teamSignalTeam}</span> · {teamReadiness.hint}
-                      </>
-                    ) : null}
-                    {teamReadiness?.dependencyScore != null && trainingCat?.dependencyScore != null ? (
-                      <span className="text-muted-foreground"> · </span>
-                    ) : null}
-                    {trainingCat?.dependencyScore != null ? (
-                      <>
-                        <span className="font-medium">{COPY.dashboard.teamSignalTrain}</span> · {trainingCat.hint}
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">{COPY.dashboard.teamSignalsEmpty}</span>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section aria-labelledby="depth-heading" className="space-y-4">
         <h2 id="depth-heading" className="rivet-section-label">
           {COPY.dashboard.depthHeading}
@@ -405,13 +311,3 @@ export function FounderDashboard({
   )
 }
 
-function formatExecutionProofStamp(completedAt: string | null, shiftDate: string): string {
-  if (completedAt) {
-    const d = new Date(completedAt)
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-    }
-  }
-  if (shiftDate) return `Shift ${shiftDate}`
-  return "—"
-}

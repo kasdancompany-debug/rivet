@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 
 import { SubscribeClient } from "@/components/billing/subscribe-client"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
-import { isBillingEnforced } from "@/lib/billing/config"
+import { getBillingReadiness, isBillingEnforced } from "@/lib/billing/config"
 import { businessHasPaidRivetPurchase } from "@/lib/billing/rivet-access"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
 import { getServerAuthUser, requireAuthUser } from "@/lib/auth/server-auth"
@@ -11,6 +11,8 @@ import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   title: "Get Rivet",
+  description:
+    "One-time $799 CAD. Unlock procedures, training, owner-interruption log, bottlenecks, escape readiness, and owner overview for your workspace.",
 }
 
 export default async function SubscribePage({
@@ -20,7 +22,9 @@ export default async function SubscribePage({
 }) {
   const sp = await searchParams
   const billingCanceled = sp.billing === "canceled"
-  if (!isBillingEnforced()) {
+  const readiness = getBillingReadiness()
+
+  if (readiness.status === "off") {
     redirect("/dashboard")
   }
 
@@ -45,14 +49,20 @@ export default async function SubscribePage({
   const fetchLines: RouteFetchLine[] = [
     {
       label: "Billing",
-      status: "ok",
-      detail: "Stripe Checkout (test mode) opens when you continue.",
+      status: isBillingEnforced() ? "ok" : "empty",
+      detail: isBillingEnforced()
+        ? "Stripe Checkout (test mode) opens when you continue."
+        : "Checkout blocked until all billing environment variables are set.",
     },
   ]
 
   return (
     <DashboardRouteShell routePath="/subscribe" fetchLines={fetchLines}>
-      <SubscribeClient email={user.email ?? ""} billingCanceled={billingCanceled} />
+      <SubscribeClient
+        email={user.email ?? ""}
+        billingCanceled={billingCanceled}
+        checkoutDisabledMessage={isBillingEnforced() ? null : readiness.message}
+      />
     </DashboardRouteShell>
   )
 }

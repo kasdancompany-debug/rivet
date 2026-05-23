@@ -944,6 +944,7 @@ export type Database = {
           est_hours_lost_month: number | null
           est_annual_cost: number | null
           scan_version: string | null
+          scan_answers: Record<string, unknown> | null
         }
         Insert: {
           id?: string
@@ -969,6 +970,7 @@ export type Database = {
           est_hours_lost_month?: number | null
           est_annual_cost?: number | null
           scan_version?: string | null
+          scan_answers?: Record<string, unknown> | null
         }
         Update: {
           id?: string
@@ -988,6 +990,13 @@ export type Database = {
           execution_drift?: number
           training_fragility?: number
           owner_routing?: number
+          owner_dependency_score?: number | null
+          severity?: string | null
+          est_interruptions_month?: number | null
+          est_hours_lost_month?: number | null
+          est_annual_cost?: number | null
+          scan_version?: string | null
+          scan_answers?: Record<string, unknown> | null
         }
         Relationships: []
       }
@@ -1005,6 +1014,10 @@ export type Database = {
       auth_user_is_owner: {
         Args: Record<string, never>
         Returns: boolean
+      }
+      create_business_workspace: {
+        Args: { p_name: string; p_industry?: string }
+        Returns: string
       }
     }
     Enums: {

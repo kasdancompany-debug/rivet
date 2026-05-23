@@ -112,7 +112,7 @@ export default async function SettingsPage() {
           description="Hours, notifications, and deeper account policy will surface here as they are wired. Until then, use Overview and Standards to move load off the owner."
         >
           <Button variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>
-            Back to Rivet Index
+            Back to Overview
           </Button>
         </EmptyState>
       </>

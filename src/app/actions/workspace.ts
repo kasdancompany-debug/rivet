@@ -70,21 +70,17 @@ export async function createWorkspaceForCurrentUser(
       return { ok: true, businessId: existing.id }
     }
 
-    const { data: biz, error: bErr } = await supabase
-      .from("businesses")
-      .insert({
-        name: trimmed,
-        owner_id: user.id,
-        industry,
-      })
-      .select("id")
-      .single()
+    const { data: createdBusinessId, error: bErr } = await supabase.rpc("create_business_workspace", {
+      p_name: trimmed,
+      p_industry: industry,
+    })
 
-    if (bErr || !biz) {
+    if (bErr || !createdBusinessId) {
       return { ok: false, message: bErr?.message ?? "Could not create the workspace." }
     }
 
-    const businessId = biz.id as string
+    const businessId = createdBusinessId as string
+    const biz = { id: businessId }
     const profile = await fetchCurrentProfile(supabase)
 
     const ensureMembershipAndTeam = async (displayName: string) => {

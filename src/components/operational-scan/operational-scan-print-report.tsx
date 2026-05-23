@@ -1,8 +1,6 @@
 import type { OperationalScanAnswers, OperationalScanResult } from "@/lib/operational-scan/score"
-import { formatCurrencyCad } from "@/lib/operational-scan/score"
-import { recommendedNextSteps } from "@/lib/operational-scan/recommended-next-steps"
-
-const PRINT_CTA = "Install Rivet — $799 once"
+import { formatCurrencyCad, formatSeverityLabel } from "@/lib/operational-scan/score"
+import { SCAN_RESULTS } from "@/lib/operational-scan/scan-copy"
 
 function formatReportDate(d: Date): string {
   return d.toLocaleDateString("en-CA", {
@@ -17,13 +15,14 @@ export function OperationalScanPrintReport({
   result,
   answers,
   reportDate,
+  fixes,
 }: {
   result: OperationalScanResult
   answers: OperationalScanAnswers
   reportDate: Date
+  fixes: [string, string, string]
 }) {
   const business = answers.businessName.trim() || "Operation"
-  const steps = recommendedNextSteps(result, answers)
 
   return (
     <div
@@ -51,7 +50,7 @@ export function OperationalScanPrintReport({
             </div>
             <div className="border-l border-zinc-200 pl-6">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Severity</p>
-              <p className="mt-2 text-xl font-semibold">{result.severity}</p>
+              <p className="mt-2 text-xl font-semibold">{formatSeverityLabel(result.severity)}</p>
             </div>
           </div>
 
@@ -74,30 +73,23 @@ export function OperationalScanPrintReport({
             </div>
           </div>
 
-          <p className="mt-4 text-[12px] font-medium text-zinc-700">Most owners underestimate this by 2–3×.</p>
+          <p className="mt-4 text-[12px] font-medium text-zinc-700">{SCAN_RESULTS.underestimate}</p>
 
           <div className="mt-6">
-            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Drivers</p>
-            <ul className="mt-3 list-none space-y-2.5 p-0">
-              {result.painDrivers.map((line, i) => (
-                <li key={i} className="text-[12px] leading-relaxed text-zinc-700">
-                  — {line}
-                </li>
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              {SCAN_RESULTS.fixesHeading}
+            </p>
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-[12px] leading-relaxed text-zinc-700">
+              {fixes.map((s, i) => (
+                <li key={i}>{s}</li>
               ))}
-            </ul>
+            </ol>
           </div>
         </section>
 
-        <section className="mt-8">
-          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Next steps</p>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-[12px] leading-relaxed text-zinc-700">
-            {steps.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ol>
-        </section>
-
-        <p className="mt-10 border-t border-zinc-200 pt-6 text-center text-[13px] font-semibold text-zinc-900">{PRINT_CTA}</p>
+        <p className="mt-10 border-t border-zinc-200 pt-6 text-center text-[13px] font-semibold text-zinc-900">
+          {SCAN_RESULTS.primaryCta}
+        </p>
       </div>
     </div>
   )

@@ -1,19 +1,19 @@
 /**
- * Rivet Index: owner-dependency model (0–100 per dimension; higher = more load on the owner).
+ * Rivet Score: owner-dependency model (0–100 per dimension; higher = more load on the owner).
  */
 
 export const RIVET_INDEX_CATEGORIES = [
-  { id: "operations", label: "Operations" },
-  { id: "product_quality", label: "Product Quality" },
-  { id: "team_readiness", label: "Team Readiness" },
-  { id: "customer_experience", label: "Customer Experience" },
-  { id: "leadership_redundancy", label: "Leadership Redundancy" },
-  { id: "training_systems", label: "Training Systems" },
+  { id: "operations", label: "Daily operations" },
+  { id: "product_quality", label: "Quality standards" },
+  { id: "team_readiness", label: "Team readiness" },
+  { id: "customer_experience", label: "Customer issues" },
+  { id: "leadership_redundancy", label: "Backup coverage" },
+  { id: "training_systems", label: "Training" },
 ] as const
 
 export type RivetIndexCategoryId = (typeof RIVET_INDEX_CATEGORIES)[number]["id"]
 
-/** Visual band for dependency on this dimension (lower dependency → more structurally transferable). */
+/** Visual band for how much this area still depends on the owner (lower = better). */
 export type RivetIndexBand = "critical" | "fragile" | "improving" | "stable" | "transferable"
 
 export type RivetCategoryScore = {
@@ -34,7 +34,7 @@ export type RivetIndexTrendPoint = {
 }
 
 export type RivetIndexView = {
-  /** Owner dependency 0–100 — the Rivet Index; null when not enough live signal to score fairly. */
+  /** Owner dependency 0–100 — the Rivet Score; null when not enough data to score fairly. */
   dependencyScore: number | null
   /** Inverse: how likely the business is to run well without the owner today. */
   autonomyLikelihood: number | null

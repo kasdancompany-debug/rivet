@@ -2,6 +2,11 @@
 
 Use this as the gate between “works on my machine” and **charging real money**. Check boxes when done; don’t mark a section complete on faith—verify with a second account or a clean browser profile where it matters.
 
+**QA runbooks (internal):**
+
+- [docs/production-qa-checklist.md](docs/production-qa-checklist.md) — full test matrix (signup, billing, RLS, media, etc.)
+- [docs/pre-live-stripe-manual-test-script.md](docs/pre-live-stripe-manual-test-script.md) — ~40 min script to run **before** enabling live Stripe keys
+
 ---
 
 ## 1. Supabase production setup

@@ -6,13 +6,13 @@ import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { mapAuthErrorToMessage } from "@/lib/auth/error-messages"
 import { getSafeInternalNextPath } from "@/lib/auth/safe-next-path"
-import { isSupabaseConfiguredClient } from "@/lib/supabase/config"
+import {
+  isSupabaseConfiguredClient,
+  supabaseNotConfiguredMessage,
+} from "@/lib/supabase/config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-const MISSING_SUPABASE_MSG =
-  "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local (from your Supabase project → Settings → API), then restart npm run dev."
 
 export function LoginForm({ supabaseConfigured }: { supabaseConfigured?: boolean }) {
   const searchParams = useSearchParams()
@@ -24,7 +24,7 @@ export function LoginForm({ supabaseConfigured }: { supabaseConfigured?: boolean
       case "auth":
         return "That sign-in link is invalid or has expired."
       case "missing_config":
-        return MISSING_SUPABASE_MSG
+        return supabaseNotConfiguredMessage(true)
       default:
         return null
     }
@@ -32,13 +32,15 @@ export function LoginForm({ supabaseConfigured }: { supabaseConfigured?: boolean
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(configured ? null : MISSING_SUPABASE_MSG)
+  const [error, setError] = useState<string | null>(
+    configured ? null : supabaseNotConfiguredMessage(true)
+  )
   const [loading, setLoading] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!configured) {
-      setError(MISSING_SUPABASE_MSG)
+      setError(supabaseNotConfiguredMessage(true))
       return
     }
     setError(null)

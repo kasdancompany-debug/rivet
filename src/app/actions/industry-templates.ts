@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache"
 
 import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
 import {
+  FOUNDATION_INTERRUPTION_COUNT,
+  FOUNDATION_ISSUE_COUNT,
+  FOUNDATION_SOP_COUNT,
+  FOUNDATION_TRAINING_COUNT,
   getIndustryTemplateBundle,
   isRivetIndustryTemplateId,
   rivetIndustryToSopPackId,
@@ -23,6 +27,15 @@ import type { StandardStatus } from "@/types/database"
 export type InstallIndustryTemplateResult =
   | { ok: true; counts: IndustryTemplateInstallCounts; alreadyInstalled: boolean }
   | { ok: false; message: string }
+
+function foundationInstallCounts(): IndustryTemplateInstallCounts {
+  return {
+    sops: FOUNDATION_SOP_COUNT,
+    trainingModules: FOUNDATION_TRAINING_COUNT,
+    interruptionWorkflows: FOUNDATION_INTERRUPTION_COUNT,
+    issueWorkflows: FOUNDATION_ISSUE_COUNT,
+  }
+}
 
 function statusForTemplate(templateId: string, category: string): StandardStatus {
   if (category === "opening" || category === "closing") return "active"
@@ -58,12 +71,7 @@ export async function installIndustryTemplateBundle(
     return {
       ok: true,
       alreadyInstalled: Boolean(business.template_installed_at),
-      counts: {
-        sops: bundle.sopTemplateIds.length,
-        trainingModules: bundle.trainingModules.length,
-        interruptionWorkflows: bundle.interruptionWorkflows.length,
-        issueWorkflows: bundle.issueWorkflows.length,
-      },
+      counts: foundationInstallCounts(),
     }
   }
 
@@ -219,10 +227,8 @@ export async function installIndustryTemplateBundle(
     }
 
     const counts: IndustryTemplateInstallCounts = {
-      sops: bundle.sopTemplateIds.length,
+      ...foundationInstallCounts(),
       trainingModules: trainingCount,
-      interruptionWorkflows: bundle.interruptionWorkflows.length,
-      issueWorkflows: bundle.issueWorkflows.length,
     }
 
     revalidateAll()

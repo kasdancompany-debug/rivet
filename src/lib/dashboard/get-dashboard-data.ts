@@ -14,6 +14,9 @@ import {
   listTrainingModulesForBusiness,
 } from "@/lib/db/queries"
 import { computeStandardsDepthPercent } from "@/lib/dashboard/standards-depth"
+import { buildFirstDayChecklist } from "@/lib/dashboard/first-day-checklist"
+import { computeEscapeReadiness } from "@/lib/escape-readiness/compute"
+import { escapeProgressFromAutonomyTrend } from "@/lib/escape-readiness/enrichment"
 import { categoryScoresRecord, computeRivetIndex } from "@/lib/rivet-score/compute"
 import {
   aggregateDailyRunCompletionLastDays,
@@ -478,6 +481,37 @@ export async function getDashboardData(): Promise<DashboardViewModel> {
     withoutToday.sort((a, b) => a.date.localeCompare(b.date))
     const rivetIndex = { ...rivetBase, trend: withoutToday.slice(-30) }
 
+    const rivetCtx = {
+      standards,
+      stepCountBySopId,
+      bottlenecks,
+      trainingProgressPercent,
+      staffReadinessPercent,
+      standardsDepthPercent,
+      scanDependencyPercent,
+      runStats,
+      readinessRows,
+      teamProfileCount,
+      trainingIncompleteCount,
+      totalAssignments,
+      ownerInterruptionsThisWeekCount,
+    }
+    const escapeBase = computeEscapeReadiness(rivetCtx)
+    const escapeReadiness = {
+      ...escapeBase,
+      progress: escapeProgressFromAutonomyTrend(rivetIndex.trend, escapeBase.score),
+    }
+
+    const firstDayChecklist = buildFirstDayChecklist({
+      businessId,
+      industryTemplateId: business.industry_template_id,
+      templateInstalledAt: business.template_installed_at,
+      standards,
+      ownerInterruptionCount: ownerInterruptionsRaw.length,
+      teamProfileCount,
+      escapeScore: escapeReadiness.score,
+    })
+
     const {
       data: { user: dashUser },
     } = await supabase.auth.getUser()
@@ -543,6 +577,8 @@ export async function getDashboardData(): Promise<DashboardViewModel> {
       ownerRisks: risksDisplay,
       nextBestMove,
       rivetIndex,
+      escapeReadiness,
+      firstDayChecklist,
       executionProof,
       coldStart,
       needsFirstStandard,

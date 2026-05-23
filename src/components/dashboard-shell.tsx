@@ -8,7 +8,6 @@ import { LogOut, Menu } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { COPY } from "@/lib/interface-copy"
 import { Logo } from "@/components/logo"
-import { WelcomeBanner } from "@/components/onboarding/welcome-banner"
 import { RouteIntentStrip } from "@/components/route-intent-strip"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -189,7 +188,6 @@ export function DashboardShell({
         <main className="flex-1 px-5 pb-28 pt-10 sm:px-8 sm:pb-24 sm:pt-12 lg:px-12 lg:pb-20 lg:pt-14 print:px-4 print:pb-6 print:pt-4">
           <div className="mx-auto w-full max-w-[68rem]">
             <div className="print:hidden">
-              <WelcomeBanner hasWorkspace={hasWorkspace} />
               <RouteIntentStrip />
             </div>
             {children}

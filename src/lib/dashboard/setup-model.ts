@@ -1,4 +1,5 @@
 import type { DashboardViewModel } from "@/lib/dashboard/types"
+import { emptyEscapeReadiness } from "@/lib/escape-readiness/empty"
 import { COPY } from "@/lib/interface-copy"
 import {
   RIVET_INDEX_CATEGORIES,
@@ -50,6 +51,8 @@ export function buildSetupDashboardViewModel(): DashboardViewModel {
       cta: COPY.dashboard.setupNextCta,
     },
     rivetIndex: placeholderRivetIndex(),
+    escapeReadiness: emptyEscapeReadiness(),
+    firstDayChecklist: null,
     executionProof: [],
   }
 }

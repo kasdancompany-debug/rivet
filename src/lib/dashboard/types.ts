@@ -1,3 +1,5 @@
+import type { FirstDayChecklistView } from "@/lib/dashboard/first-day-checklist"
+import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
 import type { RivetIndexView } from "@/lib/rivet-score/types"
 
 export type BusinessRiskLevel = "low" | "moderate" | "elevated" | "high"
@@ -67,6 +69,9 @@ export type DashboardViewModel = {
   ownerRisks: OwnerRiskItem[]
   nextBestMove: NextBestMove
   rivetIndex: RivetIndexView
+  escapeReadiness: EscapeReadinessView
+  /** First-day onboarding checklist; null when workspace is not live. */
+  firstDayChecklist: FirstDayChecklistView | null
   /** Recent completed checklist runs (execution proof). */
   executionProof: DashboardExecutionProofRow[]
   /**

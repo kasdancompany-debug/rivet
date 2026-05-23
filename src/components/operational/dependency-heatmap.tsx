@@ -34,7 +34,7 @@ export function DependencyHeatmap({ categories }: { categories: RivetCategorySco
             title={
               c.dependencyScore == null
                 ? `${c.label}: ${COPY.dashboard.metricNoData}`
-                : `${c.label}: ${c.dependencyScore}% dependency`
+                : `${c.label}: ${c.dependencyScore}% on you`
             }
           >
             <span className="leading-snug opacity-95">{c.label}</span>

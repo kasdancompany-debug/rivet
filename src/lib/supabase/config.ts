@@ -17,3 +17,15 @@ export function isSupabaseConfiguredClient(): boolean {
   if (url.includes("placeholder.supabase.co")) return false
   return true
 }
+
+/** User-facing hint when Supabase env vars are missing (local vs deployed). */
+export function supabaseNotConfiguredMessage(forBrowser = false): string {
+  const onDeployedHost =
+    forBrowser &&
+    typeof window !== "undefined" &&
+    !/localhost|127\.0\.0\.1/.test(window.location.hostname)
+  if (onDeployedHost) {
+    return "Supabase is not configured on this server. In Vercel → Project → Settings → Environment Variables, add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (Production), then redeploy."
+  }
+  return "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local (Supabase → Settings → API), then restart npm run dev."
+}

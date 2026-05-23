@@ -5,11 +5,11 @@ import { OperationalScanFlow } from "@/components/operational-scan/operational-s
 export const metadata: Metadata = {
   title: "Free Rivet Scan · Owner Dependency",
   description:
-    "Seven questions. Get your Owner Dependency Score, severity read, and estimated annual cost of routing load through you.",
+    "Eight questions. See your Owner Dependency Score, severity, and what routing load through you may cost each year—in about two minutes.",
   openGraph: {
-    title: "Rivet Scan · What is owner dependency costing you?",
+    title: "Rivet Scan · How dependent is your business on you?",
     description:
-      "Seven questions. Owner Dependency Score, severity, and estimated hours and dollars lost—before you install Rivet.",
+      "Staff questions, owner texts and calls, open/close, training, and repeat issues—then your score and annual cost estimate.",
   },
 }
 

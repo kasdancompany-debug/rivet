@@ -1,19 +1,13 @@
 import type { RivetIndexComputeContext } from "@/lib/rivet-score/compute"
 
-import { bandFromScoreForEscape, verdictForEscapeScore } from "@/lib/escape-readiness/presentation"
+import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
 import type { EscapeReadinessFactor, EscapeReadinessView } from "@/lib/escape-readiness/types"
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n))
 }
 
-function averageNullable(nums: (number | null)[]): number | null {
-  const defined = nums.filter((n): n is number => n != null && Number.isFinite(n))
-  if (defined.length === 0) return null
-  return Math.round(defined.reduce((a, b) => a + b, 0) / defined.length)
-}
-
-function computeProceduresComplete(ctx: RivetIndexComputeContext): {
+function computeSopCoverage(ctx: RivetIndexComputeContext): {
   percent: number | null
   hint: string
 } {
@@ -21,13 +15,13 @@ function computeProceduresComplete(ctx: RivetIndexComputeContext): {
   if (active.length === 0) {
     return {
       percent: null,
-      hint: "No active standards yet—capture open, close, and quality plays first.",
+      hint: "No active standards yet—publish open, close, and your highest-variance plays first.",
     }
   }
   if (ctx.standardsDepthPercent != null) {
     return {
       percent: ctx.standardsDepthPercent,
-      hint: `Documentation depth averages ${ctx.standardsDepthPercent}% across active plays (steps, roles, evidence, refresh).`,
+      hint: `SOP depth averages ${ctx.standardsDepthPercent}% across active plays (steps, roles, evidence, refresh).`,
     }
   }
   let withSteps = 0
@@ -60,148 +54,133 @@ function computeTrainingCoverage(ctx: RivetIndexComputeContext): {
   }
 }
 
-function computeCriticalOwnerDependencyRisk(ctx: RivetIndexComputeContext): {
-  riskPercent: number | null
+function computeUnresolvedIssuesHealth(ctx: RivetIndexComputeContext): {
+  percent: number | null
+  hint: string
+} {
+  const open = ctx.bottlenecks.filter(
+    (i) => i.status === "open" || i.status === "in_progress"
+  ).length
+  if (open === 0) {
+    return {
+      percent: 92,
+      hint: "No open or in-progress issues—fewer surprises while you are away.",
+    }
+  }
+  let percent: number
+  if (open === 1) percent = 82
+  else if (open <= 3) percent = 68
+  else if (open <= 6) percent = 48
+  else if (open <= 10) percent = 32
+  else percent = 18
+  return {
+    percent,
+    hint: `${open} unresolved issue(s) still on the board—each one is a future pull on you.`,
+  }
+}
+
+function computeOwnerInterruptionsHealth(ctx: RivetIndexComputeContext): {
+  percent: number | null
+  hint: string
+} {
+  const n = ctx.ownerInterruptionsThisWeekCount
+  if (n === 0) {
+    return {
+      percent: 100,
+      hint: "No owner interruptions logged this week—track texts and calls to see the real pattern.",
+    }
+  }
+  let percent: number
+  if (n <= 2) percent = 82
+  else if (n <= 5) percent = 62
+  else if (n <= 9) percent = 42
+  else if (n <= 15) percent = 28
+  else percent = 14
+  return {
+    percent,
+    hint: `${n} owner interrupt(s) logged this week—judgment is still routing to you.`,
+  }
+}
+
+function computeUndocumentedProceduresHealth(ctx: RivetIndexComputeContext): {
+  percent: number | null
   hint: string
 } {
   const active = ctx.standards.filter((s) => s.status === "active")
-  const openOwner = ctx.bottlenecks.filter(
-    (i) => i.owner_required && (i.status === "open" || i.status === "in_progress")
-  )
-
-  if (active.length === 0 && openOwner.length === 0 && ctx.ownerInterruptionsThisWeekCount === 0) {
+  const drafts = ctx.standards.filter((s) => s.status === "draft")
+  if (active.length === 0 && drafts.length === 0) {
     return {
-      riskPercent: null,
-      hint: "No active standards or owner-flagged issues yet—dependency risk is not measurable.",
+      percent: null,
+      hint: "No standards on file—capture the procedures only you know first.",
     }
   }
-
-  let risk = 0
-  let criticalThin = 0
+  let undocumented = drafts.length
   for (const s of active) {
-    if (s.owner_dependency_level >= 4) {
-      const steps = ctx.stepCountBySopId.get(s.id) ?? 0
-      if (steps < 2) {
-        criticalThin += 1
-        risk += 14
-      } else {
-        risk += 6
-      }
-    } else if (s.owner_dependency_level >= 3) {
-      risk += 3
-    }
+    if ((ctx.stepCountBySopId.get(s.id) ?? 0) < 1) undocumented += 1
   }
-  risk += openOwner.length * 10
-  risk += clamp(Math.round(ctx.ownerInterruptionsThisWeekCount * 2.5), 0, 24)
-
-  const draft = ctx.standards.filter((s) => s.status === "draft").length
-  risk += draft * 4
-
-  const riskPercent = clamp(risk, 0, 100)
-  const mitigated = 100 - riskPercent
-  let hint = `About ${mitigated}% of critical paths look mitigated on paper.`
-  if (criticalThin > 0) {
-    hint = `${criticalThin} high–owner-dependency play(s) still lack runnable steps—${openOwner.length} issue(s) still need you.`
-  } else if (openOwner.length > 0) {
-    hint = `${openOwner.length} open issue(s) still flagged owner-required before the team can move on.`
-  } else if (ctx.ownerInterruptionsThisWeekCount > 0) {
-    hint = `${ctx.ownerInterruptionsThisWeekCount} owner interrupt(s) logged this week—judgment is still routing to you.`
+  const total = active.length + drafts.length
+  const documented = total - undocumented
+  const pct = Math.round((documented / Math.max(1, total)) * 100)
+  return {
+    percent: pct,
+    hint:
+      undocumented === 0
+        ? "Every standard on file has at least a draft or steps—keep depth growing."
+        : `${undocumented} procedure gap(s)—drafts or active plays still without runnable steps.`,
   }
-
-  return { riskPercent, hint }
-}
-
-function computeStaffingRisk(ctx: RivetIndexComputeContext): {
-  riskPercent: number | null
-  hint: string
-} {
-  const rows = ctx.readinessRows
-  const interruptLift = clamp(Math.round(ctx.ownerInterruptionsThisWeekCount * 5), 0, 30)
-
-  if (rows.length === 0) {
-    if (ctx.teamProfileCount <= 1) {
-      return {
-        riskPercent: null,
-        hint: "Only one profile on the business—add teammates and readiness rows to measure staffing risk.",
-      }
-    }
-    if (ctx.ownerInterruptionsThisWeekCount > 0) {
-      return {
-        riskPercent: clamp(48 + interruptLift, 0, 100),
-        hint: `${ctx.ownerInterruptionsThisWeekCount} interrupt(s) this week with no readiness rows—mark who can open alone.`,
-      }
-    }
-    return {
-      riskPercent: null,
-      hint: "No readiness rows yet—record who can open, close, and coach without you.",
-    }
-  }
-
-  let notReadyOpens = 0
-  for (const r of rows) {
-    if (r.open_alone === "not_ready") notReadyOpens += 1
-  }
-  const ratio = notReadyOpens / Math.max(1, rows.length)
-  const riskPercent = clamp(Math.round(22 + ratio * 58 + interruptLift), 0, 100)
-  const hint =
-    notReadyOpens > 0
-      ? `${notReadyOpens} teammate(s) not cleared to open alone—staffing risk stays elevated.`
-      : "Opening coverage has named backups on record."
-  return { riskPercent, hint }
 }
 
 export function computeEscapeReadiness(ctx: RivetIndexComputeContext): EscapeReadinessView {
-  const procedures = computeProceduresComplete(ctx)
+  const sop = computeSopCoverage(ctx)
   const training = computeTrainingCoverage(ctx)
-  const ownerDeps = computeCriticalOwnerDependencyRisk(ctx)
-  const staffing = computeStaffingRisk(ctx)
-
-  const ownerMitigation =
-    ownerDeps.riskPercent == null ? null : clamp(100 - ownerDeps.riskPercent, 0, 100)
-  const staffingCoverage =
-    staffing.riskPercent == null ? null : clamp(100 - staffing.riskPercent, 0, 100)
-
-  const score = averageNullable([
-    procedures.percent,
-    training.percent,
-    ownerMitigation,
-    staffingCoverage,
-  ])
+  const issues = computeUnresolvedIssuesHealth(ctx)
+  const interrupts = computeOwnerInterruptionsHealth(ctx)
+  const undocumented = computeUndocumentedProceduresHealth(ctx)
 
   const factors: EscapeReadinessFactor[] = [
     {
-      id: "procedures",
-      label: "Procedures complete",
-      percent: procedures.percent,
-      hint: procedures.hint,
+      id: "sop_coverage",
+      label: "SOP coverage",
+      percent: sop.percent,
+      hint: sop.hint,
     },
     {
-      id: "training",
+      id: "training_coverage",
       label: "Training coverage",
       percent: training.percent,
       hint: training.hint,
     },
     {
-      id: "owner_dependencies",
-      label: "Critical owner dependencies",
-      percent: ownerMitigation,
-      hint: ownerDeps.hint,
+      id: "unresolved_issues",
+      label: "Unresolved issues",
+      percent: issues.percent,
+      hint: issues.hint,
     },
     {
-      id: "staffing",
-      label: "Staffing risk",
-      percent: staffingCoverage,
-      hint: staffing.hint,
+      id: "owner_interruptions",
+      label: "Owner interruptions",
+      percent: interrupts.percent,
+      hint: interrupts.hint,
+    },
+    {
+      id: "undocumented_procedures",
+      label: "Undocumented procedures",
+      percent: undocumented.percent,
+      hint: undocumented.hint,
     },
   ]
 
-  const band = score == null ? null : bandFromScoreForEscape(score)
+  const hasCoreSignal = factors.some(
+    (f) =>
+      (f.id === "sop_coverage" ||
+        f.id === "training_coverage" ||
+        f.id === "undocumented_procedures") &&
+      f.percent != null
+  )
 
-  return {
-    headlineQuestion: "Can your business survive if you disappear for a week?",
-    score,
-    band,
-    verdict: verdictForEscapeScore(score),
+  return finalizeEscapeReadinessView({
+    ...(hasCoreSignal ? {} : { score: null }),
+    verdict: "",
     factors,
-  }
+  })
 }

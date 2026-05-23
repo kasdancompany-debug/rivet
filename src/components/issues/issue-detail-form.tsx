@@ -174,7 +174,7 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
           disabled={pending}
         />
         <Label htmlFor="edit-owner" className="cursor-pointer text-sm font-normal leading-snug">
-          Only you can unblock (shows on Rivet Index)
+          Only you can unblock (shows on Overview)
         </Label>
       </div>
 

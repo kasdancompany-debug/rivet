@@ -48,7 +48,7 @@ export type IndustryIssueWorkflowTemplate = {
 export type IndustryTemplateBundle = {
   id: RivetIndustryTemplateId
   sopPackId: IndustryId
-  /** Exactly 12 starter SOP template ids to install. */
+  /** Exactly 5 starter SOP template ids to install during onboarding. */
   sopTemplateIds: readonly string[]
   trainingModules: readonly IndustryTrainingModuleTemplate[]
   interruptionWorkflows: readonly IndustryInterruptionWorkflowTemplate[]

@@ -3,9 +3,33 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
 import { assertStripeSecretIsTestMode } from "@/lib/billing/stripe-test-mode"
+import { getBillingReadiness } from "@/lib/billing/billing-readiness"
+import { parseRivetCheckoutMetadata } from "@/lib/billing/checkout-metadata"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export const runtime = "nodejs"
+
+type WebhookLogContext = Record<string, string | null | boolean | number>
+
+function logStripeWebhook(message: string, context: WebhookLogContext = {}): void {
+  console.info("[stripe webhook]", message, context)
+}
+
+function logStripeWebhookError(message: string, context: WebhookLogContext = {}): void {
+  console.error("[stripe webhook]", message, context)
+}
+
+function checkoutSessionContext(session: Stripe.Checkout.Session): WebhookLogContext {
+  const parsed = parseRivetCheckoutMetadata(session)
+  return {
+    checkoutSessionId: session.id,
+    customerEmail: parsed.email,
+    userId: parsed.userId,
+    workspaceId: parsed.workspaceId,
+    mode: session.mode,
+    paymentStatus: session.payment_status,
+  }
+}
 
 function mapStripeSubscriptionStatus(status: Stripe.Subscription.Status): string {
   switch (status) {
@@ -72,65 +96,136 @@ async function upsertSubscriptionForUser(
   }
 }
 
+type RivetPurchaseUpsertResult =
+  | { ok: true; status: "paid" | "pending"; checkoutSessionId: string; businessId: string }
+  | { ok: false; error: "missing_metadata"; missing: string[]; checkoutSessionId: string }
+
 async function upsertRivetPurchaseFromPaymentSession(
   admin: ReturnType<typeof createAdminClient>,
   session: Stripe.Checkout.Session
-): Promise<void> {
-  if (session.mode !== "payment") return
+): Promise<RivetPurchaseUpsertResult> {
+  const parsed = parseRivetCheckoutMetadata(session)
+  const { userId, workspaceId, missing } = parsed
 
-  const businessId = session.metadata?.business_id
-  const userId = session.metadata?.supabase_user_id ?? session.client_reference_id ?? null
-  if (!businessId || !userId) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[stripe webhook] payment session missing business_id or user id", session.id)
+  if (missing.length > 0 || !userId || !workspaceId) {
+    return {
+      ok: false,
+      error: "missing_metadata",
+      missing,
+      checkoutSessionId: session.id,
     }
-    return
   }
-
-  const customerId =
-    typeof session.customer === "string" ? session.customer : session.customer?.id ?? null
-  const pi =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id ?? null
-  const amount = session.amount_total ?? 0
-  const currency = (session.currency ?? "cad").toLowerCase()
-  const paid = session.payment_status === "paid"
-  const now = new Date().toISOString()
 
   const { data: existing } = await admin
     .from("rivet_purchases")
-    .select("id, created_at")
+    .select("status, purchased_at")
     .eq("stripe_checkout_session_id", session.id)
     .maybeSingle()
 
+  const sessionPaid = session.payment_status === "paid"
+  const alreadyPaid = existing?.status === "paid"
+  const status: "paid" | "pending" = sessionPaid || alreadyPaid ? "paid" : "pending"
+  const now = new Date().toISOString()
+
+  const customerId =
+    typeof session.customer === "string" ? session.customer : session.customer?.id ?? null
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null
+
   const row = {
-    business_id: businessId,
+    business_id: workspaceId,
     purchaser_user_id: userId,
     stripe_customer_id: customerId,
     stripe_checkout_session_id: session.id,
-    stripe_payment_intent_id: pi,
-    amount,
-    currency,
-    status: paid ? "paid" : "pending",
-    purchased_at: paid ? now : null,
+    stripe_payment_intent_id: paymentIntentId,
+    amount: session.amount_total ?? 0,
+    currency: (session.currency ?? "cad").toLowerCase(),
+    status,
+    purchased_at:
+      status === "paid"
+        ? ((existing?.purchased_at as string | null | undefined) ?? now)
+        : null,
     updated_at: now,
-    created_at: (existing?.created_at as string | undefined) ?? now,
   }
 
-  if (existing?.id) {
-    await admin.from("rivet_purchases").update(row).eq("id", existing.id as string)
-  } else {
-    await admin.from("rivet_purchases").insert(row)
+  const { error } = await admin
+    .from("rivet_purchases")
+    .upsert(row, { onConflict: "stripe_checkout_session_id" })
+
+  if (error) {
+    throw error
   }
+
+  return { ok: true, status, checkoutSessionId: session.id, businessId: workspaceId }
+}
+
+function missingMetadataResponse(result: Extract<RivetPurchaseUpsertResult, { ok: false }>) {
+  return NextResponse.json(
+    {
+      error: "missing_checkout_metadata",
+      missing: result.missing,
+      checkout_session_id: result.checkoutSessionId,
+    },
+    { status: 400 }
+  )
+}
+
+async function handlePaymentCheckoutSession(
+  admin: ReturnType<typeof createAdminClient>,
+  event: Stripe.Event,
+  session: Stripe.Checkout.Session
+): Promise<NextResponse | null> {
+  const parsed = parseRivetCheckoutMetadata(session)
+
+  logStripeWebhook("processing payment checkout session", {
+    eventId: event.id,
+    eventType: event.type,
+    checkoutSessionId: session.id,
+    customerEmail: parsed.email,
+    userId: parsed.userId,
+    workspaceId: parsed.workspaceId,
+    mode: session.mode,
+    paymentStatus: session.payment_status,
+  })
+
+  const result = await upsertRivetPurchaseFromPaymentSession(admin, session)
+  if (!result.ok) {
+    logStripeWebhookError("rivet purchase not saved — missing metadata", {
+      eventId: event.id,
+      eventType: event.type,
+      checkoutSessionId: result.checkoutSessionId,
+      missingFields: result.missing.join(","),
+      customerEmail: parsed.email,
+    })
+    return missingMetadataResponse(result)
+  }
+
+  logStripeWebhook("rivet purchase upserted", {
+    eventId: event.id,
+    eventType: event.type,
+    checkoutSessionId: result.checkoutSessionId,
+    purchaseStatus: result.status,
+    workspaceId: result.businessId,
+    userId: parsed.userId,
+    customerEmail: parsed.email,
+  })
+
+  return null
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim()
-  const stripeKey = process.env.STRIPE_SECRET_KEY?.trim()
-  if (!secret || !stripeKey) {
+  const readiness = getBillingReadiness()
+  if (readiness.status !== "ready") {
+    logStripeWebhookError("billing not ready", {
+      missingEnvVars: readiness.missing.join(","),
+    })
     return NextResponse.json({ error: "billing_not_configured" }, { status: 503 })
   }
+
+  const secret = process.env.STRIPE_WEBHOOK_SECRET!.trim()
+  const stripeKey = process.env.STRIPE_SECRET_KEY!.trim()
 
   try {
     assertStripeSecretIsTestMode(stripeKey)
@@ -153,25 +248,56 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_signature" }, { status: 400 })
   }
 
+  logStripeWebhook("event verified", {
+    eventId: event.id,
+    eventType: event.type,
+  })
+
   try {
     const admin = createAdminClient()
 
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session
+
         if (session.mode === "payment") {
-          await upsertRivetPurchaseFromPaymentSession(admin, session)
+          const paymentError = await handlePaymentCheckoutSession(admin, event, session)
+          if (paymentError) return paymentError
           break
         }
+
         if (session.mode !== "subscription") break
 
+        logStripeWebhook("processing subscription checkout session", {
+          eventId: event.id,
+          eventType: event.type,
+          ...checkoutSessionContext(session),
+        })
+
         const userId = session.metadata?.supabase_user_id ?? session.client_reference_id
-        if (!userId || typeof userId !== "string") break
+        if (!userId || typeof userId !== "string") {
+          logStripeWebhookError("subscription checkout missing supabase_user_id", {
+            eventId: event.id,
+            eventType: event.type,
+            checkoutSessionId: session.id,
+            customerEmail: session.customer_details?.email ?? session.customer_email ?? null,
+          })
+          return NextResponse.json(
+            {
+              error: "missing_checkout_metadata",
+              missing: ["supabase_user_id"],
+              checkout_session_id: session.id,
+            },
+            { status: 400 }
+          )
+        }
 
         const customerId =
           typeof session.customer === "string" ? session.customer : session.customer?.id ?? null
         const subId =
-          typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id ?? null
 
         const email =
           session.customer_details?.email ??
@@ -207,15 +333,28 @@ export async function POST(request: Request) {
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session
         if (session.mode === "payment") {
-          await upsertRivetPurchaseFromPaymentSession(admin, session)
+          const paymentError = await handlePaymentCheckoutSession(admin, event, session)
+          if (paymentError) return paymentError
         }
         break
       }
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription
+        logStripeWebhook("processing subscription lifecycle event", {
+          eventId: event.id,
+          eventType: event.type,
+          supabaseUserId: sub.metadata?.supabase_user_id ?? null,
+        })
+
         const userId = sub.metadata?.supabase_user_id
-        if (!userId) break
+        if (!userId) {
+          logStripeWebhookError("subscription event missing supabase_user_id", {
+            eventId: event.id,
+            eventType: event.type,
+          })
+          break
+        }
 
         const status =
           event.type === "customer.subscription.deleted"
@@ -232,12 +371,20 @@ export async function POST(request: Request) {
         break
       }
       default:
+        logStripeWebhook("event ignored", {
+          eventId: event.id,
+          eventType: event.type,
+        })
         break
     }
   } catch (e) {
-    console.error("[stripe webhook]", e)
+    logStripeWebhookError("handler failed", {
+      eventId: event.id,
+      eventType: event.type,
+      message: e instanceof Error ? e.message : "unknown_error",
+    })
     return NextResponse.json({ error: "handler_failed" }, { status: 500 })
   }
 
-  return NextResponse.json({ received: true })
+  return NextResponse.json({ received: true, event_id: event.id })
 }

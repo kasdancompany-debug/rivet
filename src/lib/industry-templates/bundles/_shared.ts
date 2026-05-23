@@ -4,15 +4,16 @@ import type {
   IndustryTrainingModuleTemplate,
 } from "@/lib/industry-templates/types"
 
+import { FOUNDATION_INTERRUPTION_COUNT, FOUNDATION_ISSUE_COUNT, FOUNDATION_TRAINING_COUNT } from "./foundation"
+
 export function trainingSet(opts: {
   openId: string
   closeId: string
   qualityId: string
-  onboardingId: string
   openTitle?: string
   closeTitle?: string
 }): readonly IndustryTrainingModuleTemplate[] {
-  return [
+  const modules: IndustryTrainingModuleTemplate[] = [
     {
       title: opts.openTitle ?? "Opening shift readiness",
       description: "What the first person on duty completes before customers or clients arrive.",
@@ -31,13 +32,8 @@ export function trainingSet(opts: {
       assignedRole: "Team",
       standardTemplateIds: [opts.qualityId],
     },
-    {
-      title: "First week on the team",
-      description: "Shadow, sign-offs, and first solo shift without owner as trainer.",
-      assignedRole: "New hire",
-      standardTemplateIds: [opts.onboardingId],
-    },
-  ] as const
+  ]
+  return modules.slice(0, FOUNDATION_TRAINING_COUNT)
 }
 
 export function interruptionSet(
@@ -93,11 +89,11 @@ export function interruptionSet(
       Object.assign(base[i]!, extras[i]!)
     }
   }
-  return base
+  return base.slice(0, FOUNDATION_INTERRUPTION_COUNT)
 }
 
 export function issueSet(vertical: string): readonly IndustryIssueWorkflowTemplate[] {
-  return [
+  const workflows: IndustryIssueWorkflowTemplate[] = [
     {
       title: `${vertical} — repeat guest/client complaint`,
       category: "customer_complaint",
@@ -117,5 +113,6 @@ export function issueSet(vertical: string): readonly IndustryIssueWorkflowTempla
       severity: "medium",
       description: "Workflow: link module + standard, set completion date, verify on next audit—not another verbal-only train.",
     },
-  ] as const
+  ]
+  return workflows.slice(0, FOUNDATION_ISSUE_COUNT)
 }

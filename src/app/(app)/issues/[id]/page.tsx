@@ -61,7 +61,7 @@ export default async function IssueDetailPage({ params }: Props) {
             {issue.title}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Update status as the team clears it. Resolving removes the load from your Rivet Index view when nothing else is blocking.
+            Update status as the team clears it. Resolving removes the load from your overview when nothing else is blocking.
           </p>
         </div>
         <IssueDetailForm issue={issue} />

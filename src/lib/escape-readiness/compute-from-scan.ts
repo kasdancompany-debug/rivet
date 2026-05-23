@@ -1,7 +1,8 @@
 import type { OperationalScanAnswers, YesPartialNo } from "@/lib/operational-scan/score"
+import { weeklyCountRisk } from "@/lib/operational-scan/score"
 
-import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
-import { bandFromScoreForEscape, verdictForEscapeScore } from "@/lib/escape-readiness/presentation"
+import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
+import type { EscapeReadinessFactor, EscapeReadinessView } from "@/lib/escape-readiness/types"
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n))
@@ -17,23 +18,6 @@ function yesPartialNoRisk(v: YesPartialNo): number {
       return 82
     default:
       return 45
-  }
-}
-
-function staffQuestionsRisk(band: OperationalScanAnswers["staffQuestionsPerWeek"]): number {
-  switch (band) {
-    case "0-5":
-      return 12
-    case "6-15":
-      return 28
-    case "16-30":
-      return 48
-    case "31-50":
-      return 68
-    case "51+":
-      return 90
-    default:
-      return 40
   }
 }
 
@@ -54,18 +38,18 @@ function undocumentedRisk(band: OperationalScanAnswers["undocumentedProcedures"]
   }
 }
 
-function interruptionRisk(c: OperationalScanAnswers["ownerInterruptions"]): number {
+function trainingRisk(c: OperationalScanAnswers["trainingConsistency"]): number {
   switch (c) {
+    case "consistent":
+      return 10
+    case "sometimes":
+      return 35
     case "rarely":
-      return 15
-    case "weekly":
-      return 38
-    case "daily":
       return 62
-    case "constantly":
-      return 92
+    case "none":
+      return 78
     default:
-      return 45
+      return 50
   }
 }
 
@@ -73,71 +57,91 @@ function invertRisk(risk: number): number {
   return clamp(100 - risk, 0, 100)
 }
 
+function issuesHealthFromScan(answers: OperationalScanAnswers): { percent: number; hint: string } {
+  const mistake =
+    answers.repeatedMistakesIssues === "daily"
+      ? 28
+      : answers.repeatedMistakesIssues === "weekly"
+        ? 52
+        : 82
+  const staffLoad = clamp(100 - Math.round(weeklyCountRisk(answers.staffQuestionsPerWeek) * 0.35), 0, 100)
+  const percent = Math.round(mistake * 0.55 + staffLoad * 0.45)
+  const hint =
+    answers.repeatedMistakesIssues === "daily" || answers.repeatedMistakesIssues === "weekly"
+      ? "Repeated mistakes and staff questions suggest unresolved issues will stack up in five days."
+      : "Fewer repeated mistakes on paper—still log issues so they do not become texts."
+  return { percent, hint }
+}
+
 /** Directional escape readiness from scan answers (pre-install). */
 export function computeEscapeReadinessFromScan(answers: OperationalScanAnswers): EscapeReadinessView {
-  const proceduresRisk = undocumentedRisk(answers.undocumentedProcedures)
-  const trainingRisk = answers.trainingProcessExists ? 10 : 72
-  const ownerDepsRisk = clamp(
+  const sopRisk = undocumentedRisk(answers.undocumentedProcedures)
+  const trainingRiskVal = trainingRisk(answers.trainingConsistency)
+  const interruptRisk = clamp(
     Math.round(
-      staffQuestionsRisk(answers.staffQuestionsPerWeek) * 0.35 +
-        yesPartialNoRisk(answers.canRunFiveDaysWithoutOwner) * 0.35 +
-        interruptionRisk(answers.ownerInterruptions) * 0.3
+      weeklyCountRisk(answers.ownerTextsCallsPerWeek) * 0.55 +
+        weeklyCountRisk(answers.staffQuestionsPerWeek) * 0.25 +
+        yesPartialNoRisk(answers.canRunFiveDaysWithoutOwner) * 0.2
     ),
     0,
     100
   )
-  const openRisk = yesPartialNoRisk(answers.staffCanOpenWithoutOwner)
-  const closeRisk = yesPartialNoRisk(answers.staffCanCloseWithoutOwner)
-  const staffingRisk = clamp(Math.round(openRisk * 0.5 + closeRisk * 0.5), 0, 100)
+  const undocumentedRiskVal = undocumentedRisk(answers.undocumentedProcedures)
+  const issues = issuesHealthFromScan(answers)
 
-  const procedures = invertRisk(proceduresRisk)
-  const training = invertRisk(trainingRisk)
-  const ownerMitigation = invertRisk(ownerDepsRisk)
-  const staffingCoverage = invertRisk(staffingRisk)
+  const sop = invertRisk(sopRisk)
+  const training = invertRisk(trainingRiskVal)
+  const interrupts = invertRisk(interruptRisk)
+  const undocumented = invertRisk(undocumentedRiskVal)
 
-  const score = Math.round((procedures + training + ownerMitigation + staffingCoverage) / 4)
+  const factors: EscapeReadinessFactor[] = [
+    {
+      id: "sop_coverage",
+      label: "SOP coverage",
+      percent: sop,
+      hint:
+        answers.undocumentedProcedures === "0"
+          ? "You reported few undocumented gaps—verify plays are written down in Rivet, not only in your head."
+          : "Thin SOP coverage means staff still hunt you when something is not obvious.",
+    },
+    {
+      id: "training_coverage",
+      label: "Training coverage",
+      percent: training,
+      hint:
+        answers.trainingConsistency === "consistent"
+          ? "Training is consistent—tie modules to published procedures in Rivet."
+          : "Inconsistent training means new hires will hunt you during five days away.",
+    },
+    {
+      id: "unresolved_issues",
+      label: "Unresolved issues",
+      percent: issues.percent,
+      hint: issues.hint,
+    },
+    {
+      id: "owner_interruptions",
+      label: "Owner interruptions",
+      percent: interrupts,
+      hint:
+        answers.ownerTextsCallsPerWeek === "0-5" && answers.staffQuestionsPerWeek === "0-5"
+          ? "Low interrupt volume on paper—stress-test before you trust five days away."
+          : "Texts, calls, and walk-ups still route through you at this volume.",
+    },
+    {
+      id: "undocumented_procedures",
+      label: "Undocumented procedures",
+      percent: undocumented,
+      hint:
+        answers.undocumentedProcedures === "0"
+          ? "You named few undocumented procedures—capture the next one only you know."
+          : "Undocumented procedures still drive interrupts when you are not there.",
+    },
+  ]
 
-  return {
-    headlineQuestion: "Can your business survive if you disappear for a week?",
-    score,
-    band: bandFromScoreForEscape(score),
-    verdict: verdictForEscapeScore(score),
-    factors: [
-      {
-        id: "procedures",
-        label: "Procedures complete",
-        percent: procedures,
-        hint:
-          answers.undocumentedProcedures === "0"
-            ? "You reported few undocumented gaps—verify plays are on the floor, not only in your head."
-            : "Undocumented procedures still drive interrupts when you are not there.",
-      },
-      {
-        id: "training",
-        label: "Training coverage",
-        percent: training,
-        hint: answers.trainingProcessExists
-          ? "A training process exists—tie modules to published plays in Rivet."
-          : "No structured training process—new hires will hunt you during a week away.",
-      },
-      {
-        id: "owner_dependencies",
-        label: "Critical owner dependencies",
-        percent: ownerMitigation,
-        hint:
-          answers.canRunFiveDaysWithoutOwner === "yes"
-            ? "You believe five days away is possible—track interrupts to prove it."
-            : "Five days without you is not credible from your answers today.",
-      },
-      {
-        id: "staffing",
-        label: "Staffing risk",
-        percent: staffingCoverage,
-        hint:
-          answers.staffCanOpenWithoutOwner === "yes" && answers.staffCanCloseWithoutOwner === "yes"
-            ? "Open and close can run without you on paper—stress-test before you leave."
-            : "Open or close still needs you—staffing risk spikes on the first call-out.",
-      },
-    ],
-  }
+  return finalizeEscapeReadinessView({
+    verdict: "",
+    factors,
+    progress: [],
+  })
 }

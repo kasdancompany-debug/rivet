@@ -1,9 +1,9 @@
 import type { ReactNode } from "react"
-import { AlertTriangle, Check, Circle } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const INSTALL_SITE = "UNIT 04 · BRIDGE ST · SYNC 6:14 PM"
+const INSTALL_SITE = "UNIT 04 · OAK RIDGE · SYNC 6:14 PM"
 
 function PreviewShell({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -51,17 +51,17 @@ function StandardsPreview() {
       <div className="mt-1.5 flex items-start gap-1 rounded border border-rose-300/90 bg-rose-50 px-1.5 py-1">
         <AlertTriangle className="mt-0.5 size-2.5 shrink-0 text-rose-600" aria-hidden />
         <p className="text-[0.58rem] font-semibold leading-tight text-rose-900">
-          Glass policy missing · last edit 9d ago
+          Safety checklist missing · last edit 9d ago
         </p>
       </div>
       <ul className="mt-1.5 space-y-1 text-[0.68rem] leading-snug text-zinc-800 dark:text-zinc-800">
         <li className="flex gap-1.5">
           <span className="text-zinc-400">1.</span>
-          <span>Floor walk — hazards, mats, glass</span>
+          <span>Site walk — hazards, equipment, access</span>
         </li>
         <li className="flex gap-1.5 opacity-70">
           <span className="text-zinc-400">2.</span>
-          <span className="line-through decoration-zinc-400">First machines — old sequence</span>
+          <span className="line-through decoration-zinc-400">Opening sequence — outdated steps</span>
         </li>
       </ul>
       <p className="mt-1 font-mono text-[0.52rem] text-zinc-500">M.K. · 6:02 AM · v0.3 unpublished</p>
@@ -70,42 +70,32 @@ function StandardsPreview() {
   )
 }
 
-function DailyExecutionPreview() {
+function OwnerInterruptionsPreview() {
   const rows = [
-    { done: true, who: "A. Ruiz", when: "10:14 PM", text: "Safe count logged" },
-    { done: true, who: "A. Ruiz", when: "10:41 PM", text: "Prep line temps" },
-    { done: false, who: "—", when: "OVERDUE", text: "Waste sheet (close)" },
+    { kind: "Judgment", mins: 12, text: "Did the estimate get sent?" },
+    { kind: "Repeat Q", mins: 4, text: "Where is the onboarding checklist?" },
+    { kind: "Follow-up", mins: 18, text: "Client follow-up overdue" },
   ] as const
   return (
     <PreviewShell>
       <p className="font-mono text-[0.58rem] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
-        Shift record · SR-0421 · closing
+        Owner interruptions · this week
       </p>
       <ul className="mt-1.5 space-y-1">
         {rows.map((row) => (
           <li
             key={row.text}
-            className={cn(
-              "flex items-start gap-1.5 rounded-sm px-0.5 py-0.5 text-[0.68rem] text-zinc-800 dark:text-zinc-800",
-              !row.done && "bg-rose-100/90 ring-1 ring-rose-200/80"
-            )}
+            className="rounded-sm border border-zinc-200/90 bg-white px-1.5 py-1 text-[0.68rem] text-zinc-800 dark:text-zinc-800"
           >
-            {row.done ? (
-              <Check className="mt-0.5 size-3 shrink-0 text-emerald-700" aria-hidden />
-            ) : (
-              <Circle className="mt-0.5 size-3 shrink-0 text-rose-500" aria-hidden />
-            )}
-            <span className="min-w-0 flex-1">
-              <span className={cn(!row.done && "font-semibold text-rose-900")}>{row.text}</span>
-              <span className="mt-0.5 block font-mono text-[0.52rem] text-zinc-500">
-                {row.who} · {row.when}
-              </span>
+            <span className="font-semibold">{row.text}</span>
+            <span className="mt-0.5 block font-mono text-[0.52rem] text-zinc-500">
+              {row.kind} · {row.mins} min
             </span>
           </li>
         ))}
       </ul>
       <p className="mt-1.5 font-mono text-[0.5rem] leading-tight text-zinc-600">
-        Gaps feed bottleneck #BN-08 · score impact −6
+        17 logged · 6h 20m owner time · same themes repeat
       </p>
     </PreviewShell>
   )
@@ -115,13 +105,13 @@ function TrainingPreview() {
   return (
     <PreviewShell>
       <div className="flex flex-wrap items-center justify-between gap-1">
-        <p className="text-[0.68rem] font-semibold text-zinc-900">Opening plays</p>
+        <p className="text-[0.68rem] font-semibold text-zinc-900">Onboarding checklist</p>
         <span className="rounded border border-rose-600/45 bg-rose-600/15 px-1 py-0.5 text-[0.48rem] font-bold uppercase tracking-wide text-rose-900">
           Blocking
         </span>
       </div>
       <p className="mt-1.5 text-[0.68rem] font-bold leading-snug text-rose-900">
-        Espresso dial-in overdue — 2 shifts affected
+        Training incomplete — 2 roles affected
       </p>
       <p className="mt-1 text-[0.58rem] leading-snug text-zinc-700">
         Last completed by: <span className="font-semibold">Jordan M.</span>
@@ -130,7 +120,7 @@ function TrainingPreview() {
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-200">
         <div className="h-full w-[60%] rounded-full bg-zinc-900" />
       </div>
-      <p className="mt-1.5 font-mono text-[0.5rem] text-zinc-600">Module #ESP-01 · unsigned · blocks close checklist</p>
+      <p className="mt-1.5 font-mono text-[0.5rem] text-zinc-600">Module #ONB-01 · unsigned · blocks handoff checklist</p>
     </PreviewShell>
   )
 }
@@ -153,7 +143,7 @@ function BottleneckPreview() {
         </div>
       </div>
       <p className="mt-1.5 font-mono text-[0.52rem] text-zinc-500">
-        Last event · 11:06 PM · refs #ST-GLASS · #SR-0421
+        Last event · 11:06 PM · refs #ST-SITE · #SR-0421
       </p>
     </PreviewShell>
   )
@@ -175,7 +165,7 @@ function RivetIndexPreview() {
         <div className="h-full w-[52%] rounded-sm bg-rose-600" />
       </div>
       <p className="mt-1.5 text-[0.58rem] font-medium leading-snug text-zinc-700">
-        Execution proof thin · training debt rising · 3 owner routes unresolved
+        Procedures thin · training gaps · 3 owner-only bottlenecks open
       </p>
       <div className="mt-2 grid grid-cols-3 gap-1 border-t border-zinc-200/90 pt-2">
         <div>
@@ -200,7 +190,7 @@ function PillarPreview({ index }: { index: number }) {
     case 0:
       return <StandardsPreview />
     case 1:
-      return <DailyExecutionPreview />
+      return <OwnerInterruptionsPreview />
     case 2:
       return <TrainingPreview />
     case 3:
@@ -230,7 +220,7 @@ export function LandingInstallsSection({
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-500">
-            Permanent structure
+            In v1 today
           </p>
           <h2
             id="installs-heading"

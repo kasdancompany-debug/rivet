@@ -1,5 +1,7 @@
 import { computeStandardsDepthPercent } from "@/lib/dashboard/standards-depth"
 import { computeEscapeReadiness } from "@/lib/escape-readiness/compute"
+import { escapeProgressFromAutonomyTrend } from "@/lib/escape-readiness/enrichment"
+import { emptyEscapeReadiness } from "@/lib/escape-readiness/empty"
 import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
 import {
   fetchBusinessForCurrentUser,
@@ -10,47 +12,11 @@ import {
   listSopsForBusiness,
   listTrainingModulesForBusiness,
 } from "@/lib/db/queries"
-import { aggregateDailyRunCompletionLastDays } from "@/lib/rivet-score/data"
+import { aggregateDailyRunCompletionLastDays, listRivetIndexSnapshotsLastDays } from "@/lib/rivet-score/data"
 import type { RivetIndexComputeContext } from "@/lib/rivet-score/compute"
 import { utcDaysAgoMidnightIso, utcMondayStartIso } from "@/lib/time/utc-week"
 import { shouldSkipSupabaseNetwork } from "@/lib/dev-auth-bypass"
 import { createClient } from "@/lib/supabase/server"
-
-function emptyEscapeReadiness(): EscapeReadinessView {
-  return {
-    headlineQuestion: "Can your business survive if you disappear for a week?",
-    score: null,
-    band: null,
-    verdict:
-      "Link your business and add operating signal—standards, training, and readiness—so Rivet can score escape readiness.",
-    factors: [
-      {
-        id: "procedures",
-        label: "Procedures complete",
-        percent: null,
-        hint: "Waiting on workspace data.",
-      },
-      {
-        id: "training",
-        label: "Training coverage",
-        percent: null,
-        hint: "Waiting on workspace data.",
-      },
-      {
-        id: "owner_dependencies",
-        label: "Critical owner dependencies",
-        percent: null,
-        hint: "Waiting on workspace data.",
-      },
-      {
-        id: "staffing",
-        label: "Staffing risk",
-        percent: null,
-        hint: "Waiting on workspace data.",
-      },
-    ],
-  }
-}
 
 export async function getEscapeReadinessData(): Promise<EscapeReadinessView> {
   if (shouldSkipSupabaseNetwork()) {
@@ -66,13 +32,15 @@ export async function getEscapeReadinessData(): Promise<EscapeReadinessView> {
     const weekStartIso = utcMondayStartIso()
     const interruptionHistorySince = utcDaysAgoMidnightIso(13)
 
-    const [standards, bottlenecks, modules, ownerInterruptionsRaw, readinessRows] = await Promise.all([
-      listSopsForBusiness(businessId, undefined, supabase),
-      listIssuesForBusiness(businessId, {}, supabase),
-      listTrainingModulesForBusiness(businessId, supabase),
-      listOwnerInterruptionsForBusinessSince(businessId, interruptionHistorySince, supabase),
-      listEmployeeReadinessForBusiness(businessId, supabase),
-    ])
+    const [standards, bottlenecks, modules, ownerInterruptionsRaw, readinessRows, snapshots] =
+      await Promise.all([
+        listSopsForBusiness(businessId, undefined, supabase),
+        listIssuesForBusiness(businessId, {}, supabase),
+        listTrainingModulesForBusiness(businessId, supabase),
+        listOwnerInterruptionsForBusinessSince(businessId, interruptionHistorySince, supabase),
+        listEmployeeReadinessForBusiness(businessId, supabase),
+        listRivetIndexSnapshotsLastDays(businessId, 21, supabase).catch(() => []),
+      ])
 
     const allProgress = await listTrainingProgressForBusinessModules(
       modules.map((m) => m.id),
@@ -183,7 +151,18 @@ export async function getEscapeReadinessData(): Promise<EscapeReadinessView> {
       ownerInterruptionsThisWeekCount,
     }
 
-    return computeEscapeReadiness(ctx)
+    const base = computeEscapeReadiness(ctx)
+    const trend = snapshots
+      .map((s) => ({
+        date: s.snapshot_date,
+        autonomyScore: s.autonomy_score != null ? Number(s.autonomy_score) : null,
+      }))
+      .filter((p) => p.autonomyScore != null && Number.isFinite(p.autonomyScore))
+
+    return {
+      ...base,
+      progress: escapeProgressFromAutonomyTrend(trend, base.score),
+    }
   } catch {
     return emptyEscapeReadiness()
   }

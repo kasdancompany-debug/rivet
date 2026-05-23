@@ -1,13 +1,11 @@
 import Link from "next/link"
-import { ArrowRight, Check } from "lucide-react"
+import { Check } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { LandingCtaCluster } from "@/components/marketing/landing-inline-ctas"
 import {
-  LANDING_CTA,
   LANDING_EXISTING_WORKSPACE_CHECKOUT,
   LANDING_PRICING,
   LANDING_PRICING_SECTION,
-  LANDING_SCAN_CTA,
 } from "@/lib/marketing-landing-copy"
 
 const container = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8"
@@ -37,9 +35,11 @@ export function LandingPricingSection() {
               </span>
               <span className="pb-1 text-sm font-medium text-zinc-500">{LANDING_PRICING.currencyLabel}</span>
             </div>
-            <p className="text-[12px] font-medium leading-snug text-zinc-500 dark:text-zinc-400">
-              {LANDING_PRICING.installmentLine}
-            </p>
+            {LANDING_PRICING.installmentLine ? (
+              <p className="text-[12px] font-medium leading-snug text-zinc-500 dark:text-zinc-400">
+                {LANDING_PRICING.installmentLine}
+              </p>
+            ) : null}
           </div>
 
           <h3 className="mt-6 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">
@@ -74,30 +74,8 @@ export function LandingPricingSection() {
 
           <p className="mt-6 text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-400">{LANDING_PRICING.microcopy}</p>
 
-          <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-            <Link
-              href="/scan?from=landing-pricing"
-              className="group block outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40 focus-visible:ring-offset-2 dark:focus-visible:ring-zinc-500/40 dark:focus-visible:ring-offset-zinc-900"
-            >
-              <span className="text-[13px] font-semibold text-zinc-950 group-hover:underline dark:text-white">
-                {LANDING_SCAN_CTA.label}
-              </span>
-              <span className="mt-1 block text-[12px] leading-snug text-zinc-600 dark:text-zinc-400">
-                {LANDING_SCAN_CTA.subline}
-              </span>
-            </Link>
-          </div>
-
-          <Button
-            size="lg"
-            className="mt-7 h-10 w-full rounded-md bg-zinc-950 text-[13px] font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-            nativeButton={false}
-            render={<Link href="/signup" />}
-          >
-            {LANDING_CTA.primary}
-            <ArrowRight className="size-3.5 opacity-60" data-icon="inline-end" />
-          </Button>
-          <p className="mt-3 text-center text-[12px] leading-snug text-zinc-500 dark:text-zinc-400">
+          <LandingCtaCluster surface="onLight" scanFrom="landing-pricing" className="mt-7" />
+          <p className="mt-3 text-[12px] leading-snug text-zinc-500 dark:text-zinc-400">
             {LANDING_EXISTING_WORKSPACE_CHECKOUT.lead}{" "}
             <Link
               href={LANDING_EXISTING_WORKSPACE_CHECKOUT.href}

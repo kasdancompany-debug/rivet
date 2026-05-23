@@ -7,7 +7,7 @@ import { linesForDashboard } from "@/lib/route-reliability/diagnostic-builders"
 import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
 
 export const metadata: Metadata = {
-  title: "Owner Reliance · Executive overview",
+  title: "Overview",
   description: EMOTIONAL_PROMISE,
 }
 

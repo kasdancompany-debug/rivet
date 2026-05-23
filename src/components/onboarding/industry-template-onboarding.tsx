@@ -7,7 +7,7 @@ import { Check, Loader2 } from "lucide-react"
 
 import { installIndustryTemplateBundle } from "@/app/actions/industry-templates"
 import { RIVET_INDUSTRY_CARDS } from "@/lib/industry-templates"
-import type { IndustryTemplateInstallCounts, RivetIndustryTemplateId } from "@/lib/industry-templates"
+import type { RivetIndustryTemplateId } from "@/lib/industry-templates"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -17,7 +17,7 @@ export function IndustryTemplateOnboarding({ businessName }: { businessName: str
   const router = useRouter()
   const [phase, setPhase] = useState<Phase>("pick")
   const [selected, setSelected] = useState<RivetIndustryTemplateId | null>(null)
-  const [counts, setCounts] = useState<IndustryTemplateInstallCounts | null>(null)
+  const [installed, setInstalled] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -31,7 +31,7 @@ export function IndustryTemplateOnboarding({ businessName }: { businessName: str
         setPhase("pick")
         return
       }
-      setCounts(res.counts)
+      setInstalled(true)
       setPhase("done")
       router.refresh()
     })
@@ -62,7 +62,7 @@ export function IndustryTemplateOnboarding({ businessName }: { businessName: str
     )
   }
 
-  if (phase === "done" && counts) {
+  if (phase === "done" && installed) {
     return (
       <div className="mx-auto max-w-lg space-y-8 py-6">
         <div className="space-y-2 text-center sm:text-left">
@@ -78,9 +78,9 @@ export function IndustryTemplateOnboarding({ businessName }: { businessName: str
         </div>
 
         <ul className="space-y-3 rounded-xl border border-emerald-600/20 bg-emerald-500/[0.06] px-5 py-5 dark:bg-emerald-950/20">
-          <InstallLine n={counts.sops} label="SOPs added" />
-          <InstallLine n={counts.trainingModules} label="training modules" />
-          <InstallLine n={counts.interruptionWorkflows} label="interruption workflows" />
+          <InstallLine label="SOPs added" />
+          <InstallLine label="training modules added" />
+          <InstallLine label="interruption workflows added" />
         </ul>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -180,15 +180,13 @@ export function IndustryTemplateOnboarding({ businessName }: { businessName: str
   )
 }
 
-function InstallLine({ n, label }: { n: number; label: string }) {
+function InstallLine({ label }: { label: string }) {
   return (
     <li className="flex items-center gap-3 text-sm">
       <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-600/15 text-emerald-700 dark:text-emerald-300">
         <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
       </span>
-      <span className="font-medium text-foreground">
-        {n} {label}
-      </span>
+      <span className="font-medium text-foreground">{label}</span>
     </li>
   )
 }

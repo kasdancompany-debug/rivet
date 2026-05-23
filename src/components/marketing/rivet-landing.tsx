@@ -1,15 +1,17 @@
 ﻿import Link from "next/link"
-import { ArrowRight, ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 
 import { Logo } from "@/components/logo"
 import { LandingHeroOperationalViz } from "@/components/marketing/landing-hero-viz"
 import { MarketingDemoDashboardStrip } from "@/components/marketing/marketing-demo-dashboard-strip"
 import { LandingInstallsSection } from "@/components/marketing/landing-installs-section"
 import { LandingBeforeAfter } from "@/components/marketing/landing-operational-demos"
+import { LandingWorkspaceSnapshotSection } from "@/components/marketing/landing-workspace-snapshot-section"
 import { LandingEscapeReadinessSection } from "@/components/marketing/landing-escape-readiness-section"
 import { LandingResultsSection } from "@/components/marketing/landing-results-section"
 import { LandingOwnerSpine } from "@/components/marketing/landing-owner-spine"
 import { LandingPricingSection } from "@/components/marketing/landing-pricing-section"
+import { LandingCtaCluster } from "@/components/marketing/landing-inline-ctas"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -24,7 +26,6 @@ import {
   LANDING_HEADER_SIGN_IN,
   LANDING_HERO,
   LANDING_INSTALLS,
-  LANDING_SCAN_CTA,
   LANDING_YOU_FEEL_THIS,
 } from "@/lib/marketing-landing-copy"
 import { landingFooterLegalLinks } from "@/lib/legal-support-pages-content"
@@ -90,26 +91,9 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
                 ))}
               </div>
 
-              <div className="mt-9 flex w-full max-w-md flex-col gap-2 sm:max-w-none sm:flex-row sm:items-stretch">
-                <Button
-                  size="lg"
-                  className="h-10 w-full rounded-md bg-white px-5 text-[13px] font-semibold text-zinc-950 shadow-none hover:bg-zinc-100 sm:w-auto sm:min-w-[11rem]"
-                  nativeButton={false}
-                  render={<Link href="/signup" />}
-                >
-                  {LANDING_HERO.ctaPrimary}
-                  <ArrowRight className="size-3.5 opacity-50" data-icon="inline-end" />
-                </Button>
-                <Link
-                  href="#installs-heading"
-                  scroll
-                  className="inline-flex h-10 items-center justify-center rounded-md border border-white/18 bg-transparent px-5 text-[13px] font-medium text-zinc-200 transition-colors hover:border-white/28 hover:bg-white/[0.04] sm:justify-center"
-                >
-                  {LANDING_HERO.ctaSecondary}
-                </Link>
-              </div>
+              <LandingCtaCluster surface="onDark" scanFrom="landing-hero" className="mt-9" />
 
-              <p className="mt-4 max-w-md text-[12px] leading-snug text-zinc-500">
+              <p className="mt-4 max-w-md text-[12px] leading-snug text-zinc-600">
                 {LANDING_EXISTING_WORKSPACE_CHECKOUT.lead}{" "}
                 <Link
                   href={LANDING_EXISTING_WORKSPACE_CHECKOUT.href}
@@ -118,20 +102,6 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
                   {LANDING_EXISTING_WORKSPACE_CHECKOUT.linkLabel}
                 </Link>
               </p>
-
-              <div className="mt-10 max-w-md border-t border-white/[0.1] pt-8">
-                <Link
-                  href="/scan?from=landing-hero"
-                  className="group block outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
-                >
-                  <span className="text-[14px] font-semibold tracking-[-0.01em] text-white group-hover:text-zinc-200">
-                    {LANDING_SCAN_CTA.label}
-                  </span>
-                  <span className="mt-1.5 block max-w-[40ch] text-[13px] leading-snug text-zinc-500 group-hover:text-zinc-400">
-                    {LANDING_SCAN_CTA.subline}
-                  </span>
-                </Link>
-              </div>
             </div>
 
             <div className="lg:col-span-8">
@@ -171,7 +141,7 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
                   className="flex min-h-[5.25rem] flex-col justify-center bg-white px-4 py-4 sm:min-h-[5.5rem] sm:px-5 dark:bg-zinc-950"
                 >
                   <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                    Signal {String(i + 1).padStart(2, "0")}
+                    {String(i + 1).padStart(2, "0")}
                   </span>
                   <p className="mt-2 text-[0.875rem] font-medium leading-snug text-zinc-800 dark:text-zinc-200">{line}</p>
                 </div>
@@ -187,6 +157,8 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
           lead={LANDING_INSTALLS.lead}
           pillars={LANDING_INSTALLS.pillars}
         />
+
+        <LandingWorkspaceSnapshotSection />
 
         <LandingResultsSection />
 
@@ -249,15 +221,13 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
             <p className="mx-auto mt-4 max-w-[36ch] text-pretty text-[13px] leading-relaxed text-zinc-400">
               {LANDING_FINAL_CTA.body}
             </p>
-            <Button
-              size="lg"
-              className="mt-9 h-10 w-full rounded-md bg-white px-6 text-[13px] font-semibold text-zinc-950 hover:bg-zinc-200 sm:mx-auto sm:w-auto sm:min-w-[11rem]"
-              nativeButton={false}
-              render={<Link href="/signup" />}
-            >
-              {LANDING_CTA.primary}
-              <ArrowRight className="size-3.5 opacity-50" data-icon="inline-end" />
-            </Button>
+            <LandingCtaCluster
+              surface="onDark"
+              scanFrom="landing-final"
+              align="center"
+              showScanSubline={false}
+              className="mt-9"
+            />
           </div>
         </section>
 
@@ -273,28 +243,35 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
             <div className="flex flex-col justify-end gap-3 border-t border-zinc-100 pt-8 sm:col-span-3 sm:border-t-0 sm:border-l sm:border-zinc-200 sm:pl-8 sm:pt-0 dark:border-zinc-800">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Access</p>
               <Link
-                href="/scan"
-                className="text-[13px] font-medium text-zinc-700 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                href="/signup"
+                className="text-[13px] font-semibold text-zinc-900 transition-colors hover:text-zinc-950 dark:text-zinc-100 dark:hover:text-white"
               >
-                {LANDING_SCAN_CTA.label}
+                {LANDING_CTA.primary}
+              </Link>
+              <Link
+                href="/scan"
+                className="text-[13px] font-medium text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-200"
+              >
+                {LANDING_CTA.secondary}
+              </Link>
+              <Link
+                href="#installs-heading"
+                scroll
+                className="text-[13px] font-medium text-zinc-500 transition-colors hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-300"
+              >
+                {LANDING_CTA.tertiary}
               </Link>
               <Link
                 href={signInHref}
-                className="text-[13px] font-medium text-zinc-700 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                className="mt-1 text-[12px] font-medium text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300"
               >
                 {LANDING_HEADER_SIGN_IN}
               </Link>
               <Link
                 href={LANDING_EXISTING_WORKSPACE_CHECKOUT.href}
-                className="text-[13px] font-medium text-zinc-700 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                className="text-[12px] font-medium text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300"
               >
                 {LANDING_EXISTING_WORKSPACE_CHECKOUT.linkLabel}
-              </Link>
-              <Link
-                href="/signup"
-                className="text-[13px] font-medium text-zinc-700 transition-colors hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
-              >
-                {LANDING_CTA.primary}
               </Link>
             </div>
             <div className="flex flex-col justify-end gap-3 border-t border-zinc-100 pt-8 sm:col-span-4 sm:border-t-0 sm:border-l sm:border-zinc-200 sm:pl-8 sm:pt-0 dark:border-zinc-800">

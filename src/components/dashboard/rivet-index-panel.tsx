@@ -80,7 +80,7 @@ export function RivetIndexPanel({
               id="rivet-index-heading"
               className="rivet-section-label"
             >
-              Rivet Index
+              Rivet Score
             </p>
             <Badge variant="outline" className={cn("rounded-full px-2.5 py-0.5 text-[0.65rem]", overall.className)}>
               {overall.label}
@@ -95,7 +95,7 @@ export function RivetIndexPanel({
           <div className="flex flex-wrap items-end gap-6 pt-1">
             <div>
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Likelihood without owner
+                Escape readiness
               </p>
               <p className="mt-1.5 text-5xl font-semibold tabular-nums tracking-tight text-foreground sm:text-6xl">
                 {model.autonomyLikelihood == null ? "—" : model.autonomyLikelihood}
@@ -106,13 +106,13 @@ export function RivetIndexPanel({
             </div>
             <div className="border-l border-border/60 pl-6">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Owner dependency
+                Rivet Score
               </p>
               <p className="mt-1.5 text-2xl font-semibold tabular-nums text-foreground sm:text-3xl">
                 {model.dependencyScore == null ? "—" : `${model.dependencyScore} / 100`}
               </p>
               <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-muted-foreground">
-                Higher means more load still routes through you—lower is the direction of structural continuity.
+                Higher means more of the business still depends on you. Lower is better.
               </p>
             </div>
           </div>
@@ -120,7 +120,7 @@ export function RivetIndexPanel({
 
         <div className="w-full shrink-0 space-y-3 lg:max-w-sm">
           <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Autonomy trend (UTC days)
+            Escape readiness (last 21 days)
           </p>
           <div className="flex h-24 items-end gap-px rounded-lg border border-border/50 bg-muted/20 px-2 pb-2 pt-3">
             {trend.length === 0 ? (
@@ -133,7 +133,7 @@ export function RivetIndexPanel({
                   <div
                     key={p.date}
                     className="group flex min-w-0 flex-1 flex-col justify-end"
-                    title={`${p.date}: autonomy ${a}%`}
+                    title={`${p.date}: ${a}% escape readiness`}
                   >
                     <div
                       className="mx-auto w-full max-w-[10px] rounded-sm bg-foreground/55 transition-[height] group-hover:bg-foreground/75"
@@ -145,8 +145,7 @@ export function RivetIndexPanel({
             )}
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Bars show the stored autonomy read per day. Today uses the live calculation; earlier points come from
-            nightly snapshots when the database migration is applied.
+            Higher bars mean a better chance the business could run without you that day.
           </p>
         </div>
       </div>
@@ -197,7 +196,7 @@ export function RivetIndexPanel({
       {model.criticalWarnings.length > 0 ? (
         <div className="mt-10 rounded-lg border border-border/50 border-l-[3px] border-l-amber-500/40 bg-muted/15 px-5 py-5 sm:px-6 dark:bg-muted/10">
           <p className="rivet-section-label text-amber-950 dark:text-amber-200/90">
-            Critical dependency warnings
+            Warnings
           </p>
           <ul className="mt-3 space-y-2 text-sm leading-relaxed text-foreground/90">
             {model.criticalWarnings.map((w) => (

@@ -1,4 +1,5 @@
 import type { OperationalScanAnswers, OperationalScanResult } from "@/lib/operational-scan/score"
+import { textsCallsBandToLeadCadence, weeklyCountMidpoint } from "@/lib/operational-scan/score"
 import type { TablesInsert } from "@/types/database"
 
 export type ScanLeadInsertRow = TablesInsert<"scan_leads">
@@ -8,20 +9,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export type ScanLeadValidationError = { field: string; message: string }
 
 function staffBandToEmployees(band: OperationalScanAnswers["staffQuestionsPerWeek"]): number {
-  switch (band) {
-    case "0-5":
-      return 3
-    case "6-15":
-      return 8
-    case "16-30":
-      return 20
-    case "31-50":
-      return 35
-    case "51+":
-      return 50
-    default:
-      return 8
-  }
+  const mid = weeklyCountMidpoint(band)
+  if (mid >= 40) return 50
+  if (mid >= 22) return 20
+  if (mid >= 10) return 8
+  return 3
 }
 
 export function validateScanAnswersForLead(answers: OperationalScanAnswers): ScanLeadValidationError | null {
@@ -46,16 +38,22 @@ export function answersToScanLeadRow(
   const proceduresOk =
     answers.undocumentedProcedures === "0" || answers.undocumentedProcedures === "1-5"
 
+  const trainingOk =
+    answers.trainingConsistency === "consistent" || answers.trainingConsistency === "sometimes"
+
+  const issuesTracked =
+    answers.repeatedMistakesIssues === "rarely" || answers.repeatedMistakesIssues === "monthly"
+
   return {
     business_name: answers.businessName.trim(),
     website: answers.website.trim(),
     industry: answers.industry.trim(),
     employees: staffBandToEmployees(answers.staffQuestionsPerWeek),
     locations: 1,
-    owner_interruptions: answers.ownerInterruptions,
+    owner_interruptions: textsCallsBandToLeadCadence(answers.ownerTextsCallsPerWeek),
     procedures_documented: proceduresOk,
-    training_published: answers.trainingProcessExists,
-    recurring_issues_tracked: answers.canRunFiveDaysWithoutOwner === "yes",
+    training_published: trainingOk,
+    recurring_issues_tracked: issuesTracked,
     email: answers.email.trim().toLowerCase(),
     rivet_index: result.ownerDependencyScore,
     founder_dependency: result.severity,
@@ -67,6 +65,7 @@ export function answersToScanLeadRow(
     est_interruptions_month: result.estimatedInterruptionsPerMonth,
     est_hours_lost_month: result.estimatedOwnerHoursLostPerMonth,
     est_annual_cost: result.estimatedAnnualCost,
-    scan_version: "v2",
+    scan_version: "v3",
+    scan_answers: answers as unknown as TablesInsert<"scan_leads">["scan_answers"],
   }
 }

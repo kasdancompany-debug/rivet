@@ -16,10 +16,9 @@ type PulseItem = {
 
 function buildPulseItems(model: DashboardViewModel): PulseItem[] {
   const rivet = model.rivetIndex
-  const survive =
-    rivet.autonomyLikelihood == null ? "—" : `${rivet.autonomyLikelihood}%`
-  const rivetScore =
-    rivet.dependencyScore == null ? "—" : `${rivet.dependencyScore}%`
+  const escape = model.escapeReadiness
+  const survive = escape.score == null ? "—" : String(escape.score)
+  const rivetScore = rivet.dependencyScore == null ? "—" : String(rivet.dependencyScore)
   const training =
     model.trainingProgressPercent == null ? "—" : `${model.trainingProgressPercent}%`
 
@@ -69,15 +68,15 @@ function buildPulseItems(model: DashboardViewModel): PulseItem[] {
           : "text-foreground",
     },
     {
-      key: "survive",
+      key: "escape",
       href: "/escape-plan",
       icon: ShieldCheck,
-      label: COPY.dashboard.pulse.surviveWithoutOwner,
+      label: COPY.dashboard.pulse.escapeReadiness,
       display: survive,
       tone:
-        rivet.autonomyLikelihood != null && rivet.autonomyLikelihood >= 50
+        escape.score != null && escape.score >= 50
           ? "text-emerald-900 dark:text-emerald-100"
-          : rivet.autonomyLikelihood != null && rivet.autonomyLikelihood < 35
+          : escape.score != null && escape.score < 35
             ? "text-rose-900 dark:text-rose-100"
             : "text-foreground",
     },
@@ -110,7 +109,7 @@ export function DashboardPulseMetrics({ model }: { model: DashboardViewModel }) 
           <Link
             key={it.key}
             href={it.href}
-            className="group flex min-h-[5.5rem] flex-col justify-between rounded-xl border border-border/50 bg-card px-3.5 py-3 text-left transition-colors hover:border-border hover:bg-muted/20"
+            className="group flex min-h-[6.25rem] flex-col justify-between rounded-xl border border-border/50 bg-card px-3.5 py-3 text-left transition-colors hover:border-border hover:bg-muted/20"
           >
             <span className="flex items-start gap-1.5 text-[10px] font-semibold uppercase leading-snug tracking-[0.05em] text-muted-foreground sm:text-[11px]">
               <it.icon className="mt-0.5 size-3 shrink-0 opacity-60" strokeWidth={1.75} aria-hidden />
@@ -123,7 +122,15 @@ export function DashboardPulseMetrics({ model }: { model: DashboardViewModel }) 
               )}
             >
               {it.display}
+              {it.display !== "—" && (it.key === "rivet" || it.key === "escape") ? (
+                <span className="text-lg font-medium text-muted-foreground">%</span>
+              ) : null}
             </span>
+            {it.key === "rivet" ? (
+              <span className="mt-1 text-[10px] leading-snug text-muted-foreground">{COPY.dashboard.pulseRivetHint}</span>
+            ) : it.key === "escape" ? (
+              <span className="mt-1 text-[10px] leading-snug text-muted-foreground">{COPY.dashboard.pulseEscapeHint}</span>
+            ) : null}
           </Link>
         ))}
       </div>

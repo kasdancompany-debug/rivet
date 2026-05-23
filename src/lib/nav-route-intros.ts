@@ -112,7 +112,7 @@ const ROUTE_INTENTS: RouteIntentDef[] = [
   {
     prefix: "/dashboard",
     eyebrow: COPY.nav.overview,
-    intent: "See owner load, Rivet Index, and the next bottleneck to clear—your weekly command view.",
+    intent: "Six plain numbers: interruptions, missing procedures, training, issues, escape readiness, and your Rivet Score.",
     nextHref: "/sops/capture",
     nextLabel: COPY.nav.standardsCapture,
   },

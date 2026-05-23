@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s · Rivet",
   },
   description:
-    "Operational infrastructure for owner-operated businesses: dependency visibility, standards, execution proof, and survivability under pressure—so the floor holds when you step back.",
+    "Get your business out of your head. Document procedures, track training, log owner interruptions, and see if your team could run a week without you—$799 CAD once.",
 }
 
 export default function RootLayout({

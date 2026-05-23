@@ -350,19 +350,19 @@ export function computeRivetIndex(ctx: RivetIndexComputeContext): Omit<RivetInde
   let headlineAnswer = ""
   if (dependencyScore == null) {
     headlineAnswer =
-      "Not enough live signal yet—finish a Reality Check, add standards, log runs, or assign training so Rivet can score dependency fairly."
+      "Not enough data yet—add procedures, training, or log owner interruptions so Rivet can score your business."
   } else if (autonomyLikelihood != null && autonomyLikelihood >= 72) {
     headlineAnswer =
-      "Likely for a normal day: systems and people are carrying most of the operating load."
+      "Most days the team can run routine work without pulling you in for every decision."
   } else if (autonomyLikelihood != null && autonomyLikelihood >= 52) {
     headlineAnswer =
-      "Mixed: routine stretches can run, but exceptions and approvals still snap back to you."
+      "Mixed: everyday work often holds, but exceptions and approvals still come back to you."
   } else if (autonomyLikelihood != null && autonomyLikelihood >= 34) {
     headlineAnswer =
-      "Limited: several load-bearing paths still wait on your judgment under pressure."
+      "Limited: several important tasks still wait on your judgment when something goes wrong."
   } else {
     headlineAnswer =
-      "Low today: concentration is high—quality and continuity still route through you first."
+      "Most of the business still runs through you—procedures, training, and backup coverage need work."
   }
 
   return {
