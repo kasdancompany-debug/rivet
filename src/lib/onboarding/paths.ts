@@ -11,6 +11,7 @@ export function isPathExemptFromBusinessRequirement(pathname: string): boolean {
   if (pathname.startsWith("/settings")) return true
   if (pathname === "/subscribe") return true
   if (pathname.startsWith("/auth")) return true
+  if (pathname.startsWith("/learn")) return true
   return false
 }
 
@@ -22,6 +23,7 @@ export function isPathExemptFromRealityCheck(pathname: string): boolean {
   if (pathname === "/subscribe") return true
   if (pathname.startsWith("/auth")) return true
   if (pathname === "/setup") return true
+  if (pathname.startsWith("/learn")) return true
   return false
 }
 

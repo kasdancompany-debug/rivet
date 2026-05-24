@@ -3,8 +3,15 @@
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
+import { IssueCostEstimatePreview } from "@/components/issues/issue-cost-estimate-preview"
+import { IssuePainScorePreview } from "@/components/issues/issue-pain-score-preview"
 import { updateIssue } from "@/app/actions/issues"
-import { ISSUE_CATEGORIES, ISSUE_SEVERITIES } from "@/lib/issues/constants"
+import {
+  ISSUE_CATEGORIES,
+  ISSUE_SEVERITIES,
+  ISSUE_STATUSES,
+} from "@/lib/issues/constants"
+import { COPY } from "@/lib/interface-copy"
 import type { IssueStatus, Tables } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -19,13 +26,17 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
-const STATUSES: { value: IssueStatus; label: string }[] = [
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In progress" },
-  { value: "resolved", label: "Resolved" },
-]
+const UNASSIGNED_OWNER = "__unassigned__"
 
-export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
+export function IssueDetailForm({
+  issue,
+  scoringHistory = [],
+  profiles = [],
+}: {
+  issue: Tables<"bottlenecks">
+  scoringHistory?: Pick<Tables<"bottlenecks">, "title" | "created_at">[]
+  profiles?: { id: string; full_name: string | null; role: string | null }[]
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +48,8 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
   const [severity, setSeverity] = useState(issue.severity)
   const [status, setStatus] = useState<IssueStatus>(issue.status)
   const [ownerRequired, setOwnerRequired] = useState(issue.owner_required)
+  const [ownerId, setOwnerId] = useState(issue.owner_id ?? UNASSIGNED_OWNER)
+  const [dueDate, setDueDate] = useState(issue.due_date ?? "")
 
   function save() {
     setError(null)
@@ -49,6 +62,8 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
         severity,
         status,
         ownerRequired,
+        ownerId: ownerId === UNASSIGNED_OWNER ? null : ownerId,
+        dueDate: dueDate.trim() || null,
       })
       if (!res.ok) {
         setError(res.message)
@@ -67,11 +82,34 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
         </p>
       ) : null}
       {saved && !error ? (
-        <p className="text-sm text-muted-foreground">Saved.</p>
+        <p className="text-sm text-muted-foreground">{COPY.issues.issueSaved}</p>
       ) : null}
 
+      <IssueCostEstimatePreview
+        issue={{
+          title,
+          category,
+          severity,
+          owner_required: ownerRequired,
+          status,
+          created_at: issue.created_at,
+        }}
+        history={scoringHistory}
+      />
+
+      <IssuePainScorePreview
+        issue={{
+          title,
+          severity,
+          owner_required: ownerRequired,
+          status,
+          created_at: issue.created_at,
+        }}
+        history={scoringHistory}
+      />
+
       <div className="space-y-2">
-        <Label htmlFor="edit-title">Title</Label>
+        <Label htmlFor="edit-title">{COPY.issues.issueTitleLabel}</Label>
         <Input
           id="edit-title"
           value={title}
@@ -81,7 +119,7 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="edit-desc">Description</Label>
+        <Label htmlFor="edit-desc">{COPY.issues.issueDescriptionLabel}</Label>
         <Textarea
           id="edit-desc"
           value={description}
@@ -93,7 +131,7 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Category</Label>
+          <Label>{COPY.issues.issueCategoryLabel}</Label>
           <Select
             value={category}
             onValueChange={(v) => {
@@ -119,7 +157,7 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Severity</Label>
+          <Label>{COPY.issues.issueSeverityLabel}</Label>
           <Select
             value={severity}
             onValueChange={(v) => {
@@ -144,8 +182,44 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
         </div>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>{COPY.issues.issueOwnerLabel}</Label>
+          <Select
+            value={ownerId}
+            onValueChange={(v) => {
+              if (v) setOwnerId(v)
+            }}
+            disabled={pending}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={COPY.issues.issueOwnerPlaceholder} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNASSIGNED_OWNER}>{COPY.issues.issueOwnerUnassigned}</SelectItem>
+              {profiles.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.full_name?.trim() || "Team member"}
+                  {p.role ? ` · ${p.role}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-due">{COPY.issues.issueDueDateLabel}</Label>
+          <Input
+            id="edit-due"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            disabled={pending}
+          />
+        </div>
+      </div>
+
       <div className="space-y-2">
-        <Label>Status</Label>
+        <Label>{COPY.issues.issueStatusLabel}</Label>
         <Select
           value={status}
           onValueChange={(v) => {
@@ -157,7 +231,7 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUSES.map((s) => (
+            {ISSUE_STATUSES.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
               </SelectItem>
@@ -174,16 +248,16 @@ export function IssueDetailForm({ issue }: { issue: Tables<"bottlenecks"> }) {
           disabled={pending}
         />
         <Label htmlFor="edit-owner" className="cursor-pointer text-sm font-normal leading-snug">
-          Only you can unblock (shows on Overview)
+          {COPY.issues.issueOwnerRequiredOverviewHint}
         </Label>
       </div>
 
       <Button type="button" onClick={save} disabled={pending || !title.trim()}>
-        {pending ? "Saving…" : "Save changes"}
+        {pending ? COPY.issues.issueSaving : COPY.issues.issueSaveChanges}
       </Button>
 
       <p className="text-xs text-muted-foreground">
-        Reported{" "}
+        {COPY.issues.issueReportedAt}{" "}
         {new Date(issue.created_at).toLocaleString(undefined, {
           dateStyle: "medium",
           timeStyle: "short",

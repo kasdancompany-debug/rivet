@@ -263,7 +263,7 @@ export async function reportShiftIssue(payload: {
         severity: "medium",
         title,
         description: payload.description?.trim() || null,
-        status: "open",
+        status: "not_started",
         owner_required: false,
         execution_record_id: payload.runId,
       },

@@ -20,7 +20,7 @@ export function LandingEscapeReadinessSection() {
         </h2>
         <p className="mt-4 max-w-[52ch] text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-400">
           Rivet helps you build a business that can run without everything going through you. Escape Readiness blends
-          SOP coverage, training, unresolved issues, owner interruptions, and undocumented procedures into one score—with
+          SOP coverage, training, unresolved issues, what still routes back to you, and undocumented procedures into one score—with
           your biggest risk and top three fixes.
         </p>
 

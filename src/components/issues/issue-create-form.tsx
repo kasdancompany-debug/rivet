@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 
+import { IssueCostEstimatePreview } from "@/components/issues/issue-cost-estimate-preview"
+import { IssuePainScorePreview, previewIssueInput } from "@/components/issues/issue-pain-score-preview"
+import { COPY } from "@/lib/interface-copy"
+
 import { createIssue } from "@/app/actions/issues"
 import { ISSUE_CATEGORIES, ISSUE_SEVERITIES } from "@/lib/issues/constants"
 import { Button } from "@/components/ui/button"
@@ -18,7 +22,17 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
-export function IssueCreateForm({ businessId }: { businessId: string }) {
+const UNASSIGNED_OWNER = "__unassigned__"
+
+export function IssueCreateForm({
+  businessId,
+  scoringHistory = [],
+  profiles = [],
+}: {
+  businessId: string
+  scoringHistory?: Pick<import("@/types/database").Tables<"bottlenecks">, "title" | "created_at">[]
+  profiles?: { id: string; full_name: string | null; role: string | null }[]
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -27,6 +41,8 @@ export function IssueCreateForm({ businessId }: { businessId: string }) {
   const [category, setCategory] = useState<string>(ISSUE_CATEGORIES[0].value)
   const [severity, setSeverity] = useState<string>(ISSUE_SEVERITIES[1].value)
   const [ownerRequired, setOwnerRequired] = useState(false)
+  const [ownerId, setOwnerId] = useState<string>(UNASSIGNED_OWNER)
+  const [dueDate, setDueDate] = useState("")
 
   function submit() {
     setError(null)
@@ -38,6 +54,8 @@ export function IssueCreateForm({ businessId }: { businessId: string }) {
         category,
         severity,
         ownerRequired,
+        ownerId: ownerId === UNASSIGNED_OWNER ? null : ownerId,
+        dueDate: dueDate.trim() || null,
       })
       if (!res.ok) {
         setError(res.message)
@@ -57,24 +75,24 @@ export function IssueCreateForm({ businessId }: { businessId: string }) {
       ) : null}
 
       <div className="space-y-2">
-        <Label htmlFor="issue-title">Title</Label>
+        <Label htmlFor="issue-title">{COPY.issues.issueTitleLabel}</Label>
         <Input
           id="issue-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Short summary"
+          placeholder={COPY.issues.issueTitlePlaceholder}
           maxLength={200}
           disabled={pending}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="issue-desc">Description</Label>
+        <Label htmlFor="issue-desc">{COPY.issues.issueDescriptionLabel}</Label>
         <Textarea
           id="issue-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="What happened, what you tried, what you need next"
+          placeholder={COPY.issues.issueDescriptionPlaceholder}
           rows={5}
           disabled={pending}
         />
@@ -82,7 +100,7 @@ export function IssueCreateForm({ businessId }: { businessId: string }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Category</Label>
+          <Label>{COPY.issues.issueCategoryLabel}</Label>
           <Select
             value={category}
             onValueChange={(v) => {
@@ -103,7 +121,7 @@ export function IssueCreateForm({ businessId }: { businessId: string }) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Severity</Label>
+          <Label>{COPY.issues.issueSeverityLabel}</Label>
           <Select
             value={severity}
             onValueChange={(v) => {
@@ -125,6 +143,42 @@ export function IssueCreateForm({ businessId }: { businessId: string }) {
         </div>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>{COPY.issues.issueOwnerLabel}</Label>
+          <Select
+            value={ownerId}
+            onValueChange={(v) => {
+              if (v) setOwnerId(v)
+            }}
+            disabled={pending}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={COPY.issues.issueOwnerPlaceholder} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNASSIGNED_OWNER}>{COPY.issues.issueOwnerUnassigned}</SelectItem>
+              {profiles.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.full_name?.trim() || "Team member"}
+                  {p.role ? ` · ${p.role}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="issue-due">{COPY.issues.issueDueDateLabel}</Label>
+          <Input
+            id="issue-due"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            disabled={pending}
+          />
+        </div>
+      </div>
+
       <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
         <Checkbox
           id="owner-req"
@@ -133,12 +187,22 @@ export function IssueCreateForm({ businessId }: { businessId: string }) {
           disabled={pending}
         />
         <Label htmlFor="owner-req" className="cursor-pointer text-sm font-normal leading-snug">
-          This needs you—the owner—to decide or act before the team can move on.
+          {COPY.issues.issueOwnerRequiredHint}
         </Label>
       </div>
 
+      <IssueCostEstimatePreview
+        issue={previewIssueInput({ title, severity, ownerRequired, category })}
+        history={scoringHistory}
+      />
+
+      <IssuePainScorePreview
+        issue={previewIssueInput({ title, severity, ownerRequired, category })}
+        history={scoringHistory}
+      />
+
       <Button type="button" onClick={submit} disabled={pending || !title.trim()}>
-        {pending ? "Saving…" : "Save bottleneck"}
+        {pending ? COPY.issues.issueSaving : COPY.issues.saveCta}
       </Button>
     </div>
   )

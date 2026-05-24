@@ -1,5 +1,11 @@
 import { computeStandardsDepthPercent } from "@/lib/dashboard/standards-depth"
 import { computeEscapeReadiness } from "@/lib/escape-readiness/compute"
+import {
+  buildSimulationContextFromCompute,
+  extractSimulationContextFromInterruptions,
+  extractSimulationContextFromIssues,
+  extractSimulationContextFromSops,
+} from "@/lib/escape-readiness/build-simulation-context"
 import { escapeProgressFromAutonomyTrend } from "@/lib/escape-readiness/enrichment"
 import { emptyEscapeReadiness } from "@/lib/escape-readiness/empty"
 import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
@@ -159,9 +165,16 @@ export async function getEscapeReadinessData(): Promise<EscapeReadinessView> {
       }))
       .filter((p) => p.autonomyScore != null && Number.isFinite(p.autonomyScore))
 
+    const simulationContext = buildSimulationContextFromCompute(ctx, {
+      ...extractSimulationContextFromIssues(bottlenecks),
+      ...extractSimulationContextFromSops(standards, stepCountBySopId),
+      ...extractSimulationContextFromInterruptions(ownerInterruptionsRaw),
+    })
+
     return {
       ...base,
       progress: escapeProgressFromAutonomyTrend(trend, base.score),
+      simulationContext,
     }
   } catch {
     return emptyEscapeReadiness()

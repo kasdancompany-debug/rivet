@@ -14,6 +14,7 @@ import {
   updateRunItemNote,
   updateRunShiftNotes,
 } from "@/app/actions/daily-ops"
+import { COPY } from "@/lib/interface-copy"
 import { hasPhotoConfirmed, isPhotoPending } from "@/lib/daily-ops/photos"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -370,7 +371,7 @@ export function DailyOpsStaffClient({
           <SheetHeader>
             <SheetTitle>Report an issue</SheetTitle>
             <SheetDescription>
-              Opens Bottlenecks and is linked to this shift when you are in a run.
+              {COPY.issues.shiftReportHint}
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-3 px-1 py-4">

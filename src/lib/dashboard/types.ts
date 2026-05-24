@@ -1,6 +1,8 @@
 import type { FirstDayChecklistView } from "@/lib/dashboard/first-day-checklist"
+import type { BiggestRiskThisWeekItem } from "@/lib/dashboard/biggest-risks-this-week"
 import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
 import type { RivetIndexView } from "@/lib/rivet-score/types"
+import type { IssueStatus } from "@/types/database"
 
 export type BusinessRiskLevel = "low" | "moderate" | "elevated" | "high"
 
@@ -37,7 +39,7 @@ export type NextBestMove = {
 export type DashboardOwnerIssueRow = {
   id: string
   title: string
-  status: "open" | "in_progress" | "resolved"
+  status: IssueStatus
   severity: string
 }
 
@@ -67,6 +69,8 @@ export type DashboardViewModel = {
   riskLevel: BusinessRiskLevel
   riskLevelCaption: string
   ownerRisks: OwnerRiskItem[]
+  /** Top 3 ranked risks from dependency, documentation, training, and interruptions. */
+  biggestRisksThisWeek: BiggestRiskThisWeekItem[]
   nextBestMove: NextBestMove
   rivetIndex: RivetIndexView
   escapeReadiness: EscapeReadinessView

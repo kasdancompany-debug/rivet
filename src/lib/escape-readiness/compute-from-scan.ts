@@ -1,8 +1,9 @@
+import { COPY } from "@/lib/interface-copy"
 import type { OperationalScanAnswers, YesPartialNo } from "@/lib/operational-scan/score"
-import { weeklyCountRisk } from "@/lib/operational-scan/score"
+import { weeklyCountMidpoint, weeklyCountRisk } from "@/lib/operational-scan/score"
 
 import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
-import type { EscapeReadinessFactor, EscapeReadinessView } from "@/lib/escape-readiness/types"
+import type { EscapeReadinessFactorInput, EscapeReadinessView } from "@/lib/escape-readiness/types"
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n))
@@ -73,6 +74,10 @@ function issuesHealthFromScan(answers: OperationalScanAnswers): { percent: numbe
   return { percent, hint }
 }
 
+function weeklyPullsFromScan(answers: OperationalScanAnswers): number {
+  return Math.round(weeklyCountMidpoint(answers.ownerTextsCallsPerWeek))
+}
+
 /** Directional escape readiness from scan answers (pre-install). */
 export function computeEscapeReadinessFromScan(answers: OperationalScanAnswers): EscapeReadinessView {
   const sopRisk = undocumentedRisk(answers.undocumentedProcedures)
@@ -94,7 +99,7 @@ export function computeEscapeReadinessFromScan(answers: OperationalScanAnswers):
   const interrupts = invertRisk(interruptRisk)
   const undocumented = invertRisk(undocumentedRiskVal)
 
-  const factors: EscapeReadinessFactor[] = [
+  const factors: EscapeReadinessFactorInput[] = [
     {
       id: "sop_coverage",
       label: "SOP coverage",
@@ -121,7 +126,7 @@ export function computeEscapeReadinessFromScan(answers: OperationalScanAnswers):
     },
     {
       id: "owner_interruptions",
-      label: "Owner interruptions",
+      label: COPY.interruptions.featureTitle,
       percent: interrupts,
       hint:
         answers.ownerTextsCallsPerWeek === "0-5" && answers.staffQuestionsPerWeek === "0-5"
@@ -143,5 +148,8 @@ export function computeEscapeReadinessFromScan(answers: OperationalScanAnswers):
     verdict: "",
     factors,
     progress: [],
+    riskContext: {
+      ownerInterruptionsThisWeekCount: weeklyPullsFromScan(answers),
+    },
   })
 }

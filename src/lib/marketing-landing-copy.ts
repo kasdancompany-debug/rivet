@@ -1,3 +1,4 @@
+import { COPY } from "@/lib/interface-copy"
 import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
 import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
 import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
@@ -11,7 +12,7 @@ export const LANDING_POSITIONING_LINE =
 export const LANDING_OG_TITLE = `Rivet — ${EMOTIONAL_PROMISE}`
 
 export const LANDING_META_DESCRIPTION =
-  "$799 CAD once. Document procedures, track training, log owner interruptions, and see if your business can run without you. No monthly subscription."
+  "$799 CAD once. Document procedures, track training, log what still routes back to you, and see if your business can run without you. No monthly subscription."
 
 export const LANDING_HEADER_SIGN_IN = "Sign in" as const
 
@@ -31,7 +32,7 @@ export const LANDING_HERO = {
   eyebrow: "For owner-operators",
   headline: "Get your business\nout of your head.",
   subheadline:
-    "Write down how work actually runs, track training gaps, log owner interruptions, and see whether the team could hold a week without you on the phone.",
+    "Write down how work actually runs, track training gaps, log what still routes back to you, and see whether the team could hold a week without you on the phone.",
   ctaPrimary: LANDING_CTA.primary,
   ctaSecondary: LANDING_CTA.secondary,
   ctaTertiary: LANDING_CTA.tertiary,
@@ -45,7 +46,7 @@ export const LANDING_EXISTING_WORKSPACE_CHECKOUT = {
   href: "/login?next=/subscribe",
 } as const
 
-/** Week-in-the-life narrative — owner interruptions, not abstract “signals.” */
+/** Week-in-the-life narrative — what still routes back to the owner, not abstract “signals.” */
 export const LANDING_OWNER_SPINE = {
   eyebrow: "A typical week",
   title: "Your phone is still the operations manual.",
@@ -94,9 +95,8 @@ export const LANDING_INSTALLS = {
         "Capture and edit how open, close, and daily work actually run—so the team reads the same steps, not your memory.",
     },
     {
-      title: "Owner interruption log",
-      sentence:
-        "Record when the team pulls you in—kind, minutes, pattern—so you see what still routes through you each week.",
+      title: COPY.interruptions.featureTitle,
+      sentence: COPY.interruptions.featureDescription,
     },
     {
       title: "Training tied to your SOPs",
@@ -111,7 +111,7 @@ export const LANDING_INSTALLS = {
     {
       title: "Escape readiness + overview",
       sentence:
-        "One score for “could this run a week without me?” plus an owner overview: interruptions, missing procedures, training gaps.",
+        "One score for “could this run a week without me?” plus an owner overview: what still routes back to you, missing procedures, training gaps.",
     },
   ],
 } as const
@@ -125,25 +125,28 @@ export const LANDING_WORKSPACE_SNAPSHOT = {
     { id: "sops", label: "SOPs", value: "142" },
     { id: "training", label: "Training completion", value: "81%" },
     { id: "bottlenecks", label: "Open bottlenecks", value: "6" },
-    { id: "interrupts", label: "Owner interruptions/week", value: "12" },
-    { id: "escape", label: "Escape readiness score", value: "72%" },
+    { id: "interrupts", label: "Routed back to you / week", value: "12" },
+    { id: "escape", label: "Escape readiness score", value: "73%" },
   ],
 } as const
 
 /** Illustrative escape readiness for marketing (not live workspace data). */
 export const LANDING_ESCAPE_READINESS_DEMO: EscapeReadinessView = finalizeEscapeReadinessView({
-  score: 41,
-  band: "fragile",
-  verdict:
-    "Five days away would stress the business: documentation, issues, and interrupts still route through you.",
+  score: 73,
+  band: "building",
+  verdict: "Building momentum. Five-day absence is the bar Rivet scores against.",
   demo: true,
+  riskContext: {
+    ownerInterruptionsThisWeekCount: 12,
+    openIssuesCount: 6,
+  },
   progress: [
-    { date: "2026-05-01", score: 34 },
-    { date: "2026-05-04", score: 36 },
-    { date: "2026-05-07", score: 38 },
-    { date: "2026-05-10", score: 39 },
-    { date: "2026-05-13", score: 40 },
-    { date: "2026-05-16", score: 41 },
+    { date: "2026-05-01", score: 58 },
+    { date: "2026-05-04", score: 62 },
+    { date: "2026-05-07", score: 65 },
+    { date: "2026-05-10", score: 68 },
+    { date: "2026-05-13", score: 71 },
+    { date: "2026-05-16", score: 73 },
   ],
   factors: [
     {
@@ -166,7 +169,7 @@ export const LANDING_ESCAPE_READINESS_DEMO: EscapeReadinessView = finalizeEscape
     },
     {
       id: "owner_interruptions",
-      label: "Owner interruptions",
+      label: COPY.interruptions.featureTitle,
       percent: 32,
       hint: "Texts and walk-ups still spike every week you try to step back.",
     },
@@ -190,7 +193,7 @@ export const LANDING_RESULTS = {
     heading: "Before Rivet",
     summary: "You are the system. Everyone routes judgment through you.",
     items: [
-      "22 owner interruptions per week (texts, calls, walk-ups)",
+      "22 pulls routed back to you per week (texts, calls, walk-ups)",
       "Training lived in memory—same lessons repeated every hire",
       "Procedures changed by whoever was working that day",
     ],
@@ -199,7 +202,7 @@ export const LANDING_RESULTS = {
     heading: "After Rivet",
     summary: "The team has a source of truth. You see load before it becomes another fire.",
     items: [
-      "7 owner interruptions per week (logged, so you can see the trend)",
+      "7 pulls routed back to you per week (logged, so you can see the trend)",
       "SOPs visible where staff actually work",
       "Staff training tracked against real procedures",
       "Repeat issues logged with an owner—not recycled in chat",
@@ -208,7 +211,7 @@ export const LANDING_RESULTS = {
   financial: {
     heading: "Example math (not a guarantee)",
     steps: [
-      "15 fewer owner interruptions per week in this example",
+      "15 fewer pulls routed back to you per week in this example",
       "~12 minutes each to answer, decide, or fix on the spot",
       "≈ 3 owner hours per week back (15 × 12 min)",
       "× 50 working weeks × $50/hr owner-equivalent (example rate)",
@@ -247,7 +250,7 @@ export const LANDING_PRICING = {
   installmentLine: null as string | null,
   includes: [
     "Unlimited SOPs + standards capture",
-    "Owner interruption tracking",
+    COPY.interruptions.featureTitle,
     "Training modules & progress",
     "Industry starter templates",
     "Escape readiness score",
@@ -290,7 +293,7 @@ export const LANDING_FAQ = [
   },
   {
     q: "What is Rivet—not payroll or POS?",
-    a: "It is how you document work, train the team, log owner interruptions, and track bottlenecks. Payrolls and tickets stay in your other tools.",
+    a: "It is how you document work, train the team, log what still routes back to you, and track bottlenecks. Payrolls and tickets stay in your other tools.",
   },
   {
     q: "Is there a staff mobile app?",

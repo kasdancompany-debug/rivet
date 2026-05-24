@@ -1,6 +1,11 @@
 import Link from "next/link"
 import { ArrowRight, Droplets } from "lucide-react"
 
+import { InterruptionTrendHeatmap } from "@/components/owner-interruptions/interruption-trend-heatmap"
+import { InterruptionSeverityBadge } from "@/components/owner-interruptions/interruption-severity-badge"
+import { InterruptionStarterExamples } from "@/components/owner-interruptions/interruption-starter-examples"
+import { TopLeaksPanel } from "@/components/owner-interruptions/top-leaks-panel"
+import { OwnerValueMetricsPanel } from "@/components/owner-interruptions/owner-value-metrics-panel"
 import type { OwnerInterruptionsDashboardView } from "@/lib/owner-interruptions/types"
 import { COPY } from "@/lib/interface-copy"
 import { Button } from "@/components/ui/button"
@@ -13,8 +18,8 @@ function formatShortDate(iso: string): string {
 }
 
 export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptionsDashboardView }) {
-  const maxDay = Math.max(1, ...view.trend14Days.map((d) => d.count))
   const leakHours = view.estimatedOwnerHoursThisWeek
+  const isEmpty = view.recent.length === 0
 
   return (
     <div className="space-y-9 pb-10 sm:space-y-10">
@@ -44,13 +49,15 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
 
       <div className="flex flex-wrap gap-2">
         <Button className="h-10" nativeButton={false} render={<Link href="/interruptions/log" />}>
-          {COPY.interruptions.logTitle}
+          {isEmpty ? COPY.interruptions.logFirstPullCta : COPY.interruptions.logTitle}
           <ArrowRight className="size-3.5 opacity-80" data-icon="inline-end" />
         </Button>
         <Button variant="outline" className="h-10" nativeButton={false} render={<Link href="/issues?view=owner_required" />}>
           {COPY.dashboard.criticalAllLink}
         </Button>
       </div>
+
+      {isEmpty ? <InterruptionStarterExamples variant="featured" /> : null}
 
       <Card variant="quiet">
         <CardHeader className="pb-2">
@@ -59,25 +66,46 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
         </CardHeader>
         <CardContent>
           {view.trend14Days.every((d) => d.count === 0) ? (
-            <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyTrend}</p>
+            <p className="text-sm text-muted-foreground">
+              {isEmpty ? COPY.interruptions.starterSectionHint : COPY.interruptions.emptyTrend}
+            </p>
           ) : (
-            <div className="flex h-36 items-end gap-px rounded-lg border border-border/50 bg-muted/15 px-2 pb-2 pt-4">
-              {view.trend14Days.map((d) => {
-                const h = d.count === 0 ? 4 : Math.max(8, Math.round((d.count / maxDay) * 120))
-                return (
-                  <div
-                    key={d.ymd}
-                    className="group flex min-w-0 flex-1 flex-col justify-end"
-                    title={`${d.ymd}: ${d.count} · ${d.minutes} min`}
-                  >
+            <InterruptionTrendHeatmap days={view.trend14Days} />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card variant="quiet">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[15px] font-semibold tracking-tight">{COPY.interruptions.channelTitle}</CardTitle>
+          <CardDescription>{COPY.interruptions.channelHint}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {view.bySource.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {isEmpty ? COPY.interruptions.starterSectionHint : COPY.interruptions.emptyTrend}
+            </p>
+          ) : (
+            view.bySource.map((row) => {
+              const max = view.bySource[0]?.count ?? 1
+              const w = Math.max(6, Math.round((row.count / max) * 100))
+              return (
+                <div key={row.source}>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-medium text-foreground">{row.label}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {row.count} · {row.minutes}m
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted/60">
                     <div
-                      className="mx-auto w-full max-w-[10px] rounded-[2px] bg-foreground/30 transition-colors group-hover:bg-foreground/45"
-                      style={{ height: `${h}px` }}
+                      className="h-full rounded-full bg-foreground/55 dark:bg-foreground/45"
+                      style={{ width: `${w}%` }}
                     />
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })
           )}
         </CardContent>
       </Card>
@@ -85,12 +113,49 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
       <div className="grid gap-4 lg:grid-cols-2">
         <Card variant="quiet">
           <CardHeader className="pb-2">
+            <CardTitle className="text-[15px] font-semibold tracking-tight">{COPY.interruptions.severityTitle}</CardTitle>
+            <CardDescription>{COPY.interruptions.severityHint}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {view.bySeverity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {isEmpty ? COPY.interruptions.starterSectionHint : COPY.interruptions.emptyTrend}
+              </p>
+            ) : (
+              view.bySeverity.map((row) => {
+                const max = view.bySeverity[0]?.count ?? 1
+                const w = Math.max(6, Math.round((row.count / max) * 100))
+                return (
+                  <div key={row.severity}>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <InterruptionSeverityBadge severity={row.severity} showDot />
+                      <span className="tabular-nums text-muted-foreground">
+                        {row.count} · {row.minutes}m
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted/60">
+                      <div
+                        className="h-full rounded-full bg-foreground/55 dark:bg-foreground/45"
+                        style={{ width: `${w}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        <Card variant="quiet">
+          <CardHeader className="pb-2">
             <CardTitle className="text-[15px] font-semibold tracking-tight">{COPY.interruptions.kindsTitle}</CardTitle>
             <CardDescription>{COPY.interruptions.kindsHint}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {view.byKind.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyTrend}</p>
+              <p className="text-sm text-muted-foreground">
+                {isEmpty ? COPY.interruptions.starterSectionHint : COPY.interruptions.emptyTrend}
+              </p>
             ) : (
               view.byKind.map((row) => {
                 const max = view.byKind[0]?.count ?? 1
@@ -115,33 +180,15 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
             )}
           </CardContent>
         </Card>
-
-        <Card variant="quiet">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-[15px] font-semibold tracking-tight">{COPY.interruptions.repeatTitle}</CardTitle>
-            <CardDescription>{COPY.interruptions.repeatHint}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {view.repeatCategories.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyRepeats}</p>
-            ) : (
-              <ul className="space-y-2">
-                {view.repeatCategories.map((r) => (
-                  <li
-                    key={r.key}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-border/50 bg-muted/10 px-3 py-2.5 text-sm dark:bg-muted/5"
-                  >
-                    <span className="min-w-0 font-medium leading-snug text-foreground">{r.label}</span>
-                    <span className="shrink-0 tabular-nums text-xs font-medium text-muted-foreground">
-                      ×{r.count}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      <TopLeaksPanel topLeaks={view.topLeaks} isEmpty={isEmpty} />
+
+      <OwnerValueMetricsPanel
+        businessId={view.businessId}
+        metrics={view.valueMetrics}
+        isOwner={view.isOwner}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card variant="quiet">
@@ -151,7 +198,11 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
           </CardHeader>
           <CardContent>
             {view.byRole.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyRoles}</p>
+              isEmpty ? (
+                <p className="text-sm text-muted-foreground">{COPY.interruptions.starterSectionHint}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyRoles}</p>
+              )
             ) : (
               <ul className="space-y-2">
                 {view.byRole.map((r) => (
@@ -177,7 +228,11 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
           </CardHeader>
           <CardContent>
             {view.topPeople.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyRoles}</p>
+              isEmpty ? (
+                <p className="text-sm text-muted-foreground">{COPY.interruptions.starterSectionHint}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyRoles}</p>
+              )
             ) : (
               <ul className="space-y-2">
                 {view.topPeople.map((p) => (
@@ -207,13 +262,16 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
         </CardHeader>
         <CardContent>
           {view.recent.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{COPY.interruptions.emptyTrend}</p>
+            <p className="text-sm text-muted-foreground">
+              {isEmpty ? COPY.interruptions.starterSectionHint : COPY.interruptions.emptyTrend}
+            </p>
           ) : (
             <ul className="divide-y divide-border/50">
               {view.recent.map((r) => (
                 <li key={r.id} className="flex flex-col gap-1 py-3 first:pt-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
+                      <InterruptionSeverityBadge severity={r.severity} showDot />
                       <span
                         className={cn(
                           "inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide",
@@ -222,6 +280,7 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
                       >
                         {r.kindLabel}
                       </span>
+                      <span className="text-[0.65rem] text-muted-foreground">{r.sourceLabel}</span>
                       <span className="text-[0.65rem] tabular-nums text-muted-foreground">{r.estimatedMinutes}m</span>
                     </div>
                     <p className="text-sm font-medium leading-snug text-foreground">{r.summary}</p>

@@ -1,7 +1,9 @@
+import { COPY } from "@/lib/interface-copy"
+import { isIssueUnresolved } from "@/lib/issues/constants"
 import type { RivetIndexComputeContext } from "@/lib/rivet-score/compute"
 
 import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
-import type { EscapeReadinessFactor, EscapeReadinessView } from "@/lib/escape-readiness/types"
+import type { EscapeReadinessFactorInput, EscapeReadinessView } from "@/lib/escape-readiness/types"
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n))
@@ -58,13 +60,11 @@ function computeUnresolvedIssuesHealth(ctx: RivetIndexComputeContext): {
   percent: number | null
   hint: string
 } {
-  const open = ctx.bottlenecks.filter(
-    (i) => i.status === "open" || i.status === "in_progress"
-  ).length
+  const open = ctx.bottlenecks.filter((i) => isIssueUnresolved(i.status)).length
   if (open === 0) {
     return {
       percent: 92,
-      hint: "No open or in-progress issues—fewer surprises while you are away.",
+      hint: "No unresolved issues—fewer surprises while you are away.",
     }
   }
   let percent: number
@@ -87,7 +87,7 @@ function computeOwnerInterruptionsHealth(ctx: RivetIndexComputeContext): {
   if (n === 0) {
     return {
       percent: 100,
-      hint: "No owner interruptions logged this week—track texts and calls to see the real pattern.",
+      hint: "Nothing routed back to you logged this week—track texts and calls to see the real pattern.",
     }
   }
   let percent: number
@@ -98,7 +98,7 @@ function computeOwnerInterruptionsHealth(ctx: RivetIndexComputeContext): {
   else percent = 14
   return {
     percent,
-    hint: `${n} owner interrupt(s) logged this week—judgment is still routing to you.`,
+    hint: `${n} pull(s) routed back to you this week—judgment is still collapsing on the owner.`,
   }
 }
 
@@ -137,7 +137,7 @@ export function computeEscapeReadiness(ctx: RivetIndexComputeContext): EscapeRea
   const interrupts = computeOwnerInterruptionsHealth(ctx)
   const undocumented = computeUndocumentedProceduresHealth(ctx)
 
-  const factors: EscapeReadinessFactor[] = [
+  const factors: EscapeReadinessFactorInput[] = [
     {
       id: "sop_coverage",
       label: "SOP coverage",
@@ -158,7 +158,7 @@ export function computeEscapeReadiness(ctx: RivetIndexComputeContext): EscapeRea
     },
     {
       id: "owner_interruptions",
-      label: "Owner interruptions",
+      label: COPY.interruptions.featureTitle,
       percent: interrupts.percent,
       hint: interrupts.hint,
     },
@@ -182,5 +182,9 @@ export function computeEscapeReadiness(ctx: RivetIndexComputeContext): EscapeRea
     ...(hasCoreSignal ? {} : { score: null }),
     verdict: "",
     factors,
+    riskContext: {
+      ownerInterruptionsThisWeekCount: ctx.ownerInterruptionsThisWeekCount,
+      openIssuesCount: ctx.bottlenecks.filter((i) => isIssueUnresolved(i.status)).length,
+    },
   })
 }

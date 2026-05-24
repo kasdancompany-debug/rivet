@@ -1,3 +1,4 @@
+import { isIssueUnresolved } from "@/lib/issues/constants"
 import { labelForChecklistType } from "@/lib/operations-coach/checklist-labels"
 import { parseAssessmentJson } from "@/lib/operations-coach/parse-assessment-json"
 import type { OperationsCoachSnapshot } from "@/lib/operations-coach/types"
@@ -83,8 +84,8 @@ export function buildOperationsCoachSnapshot(src: CoachSnapshotSource): Operatio
     if (openModuleTitles.length >= 5) break
   }
 
-  const unresolved = src.bottlenecks.filter((i) => i.status === "open" || i.status === "in_progress")
-  const openOnly = src.bottlenecks.filter((i) => i.status === "open")
+  const unresolved = src.bottlenecks.filter((i) => isIssueUnresolved(i.status))
+  const openOnly = src.bottlenecks.filter((i) => i.status === "not_started")
   const ownerUnres = unresolved.filter((i) => i.owner_required)
   const ownerRequiredByCategorySlug: Record<string, number> = {}
   for (const i of ownerUnres) {

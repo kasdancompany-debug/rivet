@@ -14,9 +14,16 @@ export const metadata: Metadata = {
   title: "Standards Capture",
 }
 
-export default async function StandardsCapturePage() {
+export default async function StandardsCapturePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ prompt?: string; title?: string }>
+}) {
   const supabase = await createClient()
   const business = await fetchBusinessForCurrentUser(supabase)
+  const sp = await searchParams
+  const initialPlayPrompt = sp.prompt?.trim() ?? ""
+  const initialTitle = sp.title?.trim() ?? ""
 
   if (!business) {
     const fetchLines: RouteFetchLine[] = [lineForWorkspaceLinked(false)]
@@ -43,7 +50,11 @@ export default async function StandardsCapturePage() {
 
   return (
     <DashboardRouteShell routePath="/sops/capture" fetchLines={fetchLines}>
-      <CaptureStandardForm businessId={business.id} />
+      <CaptureStandardForm
+        businessId={business.id}
+        initialPlayPrompt={initialPlayPrompt}
+        initialTitle={initialTitle}
+      />
     </DashboardRouteShell>
   )
 }

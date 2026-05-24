@@ -8,6 +8,7 @@ import {
   HeartPulse,
   MapPinned,
   Settings,
+  Smartphone,
   Zap,
 } from "lucide-react"
 
@@ -35,6 +36,7 @@ export const mainNav: NavItem[] = [
   { title: COPY.nav.standards, href: "/sops", icon: BookOpen, section: "core" },
   { title: COPY.nav.standardsCapture, href: "/sops/capture", icon: Clapperboard, section: "core" },
   { title: COPY.nav.training, href: "/training", icon: GraduationCap, section: "core" },
+  { title: COPY.trainingPortal.openPortal, href: "/learn", icon: Smartphone, section: "core" },
   { title: COPY.nav.interruptions, href: "/interruptions", icon: Zap, section: "core" },
   { title: COPY.nav.bottlenecks, href: "/issues", icon: AlertTriangle, section: "core" },
   { title: COPY.nav.escapePlan, href: "/escape-plan", icon: MapPinned, section: "core" },

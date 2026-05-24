@@ -17,7 +17,7 @@ export const DASHBOARD_COPY = {
   heroEyebrow: "Overview",
   heroTitle: "Can the business run without you?",
   heroBody:
-    "Owner interruptions, missing procedures, training, open issues, escape readiness, and your Rivet Score—in plain numbers.",
+    "What still routes back to you, missing procedures, training, open issues, escape readiness, and your Rivet Score—in plain numbers.",
   operatingPrompt:
     "If you disappeared for a week, could open, close, quality, and judgment calls still hold—or would your phone become the schedule?",
   metricsAriaLabel: "Overview metrics",

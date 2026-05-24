@@ -1,4 +1,4 @@
-﻿import Link from "next/link"
+import Link from "next/link"
 import { ChevronDown } from "lucide-react"
 
 import { Logo } from "@/components/logo"
@@ -53,7 +53,7 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
       </header>
 
       <main className="flex flex-1 flex-col">
-        {/* Hero â€” high contrast, minimal bloom, system typography */}
+        {/* Hero — high contrast, minimal bloom, system typography */}
         <section
           className="relative border-b border-zinc-800 bg-zinc-950 pb-14 pt-12 text-zinc-100 sm:pb-16 sm:pt-16 lg:min-h-[min(86dvh,50rem)] lg:pb-20 lg:pt-20"
           aria-labelledby="hero-heading"
@@ -119,7 +119,7 @@ export function RivetLanding({ signInHref = "/login" }: { signInHref?: string })
           </div>
         </section>
 
-        {/* Field signal â€” inset grid, no floating list */}
+        {/* Field signal — inset grid, no floating list */}
         <section
           className="border-b border-zinc-200 bg-white py-12 sm:py-14 dark:border-zinc-800 dark:bg-zinc-950"
           aria-labelledby="feel-this-heading"

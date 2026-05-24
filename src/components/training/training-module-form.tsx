@@ -21,15 +21,19 @@ type Initial = {
 export function TrainingModuleForm({
   businessId,
   initial,
+  defaultTitle = "",
+  defaultDescription = "",
 }: {
   businessId: string
   initial?: Initial
+  defaultTitle?: string
+  defaultDescription?: string
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [title, setTitle] = useState(initial?.title ?? "")
-  const [description, setDescription] = useState(initial?.description ?? "")
+  const [title, setTitle] = useState(initial?.title ?? defaultTitle)
+  const [description, setDescription] = useState(initial?.description ?? defaultDescription)
   const [assignedRole, setAssignedRole] = useState(initial?.assigned_role ?? "")
 
   function onSubmit(e: React.FormEvent) {

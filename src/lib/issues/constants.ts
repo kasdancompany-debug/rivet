@@ -1,3 +1,5 @@
+import type { IssueStatus } from "@/types/database"
+
 /** Stored in `issues.category` (text). */
 export const ISSUE_CATEGORIES = [
   { value: "product_quality", label: "Product Quality" },
@@ -55,4 +57,49 @@ export function isAllowedIssueSeverity(value: string): boolean {
 
 export function formatIssueSeverity(value: string): string {
   return SEVERITY_LABELS[value] ?? value
+}
+
+export const ISSUE_STATUSES = [
+  { value: "not_started", label: "Not started" },
+  { value: "investigating", label: "Investigating" },
+  { value: "fix_in_progress", label: "Fix in progress" },
+  { value: "resolved", label: "Resolved" },
+] as const
+
+const ISSUE_STATUS_LABELS = Object.fromEntries(
+  ISSUE_STATUSES.map((s) => [s.value, s.label])
+) as Record<string, string>
+
+const ISSUE_STATUS_SET = new Set<string>(ISSUE_STATUSES.map((s) => s.value))
+
+/** Unresolved workflow statuses (everything except resolved). */
+export const ISSUE_UNRESOLVED_STATUSES: IssueStatus[] = [
+  "not_started",
+  "investigating",
+  "fix_in_progress",
+]
+
+export function isAllowedIssueStatus(value: string): value is IssueStatus {
+  return ISSUE_STATUS_SET.has(value)
+}
+
+export function isIssueUnresolved(status: IssueStatus): boolean {
+  return status !== "resolved"
+}
+
+export function formatIssueStatus(value: string): string {
+  return ISSUE_STATUS_LABELS[value] ?? value.replace(/_/g, " ")
+}
+
+export function issueStatusBadgeClass(status: IssueStatus): string {
+  switch (status) {
+    case "not_started":
+      return "border-amber-500/30 bg-amber-500/5 text-amber-950 dark:text-amber-200"
+    case "investigating":
+      return "border-sky-500/25 bg-sky-500/5 text-sky-950 dark:text-sky-200"
+    case "fix_in_progress":
+      return "border-violet-500/30 bg-violet-500/5 text-violet-950 dark:text-violet-200"
+    default:
+      return "border-emerald-500/25 bg-emerald-500/5 text-emerald-950 dark:text-emerald-200"
+  }
 }

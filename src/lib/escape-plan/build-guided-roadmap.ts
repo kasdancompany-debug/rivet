@@ -232,7 +232,7 @@ export function buildGuidedRoadmapSeeds(intake: EscapePlanIntake): GuidedEscapeP
       1,
       "p4_ops_batch_owner_review",
       "operational_task",
-      "Operational task: move owner review to a fixed weekly window (Bottlenecks + metrics, not texts)",
+      "Operational task: move owner review to a fixed weekly window (Things still chasing you + metrics, not texts)",
       "Teach the team when you will respond—emergencies excepted—and define emergency tightly."
     ),
     seed(
@@ -276,7 +276,7 @@ export function buildGuidedRoadmapSeeds(intake: EscapePlanIntake): GuidedEscapeP
       "p5_ops_daily_execution_audit",
       "operational_task",
       "Operational task: audit Daily Execution completion + notes for two peak weeks",
-      "Look for skipped lines, late sign-offs, and patterns in Bottlenecks tied to shifts."
+      "Look for skipped lines, late sign-offs, and patterns in Things still chasing you tied to shifts."
     ),
     seed(
       5,

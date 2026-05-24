@@ -6,6 +6,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react"
 
 import { persistFounderDependencyScan } from "@/app/actions/founder-dependency-scan"
+import { StrengthsDetectedCard } from "@/components/onboarding/strengths-detected-card"
+import { DependencyBreakdownSection } from "@/components/onboarding/dependency-breakdown-section"
+import { RivetInterpretationSection } from "@/components/onboarding/rivet-interpretation-section"
 import { COPY } from "@/lib/interface-copy"
 import { buildOnboardingAssessmentJson } from "@/lib/onboarding/build-onboarding-assessment"
 import type { DependencyBand, OperationalDependencyReport } from "@/lib/onboarding/generate-dependency-report"
@@ -402,19 +405,11 @@ export function OwnerOnboardingWizard() {
             </CardContent>
           </Card>
 
-          <section className="space-y-3" aria-labelledby="heard-heading">
-            <h2 id="heard-heading" className="text-lg font-semibold tracking-tight">
-              {COPY.onboarding.heardHeading}
-            </h2>
-            <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-              {report.heardBullets.map((b) => (
-                <li key={b} className="flex gap-3">
-                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-foreground/35" aria-hidden />
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <StrengthsDetectedCard strengths={report.strengths} />
+
+          <DependencyBreakdownSection breakdown={report.breakdown} />
+
+          <RivetInterpretationSection interpretation={report.interpretation} />
 
           <section className="space-y-3 rounded-xl border border-border/60 bg-muted/15 px-5 py-6 sm:px-7">
             <h2 className="text-lg font-semibold tracking-tight text-foreground">{report.patternTitle}</h2>

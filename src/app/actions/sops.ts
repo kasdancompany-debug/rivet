@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { isSopCategory } from "@/lib/sops/categories"
+import { quizJsonFromSavePayload } from "@/lib/sops/persist-standard-quiz"
 import { createClient } from "@/lib/supabase/server"
 import type { Json, StandardStatus } from "@/types/database"
 
@@ -11,6 +12,10 @@ export type SopStepPayload = {
   instructions: string
   media_url: string | null
   requires_photo_confirmation: boolean
+  estimated_time_minutes?: number | null
+  is_critical?: boolean
+  verification?: string | null
+  notes?: string | null
 }
 
 export type SaveSopPayload = {
@@ -58,6 +63,19 @@ function validatePublishRequirements(payload: SaveSopPayload): string | null {
 
 function clampInt(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.round(Number(n)) || min))
+}
+
+async function attachGeneratedQuiz(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  standardId: string,
+  payload: SaveSopPayload
+) {
+  if (payload.status !== "active") return
+  const quiz = quizJsonFromSavePayload(payload)
+  await supabase
+    .from("standards")
+    .update({ quiz_questions: quiz as unknown as Json })
+    .eq("id", standardId)
 }
 
 export async function saveSop(
@@ -109,6 +127,16 @@ export async function saveSop(
       media_url:
         s.media_url?.trim() === "" || !s.media_url ? null : s.media_url.trim(),
       requires_photo_confirmation: Boolean(s.requires_photo_confirmation),
+      estimated_time_minutes:
+        s.estimated_time_minutes === null ||
+        s.estimated_time_minutes === undefined ||
+        Number.isNaN(Number(s.estimated_time_minutes))
+          ? null
+          : Math.max(0, Math.round(Number(s.estimated_time_minutes))),
+      is_critical: Boolean(s.is_critical),
+      verification:
+        s.verification?.trim() === "" || !s.verification ? null : s.verification.trim(),
+      notes: s.notes?.trim() === "" || !s.notes ? null : s.notes.trim(),
     }))
 
     const existingId = payload.sopId
@@ -154,6 +182,8 @@ export async function saveSop(
         }
       }
 
+      await attachGeneratedQuiz(supabase, existingId, payload)
+
       revalidatePath("/sops")
       revalidatePath(`/sops/${existingId}`)
       revalidatePath(`/sops/${existingId}/edit`)
@@ -197,6 +227,8 @@ export async function saveSop(
         return { ok: false, message: insErr.message }
       }
     }
+
+    await attachGeneratedQuiz(supabase, id, payload)
 
     revalidatePath("/sops")
     revalidatePath(`/sops/${id}`)

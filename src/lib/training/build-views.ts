@@ -2,14 +2,28 @@ import type { TrainingModuleDeep } from "@/lib/db/queries"
 import type {
   Tables,
   TrainingProgressStatus,
-  ReadinessBadge,
 } from "@/types/database"
+
+import type { DelegationReadinessStatus, ReadinessCapabilityField } from "@/lib/training/compute-readiness"
+import {
+  computeEmployeeReadiness,
+  type CapabilityReadiness,
+  type ComputedEmployeeReadiness,
+  type ReadinessModuleInput,
+} from "./compute-readiness"
+import {
+  buildCertificationViews,
+  type CertificationBadge,
+  type ModuleCertificationView,
+} from "@/lib/training/certifications/build-views"
 
 export type AssignedSopRow = {
   trainingItemId: string
   moduleId: string
+  standardId: string
   title: string
   completed: boolean
+  standardCategory: string | null
 }
 
 export type ModuleProgressView = {
@@ -26,27 +40,38 @@ export type ModuleProgressView = {
   sopRows: AssignedSopRow[]
 }
 
+export type ManagerObservationView = {
+  id: string
+  type: Tables<"employee_manager_observations">["observation_type"]
+  notes: string
+  observedAt: string
+  observerName: string
+}
+
 export type EmployeeTrainingViewModel = {
   profile: Tables<"profiles">
   modules: ModuleProgressView[]
   aggregatePct: number | null
-  readiness: {
-    open_alone: ReadinessBadge
-    close_alone: ReadinessBadge
-    train_others: ReadinessBadge
-    handle_complaints: ReadinessBadge
-  }
-}
-
-const DEFAULT_READINESS: EmployeeTrainingViewModel["readiness"] = {
-  open_alone: "not_ready",
-  close_alone: "not_ready",
-  train_others: "not_ready",
-  handle_complaints: "not_ready",
+  readiness: ComputedEmployeeReadiness
+  certifications: ModuleCertificationView[]
+  certifiedBadges: CertificationBadge[]
+  observations: ManagerObservationView[]
 }
 
 function sopTitle(item: TrainingModuleDeep["training_items"][0]): string {
   return item.standards?.title?.trim() || "Untitled standard"
+}
+
+function readinessOverridesFromRow(
+  row: Tables<"employee_readiness"> | undefined
+): Partial<Record<ReadinessCapabilityField, DelegationReadinessStatus | null>> {
+  if (!row) return {}
+  return {
+    open_alone: row.open_alone_override,
+    close_alone: row.close_alone_override,
+    train_others: row.train_others_override,
+    handle_complaints: row.handle_complaints_override,
+  }
 }
 
 export function buildEmployeeTrainingViewModel(
@@ -54,10 +79,28 @@ export function buildEmployeeTrainingViewModel(
   progressRows: Tables<"training_progress">[],
   modulesById: Map<string, TrainingModuleDeep>,
   completions: Tables<"employee_training_sop_completions">[],
-  readinessRow: Tables<"employee_readiness"> | undefined
+  readinessRow: Tables<"employee_readiness"> | undefined,
+  completedShiftRuns = 0,
+  quizCompletions: Tables<"employee_standard_quiz_completions">[] = [],
+  certificationRows: Tables<"employee_module_certifications">[] = [],
+  observationRows: Tables<"employee_manager_observations">[] = [],
+  profileNameById: Map<string, string> = new Map()
 ): EmployeeTrainingViewModel {
   const myCompletionSet = new Set(
     completions.filter((c) => c.employee_id === profile.id).map((c) => c.training_item_id)
+  )
+  const passedQuizStandardIds = new Set(
+    quizCompletions.filter((q) => q.employee_id === profile.id && q.passed).map((q) => q.standard_id)
+  )
+  const certifiedModuleIds = new Set(
+    certificationRows
+      .filter((c) => c.employee_id === profile.id && c.certified_at)
+      .map((c) => c.training_module_id)
+  )
+  const managerSignedOffModuleIds = new Set(
+    certificationRows
+      .filter((c) => c.employee_id === profile.id && c.manager_signed_off_at)
+      .map((c) => c.training_module_id)
   )
 
   const modules: ModuleProgressView[] = []
@@ -83,8 +126,10 @@ export function buildEmployeeTrainingViewModel(
       sopRows.push({
         trainingItemId: item.id,
         moduleId: mod.id,
+        standardId: item.standard_id,
         title,
         completed,
+        standardCategory: item.standards?.category ?? null,
       })
       if (completed) completedSopTitles.push(title)
       else remainingSopTitles.push(title)
@@ -114,19 +159,106 @@ export function buildEmployeeTrainingViewModel(
   }
   const aggregatePct = n === 0 ? null : Math.round(sum / n)
 
-  const readiness = readinessRow
-    ? {
-        open_alone: readinessRow.open_alone,
-        close_alone: readinessRow.close_alone,
-        train_others: readinessRow.train_others,
-        handle_complaints: readinessRow.handle_complaints,
-      }
-    : DEFAULT_READINESS
+  const readinessModules: ReadinessModuleInput[] = modules.map((m) => ({
+    moduleId: m.moduleId,
+    title: m.title,
+    assignedRole: m.assignedRole,
+    status: m.status,
+    pct: m.pct,
+    sopRows: m.sopRows.map((r) => ({
+      title: r.title,
+      completed: r.completed,
+      standardCategory: r.standardCategory,
+      standardId: r.standardId,
+    })),
+  }))
+
+  const myObservations = observationRows
+    .filter((o) => o.employee_id === profile.id)
+    .sort((a, b) => b.observed_at.localeCompare(a.observed_at))
+
+  const readiness = computeEmployeeReadiness({
+    modules: readinessModules,
+    completedShiftRuns,
+    managerObservations: myObservations.map((o) => ({
+      observation_type: o.observation_type,
+      observed_at: o.observed_at,
+    })),
+    passedQuizStandardIds,
+    certifiedModuleIds,
+    managerSignedOffModuleIds,
+    overrides: readinessOverridesFromRow(readinessRow),
+  })
+
+  const { certifications: certRows, certifiedBadges } = buildCertificationViews(
+    profile.id,
+    modulesById,
+    certificationRows
+  )
+
+  const certByModule = new Map(certRows.map((c) => [c.moduleId, c]))
+  const certifications: ModuleCertificationView[] = modules.map((mod) => {
+    const existing = certByModule.get(mod.moduleId)
+    if (existing) return existing
+    return {
+      moduleId: mod.moduleId,
+      moduleTitle: mod.title,
+      moduleCompleted: mod.status === "completed",
+      quizzesPassed: false,
+      managerSignedOff: false,
+      certified: false,
+      certifiedAt: null,
+    }
+  })
 
   return {
     profile,
     modules,
     aggregatePct,
     readiness,
+    certifications,
+    certifiedBadges,
+    observations: myObservations.map((o) => ({
+      id: o.id,
+      type: o.observation_type,
+      notes: o.notes,
+      observedAt: o.observed_at,
+      observerName: profileNameById.get(o.observed_by) ?? "Manager",
+    })),
   }
+}
+
+export type { CapabilityReadiness, ComputedEmployeeReadiness }
+
+export function countEmployeesEffectiveReady(
+  profiles: { id: string }[],
+  progressRows: Tables<"training_progress">[],
+  modulesById: Map<string, TrainingModuleDeep>,
+  completions: Tables<"employee_training_sop_completions">[],
+  readinessRows: Tables<"employee_readiness">[],
+  executionCounts: Map<string, number>,
+  quizCompletions: Tables<"employee_standard_quiz_completions">[],
+  certificationRows: Tables<"employee_module_certifications">[],
+  observationRows: Tables<"employee_manager_observations">[] = [],
+  profileNameById: Map<string, string> = new Map(),
+  field: ReadinessCapabilityField = "train_others"
+): number {
+  let count = 0
+  for (const profile of profiles) {
+    const vm = buildEmployeeTrainingViewModel(
+      profile as Tables<"profiles">,
+      progressRows,
+      modulesById,
+      completions,
+      readinessRows.find((r) => r.employee_id === profile.id),
+      executionCounts.get(profile.id) ?? 0,
+      quizCompletions,
+      certificationRows,
+      observationRows,
+      profileNameById,
+    )
+    const cap = vm.readiness.capabilities.find((c) => c.field === field)
+    if (cap?.effective === "ready") count += 1
+  }
+  return count
 }

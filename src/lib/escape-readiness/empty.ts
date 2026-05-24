@@ -1,3 +1,4 @@
+import { COPY } from "@/lib/interface-copy"
 import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
 import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
 
@@ -5,7 +6,7 @@ export function emptyEscapeReadiness(): EscapeReadinessView {
   return finalizeEscapeReadinessView({
     score: null,
     verdict:
-      "Link your business and add operating signal—standards, training, and interruptions—so Rivet can score escape readiness.",
+      "Link your business and add operating signal—standards, training, and what still routes back to you—so Rivet can score escape readiness.",
     factors: [
       {
         id: "sop_coverage",
@@ -27,7 +28,7 @@ export function emptyEscapeReadiness(): EscapeReadinessView {
       },
       {
         id: "owner_interruptions",
-        label: "Owner interruptions",
+        label: COPY.interruptions.featureTitle,
         percent: null,
         hint: "Waiting on workspace data.",
       },

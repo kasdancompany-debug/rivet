@@ -6,18 +6,18 @@ import { BookOpen, UserRound } from "lucide-react"
 
 import {
   assignTrainingModule,
+  setReadinessOverride,
   toggleTrainingSopCompletion,
   unassignTrainingModule,
-  updateEmployeeReadiness,
 } from "@/app/actions/training"
 import { COPY } from "@/lib/interface-copy"
 import type { EmployeeTrainingViewModel } from "@/lib/training/build-views"
 import { formatTrainingRole } from "@/lib/training/roles"
-import {
-  READINESS_BADGE_ORDER,
-  READINESS_LABELS,
-  readinessBadgeClass,
-} from "@/lib/training/readiness-badge-meta"
+import type { ReadinessCapabilityField, DelegationReadinessStatus } from "@/lib/training/compute-readiness"
+import { EmployeeObservationTimeline } from "@/components/training/employee-observation-timeline"
+import { EmployeeReadinessPanel } from "@/components/training/employee-readiness-panel"
+import { EmployeeCertificationBadges } from "@/components/training/employee-certification-badges"
+import { EmployeeCertificationTracker } from "@/components/training/employee-certification-tracker"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,10 +30,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import type { ReadinessBadge } from "@/types/database"
-import { cn } from "@/lib/utils"
-
-const READINESS_QUESTIONS = COPY.readinessQuestions
 
 type ModuleOption = { id: string; title: string }
 
@@ -85,6 +81,11 @@ export function TrainingEmployeeCard({
                 {vm.profile.role?.trim() || "Team member"}
                 {vm.profile.is_owner ? " · Owner" : null}
               </CardDescription>
+              {vm.certifiedBadges.length > 0 ? (
+                <div className="mt-3">
+                  <EmployeeCertificationBadges badges={vm.certifiedBadges} />
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="text-right">
@@ -92,7 +93,7 @@ export function TrainingEmployeeCard({
               {COPY.training.employeeCardReadiness}
             </p>
             <p className="text-2xl font-semibold tabular-nums text-foreground">
-              {vm.aggregatePct === null ? "—" : `${vm.aggregatePct}%`}
+              {vm.readiness.overallScore}%
             </p>
           </div>
         </div>
@@ -109,45 +110,46 @@ export function TrainingEmployeeCard({
             {COPY.training.employeeDelegationHeading}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">{COPY.training.employeeDelegationHint}</p>
-          <ul className="mt-4 space-y-4">
-            {READINESS_QUESTIONS.map((q) => {
-              const value = vm.readiness[q.field]
-              return (
-                <li key={q.field} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="text-sm font-medium text-foreground/90">{q.label}</span>
-                  {isOwner ? (
-                    <select
-                      value={value}
-                      disabled={pending}
-                      onChange={(e) => {
-                        const next = e.target.value as ReadinessBadge
-                        run(() =>
-                          updateEmployeeReadiness({
-                            businessId,
-                            employeeId: vm.profile.id,
-                            field: q.field,
-                            value: next,
-                          })
-                        )
-                      }}
-                      className="h-9 min-w-[12rem] rounded-lg border border-input bg-background px-2 text-sm sm:max-w-xs"
-                    >
-                      {READINESS_BADGE_ORDER.map((b) => (
-                        <option key={b} value={b}>
-                          {READINESS_LABELS[b]}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <Badge variant="outline" className={cn("w-fit font-normal", readinessBadgeClass(value))}>
-                      {READINESS_LABELS[value]}
-                    </Badge>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
+          <div className="mt-4">
+            <EmployeeReadinessPanel
+              readiness={vm.readiness}
+              isOwner={isOwner}
+              pending={pending}
+              onOverride={(field: ReadinessCapabilityField, value: DelegationReadinessStatus | null) => {
+                run(() =>
+                  setReadinessOverride({
+                    businessId,
+                    employeeId: vm.profile.id,
+                    field,
+                    value,
+                  })
+                )
+              }}
+            />
+          </div>
         </section>
+
+        <Separator />
+
+        <EmployeeObservationTimeline
+          observations={vm.observations}
+          businessId={businessId}
+          employeeId={vm.profile.id}
+          isOwner={isOwner}
+          pending={pending}
+          onAction={run}
+        />
+
+        <Separator />
+
+        <EmployeeCertificationTracker
+          certifications={vm.certifications}
+          businessId={businessId}
+          employeeId={vm.profile.id}
+          isOwner={isOwner}
+          pending={pending}
+          onAction={run}
+        />
 
         <Separator />
 

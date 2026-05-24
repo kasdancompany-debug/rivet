@@ -24,11 +24,18 @@ export const metadata: Metadata = {
   title: "New training module",
 }
 
-export default async function NewTrainingModulePage() {
+export default async function NewTrainingModulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ title?: string; description?: string }>
+}) {
   const user = requireAuthUser(await getServerAuthUser())
   const supabase = await createClient()
   const business = await fetchBusinessForCurrentUser(supabase)
   const profile = await fetchCurrentProfile(supabase)
+  const sp = await searchParams
+  const defaultTitle = sp.title?.trim() ?? ""
+  const defaultDescription = sp.description?.trim() ?? ""
   if (!business || !isWorkspaceOwner(user.id, business, profile)) {
     const fetchLines: RouteFetchLine[] = [
       lineForWorkspaceLinked(Boolean(business)),
@@ -76,7 +83,11 @@ export default async function NewTrainingModulePage() {
           description="Pick a role preset, then attach standards from your library on the next screen."
         />
         <div className="mt-8">
-          <TrainingModuleForm businessId={business.id} />
+          <TrainingModuleForm
+            businessId={business.id}
+            defaultTitle={defaultTitle}
+            defaultDescription={defaultDescription}
+          />
         </div>
       </>
     </DashboardRouteShell>

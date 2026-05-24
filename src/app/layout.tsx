@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s · Rivet",
   },
   description:
-    "Get your business out of your head. Document procedures, track training, log owner interruptions, and see if your team could run a week without you—$799 CAD once.",
+    "Get your business out of your head. Document procedures, track training, log what still routes back to you, and see if your team could run a week without you—$799 CAD once.",
 }
 
 export default function RootLayout({

@@ -4,11 +4,15 @@ import { redirect } from "next/navigation"
 import { GraduationCap, Plus } from "lucide-react"
 
 import {
+  countCompletedExecutionRecordsByEmployee,
   ensureEmployeeReadinessRows,
   fetchBusinessForCurrentUser,
   fetchCurrentProfile,
   fetchProfilesForCurrentBusiness,
   listEmployeeReadinessForBusiness,
+  listEmployeeModuleCertificationsForEmployeeIds,
+  listEmployeeStandardQuizCompletionsForEmployeeIds,
+  listManagerObservationsForEmployeeIds,
   listTrainingModulesDeepForBusiness,
   listTrainingProgressForBusinessModules,
   listTrainingSopCompletionsForEmployeeIds,
@@ -75,7 +79,12 @@ export default async function TrainingPage() {
   const employeeIds = team.map((p) => p.id)
   const completions = await listTrainingSopCompletionsForEmployeeIds(employeeIds, supabase)
   const readinessRows = await listEmployeeReadinessForBusiness(business.id, supabase)
+  const executionCounts = await countCompletedExecutionRecordsByEmployee(business.id, supabase)
+  const quizCompletions = await listEmployeeStandardQuizCompletionsForEmployeeIds(employeeIds, supabase)
+  const certificationRows = await listEmployeeModuleCertificationsForEmployeeIds(employeeIds, supabase)
+  const observationRows = await listManagerObservationsForEmployeeIds(employeeIds, supabase)
   const modulesById = new Map(modules.map((m) => [m.id, m]))
+  const profileNameById = new Map(team.map((p) => [p.id, p.full_name]))
 
   const viewModels = team.map((p) =>
     buildEmployeeTrainingViewModel(
@@ -83,7 +92,12 @@ export default async function TrainingPage() {
       progress,
       modulesById,
       completions,
-      readinessRows.find((r) => r.employee_id === p.id)
+      readinessRows.find((r) => r.employee_id === p.id),
+      executionCounts.get(p.id) ?? 0,
+      quizCompletions,
+      certificationRows,
+      observationRows,
+      profileNameById
     )
   )
 
@@ -118,14 +132,37 @@ export default async function TrainingPage() {
               <Plus className="mr-2 size-4" aria-hidden />
               {COPY.training.newModule}
             </Button>
-          ) : null}
+          ) : (
+            <Button
+              size="lg"
+              variant="secondary"
+              className="h-11 shrink-0 self-start sm:self-auto"
+              nativeButton={false}
+              render={<Link href="/learn" />}
+            >
+              {COPY.trainingPortal.openPortal}
+            </Button>
+          )}
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/[0.04] px-4 py-4 sm:px-5">
+          <p className="text-sm font-medium text-foreground">{COPY.trainingPortal.openPortal}</p>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{COPY.trainingPortal.portalCtaLead}</p>
+          <Button className="mt-3" variant="outline" size="sm" nativeButton={false} render={<Link href="/learn" />}>
+            {COPY.trainingPortal.openPortal}
+          </Button>
         </div>
 
         <section className="mt-10 space-y-4" aria-labelledby="modules-heading">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <h2 id="modules-heading" className="text-lg font-semibold tracking-tight">
               {COPY.training.modulesHeading}
             </h2>
+            {modules.length > 0 && team.length > 0 ? (
+              <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/training/matrix" />}>
+                {COPY.training.matrixLink}
+              </Button>
+            ) : null}
           </div>
           {modules.length === 0 ? (
             <div className="space-y-6">

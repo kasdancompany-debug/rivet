@@ -1,5 +1,6 @@
 import { AlertCircle, Camera, CheckCircle2, Circle, MessageSquare } from "lucide-react"
 
+import { COPY } from "@/lib/interface-copy"
 import { hasPhotoConfirmed, isPhotoPending } from "@/lib/daily-ops/photos"
 import type { ShiftSnapshot } from "@/lib/daily-ops/shift-snapshot"
 import { Badge } from "@/components/ui/badge"
@@ -214,7 +215,7 @@ function ShiftOwnerCard({
         <section>
           <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <AlertCircle className="size-3.5" aria-hidden />
-            Bottlenecks from this shift
+            {COPY.issues.shiftSectionTitle}
           </h3>
           {issues.length === 0 ? (
             <p className="text-muted-foreground">None linked to this run.</p>

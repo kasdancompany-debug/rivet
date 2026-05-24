@@ -1,12 +1,27 @@
 import { ESCAPE_READINESS_HEADLINE, ESCAPE_READINESS_TAGLINE } from "@/lib/escape-readiness/copy"
+import { computeAbsenceCapacity } from "@/lib/escape-readiness/absence-capacity"
+import {
+  buildBiggestRisk,
+  type EscapeBiggestRiskContext,
+} from "@/lib/escape-readiness/build-biggest-risk"
+import { buildFreedomPath } from "@/lib/escape-readiness/build-freedom-path"
+import { buildWeeklyChange } from "@/lib/escape-readiness/build-weekly-change"
+import { simulationContextFromFactors } from "@/lib/escape-readiness/build-simulation-context"
+import { enrichFactorsWithDetails } from "@/lib/escape-readiness/build-factor-detail"
 import type {
-  EscapeReadinessBiggestRisk,
   EscapeReadinessFactor,
   EscapeReadinessFactorId,
+  EscapeReadinessFactorInput,
   EscapeReadinessProgressPoint,
   EscapeReadinessView,
 } from "@/lib/escape-readiness/types"
-import { bandFromScoreForEscape, verdictForEscapeScore } from "@/lib/escape-readiness/presentation"
+import { buildProgression } from "@/lib/escape-readiness/progression"
+import { buildScoreGain } from "@/lib/escape-readiness/build-score-gain"
+import {
+  bandFromScoreForEscape,
+  escapeStatusFromScore,
+  verdictForEscapeScore,
+} from "@/lib/escape-readiness/presentation"
 
 const FACTOR_ORDER: EscapeReadinessFactorId[] = [
   "sop_coverage",
@@ -16,120 +31,65 @@ const FACTOR_ORDER: EscapeReadinessFactorId[] = [
   "undocumented_procedures",
 ]
 
-const FIX_BY_FACTOR: Record<
-  EscapeReadinessFactorId,
-  { title: string; action: string }
-> = {
-  sop_coverage: {
-    title: "Document open, close, and your highest-variance procedure",
-    action: "Publish one-page SOPs with a named owner—your phone should not be step one.",
-  },
-  training_coverage: {
-    title: "Tie one training module to real work",
-    action: "Assign completion to the role that runs it—not shadowing you until it sticks.",
-  },
-  unresolved_issues: {
-    title: "Close or assign the oldest open issue",
-    action: "Every unresolved item is a future text while you are away—give each one an owner and due date.",
-  },
-  owner_interruptions: {
-    title: "Log owner interruptions for two weeks",
-    action: "Patterns show what to document next—Rivet turns the log into a score you can move.",
-  },
-  undocumented_procedures: {
-    title: "Write down the next procedure only you know",
-    action: "Voice or bullets on the floor—assign who owns it before it becomes another pull.",
-  },
-}
-
-const RISK_TITLE: Record<EscapeReadinessFactorId, string> = {
-  sop_coverage: "SOP coverage is thin",
-  training_coverage: "Training coverage is incomplete",
-  unresolved_issues: "Too many unresolved issues",
-  owner_interruptions: "Owner interruptions are high",
-  undocumented_procedures: "Too much still undocumented",
-}
-
 function averageNullable(nums: (number | null)[]): number | null {
   const defined = nums.filter((n): n is number => n != null && Number.isFinite(n))
   if (defined.length === 0) return null
   return Math.round(defined.reduce((a, b) => a + b, 0) / defined.length)
 }
 
-function sortFactors(factors: EscapeReadinessFactor[]): EscapeReadinessFactor[] {
+function sortFactors(factors: EscapeReadinessFactorInput[]): EscapeReadinessFactorInput[] {
   const byId = new Map(factors.map((f) => [f.id, f]))
-  return FACTOR_ORDER.map((id) => byId.get(id)).filter((f): f is EscapeReadinessFactor => Boolean(f))
+  return FACTOR_ORDER.map((id) => byId.get(id)).filter((f): f is EscapeReadinessFactorInput => Boolean(f))
 }
 
-function buildBiggestRisk(factors: EscapeReadinessFactor[]): EscapeReadinessBiggestRisk | null {
-  const scored = factors.filter((f) => f.percent != null) as (EscapeReadinessFactor & { percent: number })[]
-  if (scored.length === 0) return null
-  scored.sort((a, b) => a.percent - b.percent)
-  const weakest = scored[0]!
-  return {
-    factorId: weakest.id,
-    title: RISK_TITLE[weakest.id],
-    detail: weakest.hint,
-  }
-}
-
-function buildTopFixes(factors: EscapeReadinessFactor[]): [string, string, string] {
-  const scored = factors.filter((f) => f.percent != null) as (EscapeReadinessFactor & { percent: number })[]
-  scored.sort((a, b) => a.percent - b.percent)
-  const out: string[] = []
-  const seen = new Set<string>()
-  for (const f of scored) {
-    if (out.length >= 3) break
-    const line = `${FIX_BY_FACTOR[f.id].title} — ${FIX_BY_FACTOR[f.id].action}`
-    if (seen.has(line)) continue
-    seen.add(line)
-    out.push(line)
-  }
-  const fallbacks = [
-    "Pick one procedure to document this week—open, close, or your most repeated question.",
-    "Assign training on that procedure to one person with a clear completion date.",
-    "Log owner texts and calls for 14 days so you can see what still routes through you.",
-  ]
-  let i = 0
-  while (out.length < 3) {
-    const t = fallbacks[i % fallbacks.length]!
-    if (!seen.has(t)) {
-      seen.add(t)
-      out.push(t)
-    }
-    i += 1
-  }
-  return [out[0]!, out[1]!, out[2]!]
+function latestProgressAsOfDate(progress: EscapeReadinessProgressPoint[]): string | undefined {
+  if (progress.length === 0) return undefined
+  return [...progress].sort((a, b) => a.date.localeCompare(b.date)).at(-1)?.date
 }
 
 export function finalizeEscapeReadinessView(
   partial: {
     score?: number | null
     verdict?: string
-    factors: EscapeReadinessFactor[]
+    factors: EscapeReadinessFactorInput[]
     progress?: EscapeReadinessProgressPoint[]
     band?: EscapeReadinessView["band"]
     demo?: boolean
+    riskContext?: EscapeBiggestRiskContext
+    simulationContext?: EscapeReadinessView["simulationContext"]
   }
 ): EscapeReadinessView {
-  const factors = sortFactors(partial.factors)
+  const factors = enrichFactorsWithDetails(sortFactors(partial.factors))
   const score =
     partial.score !== undefined
       ? partial.score
       : averageNullable(factors.map((f) => f.percent))
   const band = partial.band ?? (score == null ? null : bandFromScoreForEscape(score))
+  const status = escapeStatusFromScore(score)
   const verdict = partial.verdict ?? verdictForEscapeScore(score)
+  const progress = partial.progress ?? []
+  const asOfDate = latestProgressAsOfDate(progress)
 
   return {
     tagline: ESCAPE_READINESS_TAGLINE,
     headlineQuestion: ESCAPE_READINESS_HEADLINE,
     score,
     band,
+    statusTier: status.tier,
+    statusBadge: status.badge,
+    statusInterpretation: status.interpretation,
+    progression: buildProgression(score),
+    scoreGain: buildScoreGain(progress, score, asOfDate),
+    absenceCapacity: computeAbsenceCapacity(score, factors),
     verdict,
     factors,
-    biggestRisk: buildBiggestRisk(factors),
-    topFixes: buildTopFixes(factors),
-    progress: partial.progress ?? [],
+    biggestRisk: buildBiggestRisk(factors, partial.riskContext),
+    fastestPathToFreedom: buildFreedomPath(factors, score),
+    weeklyChange: buildWeeklyChange(progress, score, asOfDate),
+    simulationContext:
+      partial.simulationContext ??
+      simulationContextFromFactors(partial.factors, score, partial.riskContext),
+    progress,
     demo: partial.demo,
   }
 }

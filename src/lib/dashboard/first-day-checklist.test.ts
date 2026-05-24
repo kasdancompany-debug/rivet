@@ -16,6 +16,7 @@ function std(partial: Partial<Tables<"standards">>): Tables<"standards"> {
     estimated_time_minutes: null,
     status: "draft",
     standards_capture: {},
+    quiz_questions: [],
     created_by: "u1",
     created_at: "",
     updated_at: "",

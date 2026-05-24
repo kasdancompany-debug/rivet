@@ -8,11 +8,15 @@ import {
   type OwnerInterruptionInsertSelf,
 } from "@/lib/db/queries"
 import { isOwnerInterruptionKind } from "@/lib/owner-interruptions/kinds"
+import { isOwnerInterruptionSource } from "@/lib/owner-interruptions/sources"
+import { isOwnerInterruptionUrgency } from "@/lib/owner-interruptions/urgencies"
 import { createClient } from "@/lib/supabase/server"
 
 export async function logOwnerInterruption(payload: {
   businessId: string
   kind: string
+  urgency?: string
+  source?: string
   summary: string
   detail?: string | null
   estimatedMinutes?: number
@@ -35,6 +39,16 @@ export async function logOwnerInterruption(payload: {
       return { ok: false, message: "Pick a type from the list." }
     }
 
+    const urgencyRaw = payload.urgency ?? "today"
+    if (!isOwnerInterruptionUrgency(urgencyRaw)) {
+      return { ok: false, message: "Pick how urgent this pull was." }
+    }
+
+    const sourceRaw = payload.source ?? "text_message"
+    if (!isOwnerInterruptionSource(sourceRaw)) {
+      return { ok: false, message: "Pick how this pull reached you." }
+    }
+
     const summary = payload.summary.trim()
     if (!summary) return { ok: false, message: "Add a short label—what pulled the owner in?" }
     if (summary.length > 280) return { ok: false, message: "Keep the label under 280 characters." }
@@ -49,6 +63,8 @@ export async function logOwnerInterruption(payload: {
     const row: OwnerInterruptionInsertSelf = {
       business_id: payload.businessId,
       kind: payload.kind,
+      urgency: urgencyRaw,
+      source: sourceRaw,
       summary,
       detail: payload.detail?.trim() || null,
       estimated_minutes: minutes,

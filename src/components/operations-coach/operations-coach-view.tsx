@@ -129,7 +129,7 @@ export function OperationsCoachView({ model }: { model: OperationsCoachPageModel
             }
           />
           <SignalCard
-            label="Bottlenecks"
+            label={COPY.nav.bottlenecks}
             value={`${snapshot.issues.unresolvedCount} unresolved`}
             foot={`${snapshot.issues.ownerRequiredUnresolvedCount} still need you`}
           />

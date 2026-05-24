@@ -78,7 +78,7 @@ export function recommendedFirstFixes(
   if (result.severity === "HIGH" || result.severity === "CRITICAL") {
     fixes.push({
       weight: 65,
-      text: "Install Rivet to document procedures, track training, and log owner interruptions—so the business is not stuck in your head.",
+      text: "Install Rivet to document procedures, track training, and log what still routes back to you—so the business is not stuck in your head.",
     })
   }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { Pencil } from "lucide-react"
+import { AlertTriangle, Pencil } from "lucide-react"
 
 import { fetchBusinessForCurrentUser, fetchSopWithSteps } from "@/lib/db/queries"
 import { lineForWorkspaceLinked } from "@/lib/route-reliability/diagnostic-builders"
@@ -158,7 +158,14 @@ export default async function SopDetailPage({ params }: Props) {
           <ol className="space-y-4">
             {sop.standard_steps.map((step, i) => (
               <li key={step.id}>
-                <Card className="border-border/60 bg-card/70 shadow-sm">
+                <Card
+                  className={cn(
+                    "bg-card/70 shadow-sm",
+                    step.is_critical
+                      ? "border-amber-500/35 bg-amber-500/[0.02]"
+                      : "border-border/60"
+                  )}
+                >
                   <CardHeader className="border-b border-border/40 py-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <CardTitle className="text-lg font-semibold leading-snug">
@@ -167,17 +174,45 @@ export default async function SopDetailPage({ params }: Props) {
                         </span>
                         {step.title}
                       </CardTitle>
-                      {step.requires_photo_confirmation ? (
-                        <Badge variant="outline" className="shrink-0 text-[0.65rem]">
-                          Photo required
-                        </Badge>
-                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {step.is_critical ? (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 border-amber-500/30 bg-amber-500/[0.08] text-[0.65rem] text-amber-950 dark:text-amber-100/90"
+                          >
+                            <AlertTriangle className="mr-1 size-3" aria-hidden />
+                            Critical
+                          </Badge>
+                        ) : null}
+                        {step.requires_photo_confirmation ? (
+                          <Badge variant="outline" className="shrink-0 text-[0.65rem]">
+                            Photo required
+                          </Badge>
+                        ) : null}
+                        {step.estimated_time_minutes != null ? (
+                          <Badge variant="outline" className="shrink-0 text-[0.65rem]">
+                            ~{step.estimated_time_minutes} min
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-5 pb-6">
                     <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
                       {step.instructions || "—"}
                     </p>
+                    {step.verification?.trim() ? (
+                      <p className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Verification: </span>
+                        {step.verification.trim()}
+                      </p>
+                    ) : null}
+                    {step.notes?.trim() ? (
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        <span className="font-medium text-foreground">Notes: </span>
+                        {step.notes.trim()}
+                      </p>
+                    ) : null}
                     {step.media_url ? (
                       <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
                         <p className="text-[0.65rem] font-medium uppercase tracking-widest text-muted-foreground">

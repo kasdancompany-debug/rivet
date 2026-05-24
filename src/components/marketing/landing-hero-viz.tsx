@@ -176,7 +176,7 @@ export function LandingHeroOperationalViz() {
 
       <div className="relative grid gap-3 p-3 sm:grid-cols-12 sm:gap-4 sm:p-4">
         <div className="rounded-md border border-white/[0.06] bg-black/40 p-3 sm:col-span-4">
-          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Interruption log</p>
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Where the business still owns you</p>
           <ul className="mt-2 space-y-1.5">
             {FEED.map((line) => (
               <li key={line} className="font-mono text-[10px] leading-tight text-zinc-400">

@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { AlertTriangle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { COPY } from "@/lib/interface-copy"
 
 const INSTALL_SITE = "UNIT 04 · OAK RIDGE · SYNC 6:14 PM"
 
@@ -79,7 +80,7 @@ function OwnerInterruptionsPreview() {
   return (
     <PreviewShell>
       <p className="font-mono text-[0.58rem] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
-        Owner interruptions · this week
+        {COPY.interruptions.featureTitle} · this week
       </p>
       <ul className="mt-1.5 space-y-1">
         {rows.map((row) => (

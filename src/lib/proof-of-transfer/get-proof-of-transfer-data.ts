@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/queries"
 import { listRivetIndexSnapshotsLastDays } from "@/lib/rivet-score/data"
 import { COPY } from "@/lib/interface-copy"
+import { isIssueUnresolved } from "@/lib/issues/constants"
 import { createClient } from "@/lib/supabase/server"
 import type { Tables } from "@/types/database"
 
@@ -233,7 +234,7 @@ export async function getProofOfTransferData(): Promise<ProofOfTransferView> {
       push("fragile", {
         id: "pot-no-runs",
         title: "No completed runs in the last two weeks",
-        body: "Without completed daily execution, there is no shift-level proof to pair against owner interruptions.",
+        body: "Without completed daily execution, there is no shift-level proof to pair against what still routes back to you.",
         href: "/sops",
       })
     }
@@ -243,7 +244,7 @@ export async function getProofOfTransferData(): Promise<ProofOfTransferView> {
       (i) => i.status === "resolved" && !i.owner_required
     )
     const complaintsNeedingOwner = complaints.filter(
-      (i) => i.owner_required && (i.status === "open" || i.status === "in_progress")
+      (i) => i.owner_required && isIssueUnresolved(i.status)
     )
 
     if (resolvedTeamComplaints.length >= 1) {
@@ -257,7 +258,7 @@ export async function getProofOfTransferData(): Promise<ProofOfTransferView> {
     }
 
     const ownerBottlenecks = issues.filter(
-      (i) => i.owner_required && (i.status === "open" || i.status === "in_progress")
+      (i) => i.owner_required && isIssueUnresolved(i.status)
     )
 
     if (ownerBottlenecks.length >= 1) {

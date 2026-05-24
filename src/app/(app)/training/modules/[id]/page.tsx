@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/server"
 import { AppPageHeader } from "@/components/app-page-header"
 import { TrainingModuleDeleteButton } from "@/components/training/training-module-delete-button"
 import { TrainingModuleSopsEditor } from "@/components/training/training-module-sops-editor"
+import { TrainingPortalInvitePanel } from "@/components/training/portal/training-portal-invite-panel"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -99,6 +100,24 @@ export default async function TrainingModuleDetailPage({
       <div className="mt-2 flex flex-wrap gap-2">
         <Badge variant="outline">{formatTrainingRole(mod.assigned_role)}</Badge>
       </div>
+
+      {owner ? (
+        <div className="mt-8">
+          <TrainingPortalInvitePanel
+            businessId={business.id}
+            moduleId={mod.id}
+            moduleTitle={mod.title}
+            businessName={business.name}
+            team={profiles
+              .filter((p) => p.business_id === business.id || p.id === business.owner_id)
+              .map((p) => ({
+                id: p.id,
+                full_name: p.full_name,
+                email: null,
+              }))}
+          />
+        </div>
+      ) : null}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <Card className="border-border/60">

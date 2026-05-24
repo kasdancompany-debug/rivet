@@ -28,6 +28,7 @@ const publicPaths = new Set([
 function isPublicPath(pathname: string) {
   if (publicPaths.has(pathname)) return true
   if (pathname.startsWith("/auth")) return true
+  if (pathname.startsWith("/learn/join/")) return true
   if (pathname === "/api/stripe/webhook") return true
   return false
 }

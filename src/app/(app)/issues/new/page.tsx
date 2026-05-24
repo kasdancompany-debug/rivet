@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
+import { fetchBusinessForCurrentUser, fetchProfilesForCurrentBusiness, listIssuesForBusiness } from "@/lib/db/queries"
 import { COPY } from "@/lib/interface-copy"
 import { getServerAuthUser, requireAuthUser } from "@/lib/auth/server-auth"
 import { createClient } from "@/lib/supabase/server"
@@ -36,6 +36,11 @@ export default async function NewIssuePage() {
     )
   }
 
+  const [scoringHistory, profiles] = await Promise.all([
+    listIssuesForBusiness(business.id, {}, supabase),
+    fetchProfilesForCurrentBusiness(supabase),
+  ])
+
   const fetchLines: RouteFetchLine[] = [
     lineForWorkspaceLinked(true),
     { label: "New issue form", status: "ok", detail: "Workspace linked; form posts to issues." },
@@ -49,7 +54,7 @@ export default async function NewIssuePage() {
           title={COPY.issues.newTitle}
           description={COPY.issues.newSuccessDescription}
         />
-        <IssueCreateForm businessId={business.id} />
+        <IssueCreateForm businessId={business.id} scoringHistory={scoringHistory} profiles={profiles} />
       </>
     </DashboardRouteShell>
   )

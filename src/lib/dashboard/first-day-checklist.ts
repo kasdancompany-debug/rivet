@@ -88,8 +88,8 @@ export function buildFirstDayChecklist(input: {
     },
     {
       id: "interruption",
-      label: "Log one owner interruption",
-      detail: "One text, call, or walk-up—so Rivet can measure load.",
+      label: "Log one pull routed back to you",
+      detail: "One approval, question, or decision—so Rivet can measure where the system is unfinished.",
       href: "/interruptions",
       done: interruptionLogged,
     },

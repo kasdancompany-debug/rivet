@@ -40,7 +40,7 @@ export default async function InterruptionsPage() {
   const fetchLines: RouteFetchLine[] = [
     lineForWorkspaceLinked(true),
     {
-      label: "Owner interruptions (14d window)",
+      label: `${COPY.interruptions.featureTitle} (14d window)`,
       status: view.recent.length === 0 && view.interruptionsThisWeek === 0 ? "empty" : "ok",
       detail: `This week: ${view.interruptionsThisWeek} events · ${view.recent.length} recent row(s) in feed.`,
       missing:
@@ -59,7 +59,7 @@ export default async function InterruptionsPage() {
           description={COPY.interruptions.description}
           actions={
             <Button className="h-11" nativeButton={false} render={<Link href="/interruptions/log" />}>
-              {COPY.interruptions.logTitle}
+              {view.recent.length === 0 ? COPY.interruptions.logFirstPullCta : COPY.interruptions.logTitle}
             </Button>
           }
         />

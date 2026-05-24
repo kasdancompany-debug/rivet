@@ -1,10 +1,16 @@
 import Link from "next/link"
 
 import { formatSopCategory } from "@/lib/sops/categories"
-import { dependencyLabel, importanceLabel, statusLabel } from "@/lib/sops/labels"
+import { importanceLabel, statusLabel } from "@/lib/sops/labels"
+import { SopActivityFeedBlock } from "@/components/sops/sop-activity-feed-block"
+import { SopDependencyRiskBlock } from "@/components/sops/sop-dependency-risk-block"
+import { SopImpactIfMissingBlock } from "@/components/sops/sop-impact-if-missing-block"
+import { SopPlayCompletionBlock } from "@/components/sops/sop-play-completion-block"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import type { SopPlayCompletion } from "@/lib/sops/sop-play-completion"
+import type { SopActivityFeed } from "@/lib/sops/sop-activity-feed"
 import type { Tables } from "@/types/database"
 
 function statusBadgeClass(status: Tables<"standards">["status"]) {
@@ -18,13 +24,17 @@ function statusBadgeClass(status: Tables<"standards">["status"]) {
   }
 }
 
-export function SopCard({ sop }: { sop: Tables<"standards"> }) {
-  const updated = new Date(sop.updated_at).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-
+export function SopCard({
+  sop,
+  stepCount,
+  playCompletion,
+  activityFeed,
+}: {
+  sop: Tables<"standards">
+  stepCount?: number
+  playCompletion: SopPlayCompletion
+  activityFeed: SopActivityFeed
+}) {
   return (
     <Link href={`/sops/${sop.id}`} className="group block outline-none">
       <Card
@@ -50,29 +60,24 @@ export function SopCard({ sop }: { sop: Tables<"standards"> }) {
             {sop.title}
           </h2>
         </CardHeader>
-        <CardContent className="space-y-3 px-5 py-4">
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
-                Importance
-              </p>
-              <p className="mt-0.5 font-medium text-foreground">
-                {sop.importance_level}/5 · {importanceLabel(sop.importance_level)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
-                Depends on you
-              </p>
-              <p className="mt-0.5 font-medium text-foreground">
-                {sop.owner_dependency_level}/5
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {dependencyLabel(sop.owner_dependency_level)}
-              </p>
+        <CardContent className="space-y-4 px-5 py-4">
+          <div>
+            <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
+              Importance
+            </p>
+            <p className="mt-0.5 font-medium text-foreground">
+              {sop.importance_level}/5 · {importanceLabel(sop.importance_level)}
+            </p>
+            <div className="mt-3">
+              <SopImpactIfMissingBlock sop={sop} />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Last updated {updated}</p>
+
+          <SopPlayCompletionBlock completion={playCompletion} />
+
+          <SopDependencyRiskBlock sop={sop} stepCount={stepCount} playCompletion={playCompletion} />
+
+          <SopActivityFeedBlock feed={activityFeed} />
         </CardContent>
       </Card>
     </Link>

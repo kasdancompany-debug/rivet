@@ -1,5 +1,6 @@
 import type { Tables } from "@/types/database"
 
+import { isIssueUnresolved } from "@/lib/issues/constants"
 import type {
   RivetCategoryScore,
   RivetIndexCategoryId,
@@ -91,7 +92,7 @@ function scoreOperations(ctx: RivetIndexComputeContext): { score: number | null;
 }
 
 function scoreProductQuality(ctx: RivetIndexComputeContext): { score: number | null; hint: string } {
-  const open = ctx.bottlenecks.filter((i) => i.status === "open" || i.status === "in_progress")
+  const open = ctx.bottlenecks.filter((i) => isIssueUnresolved(i.status))
   const pq = open.filter((i) => i.category === "product_quality" || i.category === "equipment")
   const ownerPq = pq.filter((i) => i.owner_required)
   const score = clamp(Math.round(ownerPq.length * 18 + pq.length * 7), 0, 100)
@@ -105,7 +106,7 @@ function scoreProductQuality(ctx: RivetIndexComputeContext): { score: number | n
 }
 
 function scoreCustomerExperience(ctx: RivetIndexComputeContext): { score: number | null; hint: string } {
-  const open = ctx.bottlenecks.filter((i) => i.status === "open" || i.status === "in_progress")
+  const open = ctx.bottlenecks.filter((i) => isIssueUnresolved(i.status))
   const cx = open.filter((i) => i.category === "customer_complaint" || i.category === "staff_question")
   const ownerCx = cx.filter((i) => i.owner_required)
   const score = clamp(Math.round(ownerCx.length * 20 + cx.length * 6), 0, 100)
@@ -169,7 +170,7 @@ function scoreLeadershipRedundancy(ctx: RivetIndexComputeContext): { score: numb
       const score = clamp(38 + interruptLift, 0, 100)
       return {
         score,
-        hint: `${ctx.ownerInterruptionsThisWeekCount} owner interruption(s) this week with no readiness rows—log who can open alone.`,
+        hint: `${ctx.ownerInterruptionsThisWeekCount} pull(s) routed back to you this week with no readiness rows—log who can open alone.`,
       }
     }
     return {
@@ -234,7 +235,7 @@ function buildWarnings(
 ): string[] {
   const out: string[] = []
   const openOwner = ctx.bottlenecks.filter(
-    (i) => i.owner_required && (i.status === "open" || i.status === "in_progress")
+    (i) => i.owner_required && isIssueUnresolved(i.status)
   )
   if (openOwner.length >= 3) {
     out.push(`${openOwner.length} owner-required issues are still unresolved—approvals are backing up.`)
@@ -350,7 +351,7 @@ export function computeRivetIndex(ctx: RivetIndexComputeContext): Omit<RivetInde
   let headlineAnswer = ""
   if (dependencyScore == null) {
     headlineAnswer =
-      "Not enough data yet—add procedures, training, or log owner interruptions so Rivet can score your business."
+      "Not enough data yet—add procedures, training, or log what still routes back to you so Rivet can score your business."
   } else if (autonomyLikelihood != null && autonomyLikelihood >= 72) {
     headlineAnswer =
       "Most days the team can run routine work without pulling you in for every decision."

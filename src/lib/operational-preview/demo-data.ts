@@ -5,7 +5,7 @@ export const DEMO_OPENING_LINES = [
   { id: "2", text: "Espresso grinder dial & burr check (photo if adjusted)", done: true },
   { id: "3", text: "Pastry case temps logged — corrective action if out of band", done: false },
   { id: "4", text: "First-hour line-of-sight: floor dry, mats secure, spill kit stocked", done: false },
-  { id: "5", text: "Open Bottlenecks queue — log anything that blocked open", done: false },
+  { id: "5", text: "Open Things still chasing you — log anything that blocked open", done: false },
 ] as const
 
 export const DEMO_QUALITY_AUDIT = [

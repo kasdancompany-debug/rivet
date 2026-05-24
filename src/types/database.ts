@@ -24,9 +24,19 @@ export type DailyChecklistType =
 
 export type DailyRunStatus = "in_progress" | "completed" | "abandoned"
 
-export type IssueStatus = "open" | "in_progress" | "resolved"
+export type IssueStatus = "not_started" | "investigating" | "fix_in_progress" | "resolved"
 /** DB column still uses enum `issue_status` on bottlenecks */
 export type BottleneckStatus = IssueStatus
+
+export type IssueLinkKind = "standard" | "training_module" | "owner_interruption" | "staff_member"
+
+export type IssueLifecycleStage =
+  | "logged"
+  | "pattern_detected"
+  | "fix_suggested"
+  | "training_assigned"
+  | "progress_tracked"
+  | "dependency_updated"
 
 export type OwnerInterruptionKind =
   | "staff_ping"
@@ -34,6 +44,22 @@ export type OwnerInterruptionKind =
   | "judgment_call"
   | "unresolved_issue"
   | "owner_escalation"
+
+export type OwnerInterruptionUrgency = "can_wait" | "today" | "time_sensitive" | "right_now"
+
+export type OwnerInterruptionSeverity = "small_pull" | "medium_pull" | "heavy_pull" | "emergency"
+
+export type InterruptionActionPlanStatus = "draft" | "approved" | "published" | "dismissed"
+
+export type InterruptionActionFixType = "sop" | "training_module"
+
+export type OwnerInterruptionSource =
+  | "text_message"
+  | "phone_call"
+  | "in_person"
+  | "slack"
+  | "email"
+  | "other"
 
 export type EscapePlanStatus = "active" | "completed" | "archived"
 
@@ -50,6 +76,12 @@ export type ReadinessBadge =
   | "ready_with_support"
   | "fully_ready"
 
+export type DelegationReadinessStatus = "ready" | "needs_work"
+
+export type ManagerObservationType = "positive" | "improvement" | "critical"
+
+export type TrainingInviteChannel = "email" | "sms" | "link"
+
 export type Database = {
   public: {
     Tables: {
@@ -61,6 +93,7 @@ export type Database = {
           industry_template_id: string | null
           template_installed_at: string | null
           owner_id: string
+          owner_hourly_value_cad: number | null
           created_at: string
           updated_at: string
         }
@@ -71,6 +104,7 @@ export type Database = {
           industry_template_id?: string | null
           template_installed_at?: string | null
           owner_id: string
+          owner_hourly_value_cad?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -81,6 +115,7 @@ export type Database = {
           industry_template_id?: string | null
           template_installed_at?: string | null
           owner_id?: string
+          owner_hourly_value_cad?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -319,6 +354,7 @@ export type Database = {
           estimated_time_minutes: number | null
           status: StandardStatus
           standards_capture: Json
+          quiz_questions: Json
           created_by: string
           created_at: string
           updated_at: string
@@ -334,6 +370,7 @@ export type Database = {
           estimated_time_minutes?: number | null
           status?: StandardStatus
           standards_capture?: Json
+          quiz_questions?: Json
           created_by: string
           created_at?: string
           updated_at?: string
@@ -349,6 +386,7 @@ export type Database = {
           estimated_time_minutes?: number | null
           status?: StandardStatus
           standards_capture?: Json
+          quiz_questions?: Json
           created_by?: string
           created_at?: string
           updated_at?: string
@@ -364,6 +402,10 @@ export type Database = {
           instructions: string
           media_url: string | null
           requires_photo_confirmation: boolean
+          estimated_time_minutes: number | null
+          is_critical: boolean
+          verification: string | null
+          notes: string | null
           created_at: string
           updated_at: string
         }
@@ -375,6 +417,10 @@ export type Database = {
           instructions?: string
           media_url?: string | null
           requires_photo_confirmation?: boolean
+          estimated_time_minutes?: number | null
+          is_critical?: boolean
+          verification?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -386,6 +432,10 @@ export type Database = {
           instructions?: string
           media_url?: string | null
           requires_photo_confirmation?: boolean
+          estimated_time_minutes?: number | null
+          is_critical?: boolean
+          verification?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -504,6 +554,90 @@ export type Database = {
           training_module_id?: string
           status?: TrainingProgressStatus
           completed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      training_portal_invites: {
+        Row: {
+          id: string
+          business_id: string
+          training_module_id: string
+          employee_id: string | null
+          token: string
+          recipient_email: string | null
+          recipient_phone: string | null
+          channel: TrainingInviteChannel
+          created_by: string
+          expires_at: string
+          last_opened_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          training_module_id: string
+          employee_id?: string | null
+          token: string
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          channel?: TrainingInviteChannel
+          created_by: string
+          expires_at?: string
+          last_opened_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          training_module_id?: string
+          employee_id?: string | null
+          token?: string
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          channel?: TrainingInviteChannel
+          created_by?: string
+          expires_at?: string
+          last_opened_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      training_sop_progress: {
+        Row: {
+          id: string
+          business_id: string
+          employee_id: string
+          training_item_id: string
+          step_checklist: Json
+          video_watched_at: string | null
+          quiz_passed: boolean
+          quiz_answers: Json
+          photo_proofs: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          employee_id: string
+          training_item_id: string
+          step_checklist?: Json
+          video_watched_at?: string | null
+          quiz_passed?: boolean
+          quiz_answers?: Json
+          photo_proofs?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          employee_id?: string
+          training_item_id?: string
+          step_checklist?: Json
+          video_watched_at?: string | null
+          quiz_passed?: boolean
+          quiz_answers?: Json
+          photo_proofs?: Json
           updated_at?: string
         }
         Relationships: []
@@ -642,6 +776,8 @@ export type Database = {
           description: string | null
           status: IssueStatus
           owner_required: boolean
+          owner_id: string | null
+          due_date: string | null
           created_at: string
           resolved_at: string | null
           execution_record_id: string | null
@@ -657,6 +793,8 @@ export type Database = {
           description?: string | null
           status?: IssueStatus
           owner_required?: boolean
+          owner_id?: string | null
+          due_date?: string | null
           created_at?: string
           resolved_at?: string | null
           execution_record_id?: string | null
@@ -672,10 +810,69 @@ export type Database = {
           description?: string | null
           status?: IssueStatus
           owner_required?: boolean
+          owner_id?: string | null
+          due_date?: string | null
           created_at?: string
           resolved_at?: string | null
           execution_record_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      issue_links: {
+        Row: {
+          id: string
+          bottleneck_id: string
+          business_id: string
+          kind: IssueLinkKind
+          target_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          bottleneck_id: string
+          business_id: string
+          kind: IssueLinkKind
+          target_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          bottleneck_id?: string
+          business_id?: string
+          kind?: IssueLinkKind
+          target_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      issue_lifecycle_events: {
+        Row: {
+          id: string
+          bottleneck_id: string
+          business_id: string
+          stage: IssueLifecycleStage
+          detail: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          bottleneck_id: string
+          business_id: string
+          stage: IssueLifecycleStage
+          detail?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          bottleneck_id?: string
+          business_id?: string
+          stage?: IssueLifecycleStage
+          detail?: string | null
+          metadata?: Json
+          created_at?: string
         }
         Relationships: []
       }
@@ -688,6 +885,8 @@ export type Database = {
           summary: string
           detail: string | null
           estimated_minutes: number
+          urgency: OwnerInterruptionUrgency
+          source: OwnerInterruptionSource
           related_bottleneck_id: string | null
           occurred_at: string
           created_at: string
@@ -701,6 +900,8 @@ export type Database = {
           summary: string
           detail?: string | null
           estimated_minutes?: number
+          urgency?: OwnerInterruptionUrgency
+          source?: OwnerInterruptionSource
           related_bottleneck_id?: string | null
           occurred_at?: string
           created_at?: string
@@ -714,9 +915,182 @@ export type Database = {
           summary?: string
           detail?: string | null
           estimated_minutes?: number
+          urgency?: OwnerInterruptionUrgency
+          source?: OwnerInterruptionSource
           related_bottleneck_id?: string | null
           occurred_at?: string
           created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      interruption_action_plans: {
+        Row: {
+          id: string
+          business_id: string
+          interruption_id: string
+          status: InterruptionActionPlanStatus
+          fix_type: InterruptionActionFixType
+          root_cause: string
+          suggested_title: string
+          suggested_description: string | null
+          related_standard_id: string | null
+          related_module_id: string | null
+          draft_standard_id: string | null
+          draft_module_id: string | null
+          affected_people: Json
+          ai_payload: Json
+          approved_by: string | null
+          approved_at: string | null
+          published_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          interruption_id: string
+          status?: InterruptionActionPlanStatus
+          fix_type: InterruptionActionFixType
+          root_cause: string
+          suggested_title: string
+          suggested_description?: string | null
+          related_standard_id?: string | null
+          related_module_id?: string | null
+          draft_standard_id?: string | null
+          draft_module_id?: string | null
+          affected_people?: Json
+          ai_payload?: Json
+          approved_by?: string | null
+          approved_at?: string | null
+          published_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          interruption_id?: string
+          status?: InterruptionActionPlanStatus
+          fix_type?: InterruptionActionFixType
+          root_cause?: string
+          suggested_title?: string
+          suggested_description?: string | null
+          related_standard_id?: string | null
+          related_module_id?: string | null
+          draft_standard_id?: string | null
+          draft_module_id?: string | null
+          affected_people?: Json
+          ai_payload?: Json
+          approved_by?: string | null
+          approved_at?: string | null
+          published_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employee_standard_quiz_completions: {
+        Row: {
+          id: string
+          business_id: string
+          employee_id: string
+          standard_id: string
+          score: number
+          passed: boolean
+          answers: Json
+          completed_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          employee_id: string
+          standard_id: string
+          score: number
+          passed?: boolean
+          answers?: Json
+          completed_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          employee_id?: string
+          standard_id?: string
+          score?: number
+          passed?: boolean
+          answers?: Json
+          completed_at?: string
+        }
+        Relationships: []
+      }
+      employee_manager_observations: {
+        Row: {
+          id: string
+          business_id: string
+          employee_id: string
+          observed_by: string
+          observation_type: ManagerObservationType
+          notes: string
+          observed_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          employee_id: string
+          observed_by: string
+          observation_type: ManagerObservationType
+          notes: string
+          observed_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          employee_id?: string
+          observed_by?: string
+          observation_type?: ManagerObservationType
+          notes?: string
+          observed_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      employee_module_certifications: {
+        Row: {
+          id: string
+          business_id: string
+          employee_id: string
+          training_module_id: string
+          module_completed_at: string | null
+          quizzes_passed_at: string | null
+          manager_signed_off_at: string | null
+          manager_signed_off_by: string | null
+          certified_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          employee_id: string
+          training_module_id: string
+          module_completed_at?: string | null
+          quizzes_passed_at?: string | null
+          manager_signed_off_at?: string | null
+          manager_signed_off_by?: string | null
+          certified_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          employee_id?: string
+          training_module_id?: string
+          module_completed_at?: string | null
+          quizzes_passed_at?: string | null
+          manager_signed_off_at?: string | null
+          manager_signed_off_by?: string | null
+          certified_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -751,6 +1125,10 @@ export type Database = {
           close_alone: ReadinessBadge
           train_others: ReadinessBadge
           handle_complaints: ReadinessBadge
+          open_alone_override: DelegationReadinessStatus | null
+          close_alone_override: DelegationReadinessStatus | null
+          train_others_override: DelegationReadinessStatus | null
+          handle_complaints_override: DelegationReadinessStatus | null
           updated_at: string
         }
         Insert: {
@@ -761,6 +1139,10 @@ export type Database = {
           close_alone?: ReadinessBadge
           train_others?: ReadinessBadge
           handle_complaints?: ReadinessBadge
+          open_alone_override?: DelegationReadinessStatus | null
+          close_alone_override?: DelegationReadinessStatus | null
+          train_others_override?: DelegationReadinessStatus | null
+          handle_complaints_override?: DelegationReadinessStatus | null
           updated_at?: string
         }
         Update: {
@@ -771,6 +1153,10 @@ export type Database = {
           close_alone?: ReadinessBadge
           train_others?: ReadinessBadge
           handle_complaints?: ReadinessBadge
+          open_alone_override?: DelegationReadinessStatus | null
+          close_alone_override?: DelegationReadinessStatus | null
+          train_others_override?: DelegationReadinessStatus | null
+          handle_complaints_override?: DelegationReadinessStatus | null
           updated_at?: string
         }
         Relationships: []
@@ -1023,16 +1409,29 @@ export type Database = {
         Args: { p_name: string; p_industry?: string; p_display_name?: string }
         Returns: string
       }
+      resolve_training_invite: {
+        Args: { p_token: string }
+        Returns: Json
+      }
     }
     Enums: {
       standard_status: StandardStatus
       business_member_role: BusinessMemberRole
       training_progress_status: TrainingProgressStatus
+      training_invite_channel: TrainingInviteChannel
       daily_checklist_type: DailyChecklistType
       daily_run_status: DailyRunStatus
       issue_status: IssueStatus
+      issue_link_kind: IssueLinkKind
+      issue_lifecycle_stage: IssueLifecycleStage
       owner_interruption_kind: OwnerInterruptionKind
+      owner_interruption_urgency: OwnerInterruptionUrgency
+      owner_interruption_source: OwnerInterruptionSource
+      interruption_action_plan_status: InterruptionActionPlanStatus
+      interruption_action_fix_type: InterruptionActionFixType
       readiness_badge: ReadinessBadge
+      delegation_readiness_status: DelegationReadinessStatus
+      manager_observation_type: ManagerObservationType
     }
   }
 }

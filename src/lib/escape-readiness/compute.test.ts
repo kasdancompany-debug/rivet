@@ -38,7 +38,7 @@ describe("computeEscapeReadiness", () => {
     const view = computeEscapeReadiness(baseCtx())
     expect(view.score).toBeNull()
     expect(view.factors).toHaveLength(5)
-    expect(view.topFixes).toHaveLength(3)
+    expect(view.fastestPathToFreedom).toHaveLength(3)
   })
 
   it("averages five factor inputs into escape readiness score", () => {
@@ -85,7 +85,7 @@ describe("computeEscapeReadinessFromScan", () => {
       "owner_interruptions",
       "undocumented_procedures",
     ])
-    expect(view.topFixes).toHaveLength(3)
+    expect(view.fastestPathToFreedom).toHaveLength(3)
     expect(view.tagline).toContain("run without everything going through you")
   })
 })

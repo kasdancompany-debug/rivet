@@ -109,7 +109,7 @@ export function defaultEscapePlanTaskSeeds(): EscapePlanTaskSeed[] {
     {
       week_number: 3,
       task_key: "w3_issues_not_texts",
-      title: "Bottlenecks are logged in the system instead of texted to you",
+      title: "Things still chasing you are logged in the system instead of texted to you",
       description:
         "Channel interruptions into a queue the team can see and close. You review in batch, not in real time.",
       sort_order: 2,

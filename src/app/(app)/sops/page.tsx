@@ -3,7 +3,9 @@ import Link from "next/link"
 import { AlertTriangle, BookOpen, Clapperboard, Library } from "lucide-react"
 
 import { COPY } from "@/lib/interface-copy"
-import { fetchBusinessForCurrentUser, listSopsForBusiness } from "@/lib/db/queries"
+import { fetchBusinessForCurrentUser, listSopsForBusiness, fetchSopPlayCompletionContextForBusiness, fetchSopActivityContextForBusiness } from "@/lib/db/queries"
+import { buildSopPlayCompletionMap } from "@/lib/sops/sop-play-completion"
+import { buildSopActivityFeedMap } from "@/lib/sops/sop-activity-feed"
 import { lineForWorkspaceLinked } from "@/lib/route-reliability/diagnostic-builders"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
 import { isSopCategory } from "@/lib/sops/categories"
@@ -52,6 +54,12 @@ export default async function SopsPage({
   const sops = await listSopsForBusiness(business.id, {
     category: categoryFilter,
   })
+  const [completionContext, activityContext] = await Promise.all([
+    fetchSopPlayCompletionContextForBusiness(business.id, supabase),
+    fetchSopActivityContextForBusiness(business.id, supabase),
+  ])
+  const playCompletionBySopId = buildSopPlayCompletionMap(sops, completionContext)
+  const activityFeedBySopId = buildSopActivityFeedMap(sops, activityContext)
 
   const fetchLines: RouteFetchLine[] = [
     lineForWorkspaceLinked(true),
@@ -142,7 +150,12 @@ export default async function SopsPage({
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {sops.map((sop) => (
                 <li key={sop.id}>
-                  <SopCard sop={sop} />
+                  <SopCard
+                    sop={sop}
+                    stepCount={completionContext.stepRollupBySopId.get(sop.id)?.stepCount}
+                    playCompletion={playCompletionBySopId.get(sop.id)!}
+                    activityFeed={activityFeedBySopId.get(sop.id)!}
+                  />
                 </li>
               ))}
             </ul>

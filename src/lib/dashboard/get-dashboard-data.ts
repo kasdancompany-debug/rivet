@@ -2,19 +2,28 @@ import type { DashboardViewModel, OwnerRiskItem } from "@/lib/dashboard/types"
 import { buildLoadErrorDashboardViewModel, buildSetupDashboardViewModel } from "@/lib/dashboard/setup-model"
 import { COPY } from "@/lib/interface-copy"
 import {
+  countCompletedExecutionRecordsByEmployee,
   fetchBusinessForCurrentUser,
   fetchCurrentProfile,
   fetchLatestDependencyAssessment,
   listEmployeeReadinessForBusiness,
   listTrainingProgressForBusinessModules,
+  listEmployeeModuleCertificationsForEmployeeIds,
+  listEmployeeStandardQuizCompletionsForEmployeeIds,
+  listManagerObservationsForEmployeeIds,
+  listTrainingSopCompletionsForEmployeeIds,
   listIssuesForBusiness,
   listOwnerInterruptionsForBusinessSince,
   listRecentCompletedExecutionRecords,
   listSopsForBusiness,
+  listTrainingModulesDeepForBusiness,
   listTrainingModulesForBusiness,
 } from "@/lib/db/queries"
 import { computeStandardsDepthPercent } from "@/lib/dashboard/standards-depth"
+import { buildBiggestRisksThisWeek } from "@/lib/dashboard/biggest-risks-this-week"
+import { isIssueUnresolved } from "@/lib/issues/constants"
 import { buildFirstDayChecklist } from "@/lib/dashboard/first-day-checklist"
+import { countEmployeesEffectiveReady } from "@/lib/training/build-views"
 import { computeEscapeReadiness } from "@/lib/escape-readiness/compute"
 import { escapeProgressFromAutonomyTrend } from "@/lib/escape-readiness/enrichment"
 import { categoryScoresRecord, computeRivetIndex } from "@/lib/rivet-score/compute"
@@ -107,10 +116,10 @@ function pickNextBestMove(risks: OwnerRiskItem[]): DashboardViewModel["nextBestM
   }
   if (first.category === "issue") {
     return {
-      title: "Clear open quality bottleneck",
+      title: "Clear something still chasing you",
       description: first.detail,
       href: "/issues",
-      cta: "Open bottlenecks",
+      cta: COPY.nav.bottlenecks,
     }
   }
   return {
@@ -217,8 +226,7 @@ function buildOwnerRisksFromLive(
   }
 
   const ownerIssues = bottlenecks.filter(
-    (i) =>
-      i.owner_required && (i.status === "open" || i.status === "in_progress")
+    (i) => i.owner_required && isIssueUnresolved(i.status)
   )
   for (const issue of ownerIssues.slice(0, 2)) {
     risks.push({
@@ -341,14 +349,10 @@ export async function getDashboardData(): Promise<DashboardViewModel> {
         ? null
         : Math.round((completedAssignments / totalAssignments) * 100)
 
-    const openIssues = bottlenecks.filter((i) => i.status === "open")
-    const unresolvedIssues = bottlenecks.filter(
-      (i) => i.status === "open" || i.status === "in_progress"
-    )
+    const openIssues = bottlenecks.filter((i) => i.status === "not_started")
+    const unresolvedIssues = bottlenecks.filter((i) => isIssueUnresolved(i.status))
     const ownerTasks = bottlenecks.filter(
-      (i) =>
-        i.owner_required &&
-        (i.status === "open" || i.status === "in_progress")
+      (i) => i.owner_required && isIssueUnresolved(i.status)
     )
     const ownerRequiredOpenIssues = ownerTasks.slice(0, 5).map((i) => ({
       id: i.id,
@@ -411,6 +415,69 @@ export async function getDashboardData(): Promise<DashboardViewModel> {
     const trainingIncompleteCount = progressForBusiness.filter(
       (p) => p.status !== "completed"
     ).length
+
+    const trainingItemsBySopId = new Map<string, number>()
+    const moduleCompletionPercent = new Map<string, number>()
+    if (moduleIds.size > 0) {
+      const { data: itemRows } = await supabase
+        .from("training_items")
+        .select("standard_id, module_id")
+        .in("module_id", [...moduleIds])
+
+      for (const row of itemRows ?? []) {
+        const sid = row.standard_id as string
+        trainingItemsBySopId.set(sid, (trainingItemsBySopId.get(sid) ?? 0) + 1)
+      }
+
+      for (const moduleId of moduleIds) {
+        const assigned = progressForBusiness.filter((p) => p.training_module_id === moduleId)
+        if (assigned.length === 0) continue
+        const done = assigned.filter((p) => p.status === "completed").length
+        moduleCompletionPercent.set(moduleId, Math.round((done / assigned.length) * 100))
+      }
+    }
+
+    const biggestRisksThisWeek = buildBiggestRisksThisWeek({
+      standards,
+      stepRollupBySopId,
+      mediaCountBySopId,
+      trainingProgressPercent,
+      trainingIncompleteCount,
+      totalTrainingAssignments: totalAssignments,
+      canTrainOthersCount: await (async () => {
+        if (teamProfileCount < 2) return 0
+        const teamIdsList = [...teamIds]
+        const [deepModules, completions, executionCounts, quizCompletions, certificationRows, observationRows] =
+          await Promise.all([
+          listTrainingModulesDeepForBusiness(businessId, supabase),
+          listTrainingSopCompletionsForEmployeeIds(teamIdsList, supabase),
+          countCompletedExecutionRecordsByEmployee(businessId, supabase),
+          listEmployeeStandardQuizCompletionsForEmployeeIds(teamIdsList, supabase),
+          listEmployeeModuleCertificationsForEmployeeIds(teamIdsList, supabase),
+          listManagerObservationsForEmployeeIds(teamIdsList, supabase),
+        ])
+        const modulesById = new Map(deepModules.map((m) => [m.id, m]))
+        return countEmployeesEffectiveReady(
+          teamIdsList.map((id) => ({ id })),
+          progressForBusiness,
+          modulesById,
+          completions,
+          readinessRows,
+          executionCounts,
+          quizCompletions,
+          certificationRows,
+          observationRows,
+          new Map(),
+          "train_others"
+        )
+      })(),
+      teamProfileCount,
+      ownerInterruptionsThisWeekCount,
+      ownerInterruptionsThisWeekMinutes,
+      trainingItemsBySopId,
+      modules,
+      moduleCompletionPercent,
+    })
 
     const runStats = await aggregateDailyRunCompletionLastDays(businessId, 14, supabase)
 
@@ -575,6 +642,7 @@ export async function getDashboardData(): Promise<DashboardViewModel> {
       riskLevel: level,
       riskLevelCaption: caption,
       ownerRisks: risksDisplay,
+      biggestRisksThisWeek,
       nextBestMove,
       rivetIndex,
       escapeReadiness,

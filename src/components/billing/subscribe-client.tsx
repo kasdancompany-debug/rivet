@@ -50,7 +50,7 @@ export function SubscribeClient({
               Signed in as <span className="font-medium text-foreground">{email || "your account"}</span>.
             </span>
             <span className="block text-muted-foreground">
-              Includes procedures, training, owner-interruption log, bottlenecks, escape readiness score, and owner overview. One payment—no monthly subscription.
+              Includes procedures, training, logging what still routes back to you, bottlenecks, escape readiness score, and owner overview. One payment—no monthly subscription.
             </span>
           </CardDescription>
         </CardHeader>

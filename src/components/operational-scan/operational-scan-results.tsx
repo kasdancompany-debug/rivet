@@ -91,7 +91,7 @@ function buildEmailScanBody(answers: OperationalScanAnswers, result: Operational
     ``,
     `Owner Dependency Score: ${result.ownerDependencyScore}/100`,
     `Severity: ${formatSeverityLabel(result.severity)}`,
-    `Est. owner interruptions / month: ~${result.estimatedInterruptionsPerMonth}`,
+    `Est. routed back to you / month: ~${result.estimatedInterruptionsPerMonth}`,
     `Est. owner hours lost / month: ~${result.estimatedOwnerHoursLostPerMonth}h`,
     `Est. annual cost: ${formatCurrencyCad(result.estimatedAnnualCost)}`,
     ``,
@@ -163,7 +163,7 @@ export function OperationalScanResults({
 
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
             <CostStat
-              label="Est. owner interruptions / month"
+              label="Est. routed back to you / month"
               value={`~${result.estimatedInterruptionsPerMonth}`}
               sub="Texts, calls, walk-ups, repeats."
             />

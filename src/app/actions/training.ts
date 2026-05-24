@@ -10,7 +10,7 @@ import {
 } from "@/lib/db/queries"
 import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
 import { createClient } from "@/lib/supabase/server"
-import type { ReadinessBadge, TablesUpdate, TypedSupabaseClient } from "@/types/database"
+import type { DelegationReadinessStatus, ReadinessBadge, TablesUpdate, TypedSupabaseClient } from "@/types/database"
 
 const READINESS_VALUES = new Set<ReadinessBadge>([
   "not_ready",
@@ -264,6 +264,43 @@ export async function toggleTrainingSopCompletion(payload: {
   }
 }
 
+export async function setReadinessOverride(payload: {
+  businessId: string
+  employeeId: string
+  field: "open_alone" | "close_alone" | "train_others" | "handle_complaints"
+  value: "ready" | "needs_work" | null
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const supabase = await createClient()
+    const gate = await requireWorkspaceOwner(supabase)
+    if (!gate.ok) return gate
+
+    const column = `${payload.field}_override` as
+      | "open_alone_override"
+      | "close_alone_override"
+      | "train_others_override"
+      | "handle_complaints_override"
+
+    const patch: TablesUpdate<"employee_readiness"> = {
+      updated_at: new Date().toISOString(),
+      [column]: payload.value,
+    }
+
+    const { error } = await supabase
+      .from("employee_readiness")
+      .update(patch)
+      .eq("business_id", payload.businessId)
+      .eq("employee_id", payload.employeeId)
+
+    if (error) return { ok: false, message: error.message }
+    revalidateTraining()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Something went wrong." }
+  }
+}
+
+/** @deprecated Manual badge dropdown — use setReadinessOverride with calculated scores. */
 export async function updateEmployeeReadiness(payload: {
   businessId: string
   employeeId: string

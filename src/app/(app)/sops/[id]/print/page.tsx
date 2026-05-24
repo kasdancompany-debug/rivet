@@ -123,17 +123,33 @@ export default async function SopPrintPage({ params }: Props) {
         ) : (
           <ol className="sop-print-steps mt-3">
             {steps.map((step, i) => (
-              <li key={step.id} className="sop-print-step">
+              <li key={step.id} className={step.is_critical ? "sop-print-step sop-print-step-critical" : "sop-print-step"}>
                 <p className="text-[0.65rem] font-semibold uppercase tracking-wide sop-print-muted">
                   <span className="sop-print-step-num">{String(i + 1).padStart(2, "0")}</span>
+                  {step.is_critical ? (
+                    <span className="ml-2 normal-case">· Critical</span>
+                  ) : null}
                   {step.requires_photo_confirmation ? (
                     <span className="ml-2 normal-case">· Photo confirmation required</span>
+                  ) : null}
+                  {step.estimated_time_minutes != null ? (
+                    <span className="ml-2 normal-case">· ~{step.estimated_time_minutes} min</span>
                   ) : null}
                 </p>
                 <h3 className="text-base font-semibold leading-snug">{step.title}</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
                   {step.instructions?.trim() || "—"}
                 </p>
+                {step.verification?.trim() ? (
+                  <p className="mt-2 text-sm">
+                    <span className="font-medium">Verification:</span> {step.verification.trim()}
+                  </p>
+                ) : null}
+                {step.notes?.trim() ? (
+                  <p className="mt-2 text-sm sop-print-muted">
+                    <span className="font-medium text-foreground">Notes:</span> {step.notes.trim()}
+                  </p>
+                ) : null}
                 {step.media_url?.trim() ? (
                   <div className="mt-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-xs">
                     {step.media_url.trim().startsWith("/api/standard-media/") ? (

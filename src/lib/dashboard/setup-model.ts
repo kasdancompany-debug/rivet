@@ -44,6 +44,7 @@ export function buildSetupDashboardViewModel(): DashboardViewModel {
     riskLevel: "low",
     riskLevelCaption: COPY.dashboard.setupRiskCaption,
     ownerRisks: [],
+    biggestRisksThisWeek: [],
     nextBestMove: {
       title: COPY.dashboard.setupNextTitle,
       description: COPY.dashboard.setupNextDesc,

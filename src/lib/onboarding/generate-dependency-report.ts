@@ -1,4 +1,13 @@
 import type { OwnerOnboardingAnswers, TriState } from "./owner-intake"
+import {
+  computeDependencyBreakdown,
+  type DependencyBreakdown,
+} from "./dependency-breakdown"
+import { generateRivetInterpretation, type RivetInterpretation } from "./rivet-interpretation"
+import { detectOperationalStrengths } from "./detected-strengths"
+
+export type { DependencyBreakdown } from "./dependency-breakdown"
+export type { RivetInterpretation } from "./rivet-interpretation"
 
 export type DependencyBand = "contained" | "strained" | "critical"
 
@@ -7,7 +16,9 @@ export type OperationalDependencyReport = {
   band: DependencyBand
   headline: string
   subheadline: string
-  heardBullets: string[]
+  breakdown: DependencyBreakdown
+  strengths: string[]
+  interpretation: RivetInterpretation
   patternTitle: string
   patternBody: string
   uncomfortableTruth: string
@@ -83,8 +94,7 @@ export function computeDependencyIndex(a: OwnerOnboardingAnswers): number {
     timeOffStress(a.avoidedTimeOff) +
     standardsStress(a.standardsMode) +
     qualityStress(a.qualityOnOnePerson)
-  const max = 22 + 28 + 28 + 26 + 16 + 22 + 20
-  return Math.round(Math.min(100, Math.max(0, (raw / max) * 100)))
+  return Math.round(Math.min(100, Math.max(0, (raw / 162) * 100)))
 }
 
 function bandFromIndex(n: number): DependencyBand {
@@ -93,65 +103,13 @@ function bandFromIndex(n: number): DependencyBand {
   return "contained"
 }
 
-const DAYS_LABEL: Record<NonNullable<OwnerOnboardingAnswers["daysPerWeek"]>, string> = {
-  "0-2": "zero to two days",
-  "3-4": "three to four days",
-  "5-6": "five to six days",
-  "7": "seven days",
-}
-
-const TRI_LABEL: Record<NonNullable<TriState>, string> = {
-  yes: "Yes — reliably",
-  sometimes: "Sometimes / not confident",
-  no: "No — it still routes through you",
-}
-
-const INTERRUPT_LABEL: Record<NonNullable<OwnerOnboardingAnswers["staffInterrupts"]>, string> = {
-  rarely: "Rarely",
-  weekly: "A few times a week",
-  daily: "Most days",
-  constant: "All day — it never really stops",
-}
-
 export function generateOperationalDependencyReport(
   a: OwnerOnboardingAnswers
-): OperationalDependencyReport {
-  const dependencyIndex = computeDependencyIndex(a)
+): OperationalDependencyReport {  const dependencyIndex = computeDependencyIndex(a)
   const band = bandFromIndex(dependencyIndex)
   const breaks = a.breaksWhenYouLeave.trim()
 
-  const heardBullets: string[] = []
-  if (a.daysPerWeek) {
-    heardBullets.push(
-      `You said you are on the floor about ${DAYS_LABEL[a.daysPerWeek]} per week—not a hobby schedule.`
-    )
-  }
-  if (a.openWithoutYou) {
-    heardBullets.push(`Opening without you: ${TRI_LABEL[a.openWithoutYou]}.`)
-  }
-  if (a.closeWithoutYou) {
-    heardBullets.push(`Closing without you: ${TRI_LABEL[a.closeWithoutYou]}.`)
-  }
-  if (a.staffInterrupts) {
-    heardBullets.push(`Interruptions from staff: ${INTERRUPT_LABEL[a.staffInterrupts]}.`)
-  }
-  if (a.avoidedTimeOff === "yes") {
-    heardBullets.push("You have avoided taking real time off—your nervous system already voted on risk.")
-  } else if (a.avoidedTimeOff === "prefer_not") {
-    heardBullets.push("Time off is… complicated—which usually means the business can’t comfortably release you.")
-  }
-  if (a.standardsMode === "verbal") {
-    heardBullets.push("Standards mostly live in people’s heads, not in something the shift can execute the same way twice.")
-  } else if (a.standardsMode === "mixed") {
-    heardBullets.push("Some things are written—enough to feel organized—but plenty still depends on who is working.")
-  }
-  if (a.qualityOnOnePerson === "yes") {
-    heardBullets.push("Quality visibly hinges on one person—often you—instead of a repeatable bar.")
-  }
-
-  if (breaks) {
-    heardBullets.push(`When you step away, what slips first sounds like: “${breaks.slice(0, 220)}${breaks.length > 220 ? "…" : ""}”`)
-  }
+  const breakdown = computeDependencyBreakdown(a)
 
   let patternTitle = "The living safety net"
   let patternBody =
@@ -245,7 +203,9 @@ export function generateOperationalDependencyReport(
     band,
     headline,
     subheadline,
-    heardBullets,
+    breakdown,
+    strengths: detectOperationalStrengths(a),
+    interpretation: generateRivetInterpretation(a, breakdown, band, dependencyIndex),
     patternTitle,
     patternBody,
     uncomfortableTruth,

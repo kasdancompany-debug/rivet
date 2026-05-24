@@ -6,18 +6,29 @@
 import { shouldSkipSupabaseNetwork } from "@/lib/dev-auth-bypass"
 import { getDevWorkspaceBusiness } from "@/lib/dev-workspace"
 import { createClient } from "@/lib/supabase/server"
+import type { StandardStepRollup } from "@/lib/dashboard/standards-depth"
 import {
   DEFAULT_CLOSING_CHECKLIST_ITEMS,
   DEFAULT_OPENING_CHECKLIST_ITEMS,
 } from "@/lib/daily-ops/defaults"
+import type { SopPlayCompletionContext } from "@/lib/sops/sop-play-completion"
+import { syncEmployeeModuleCertification } from "@/lib/training/certifications/sync"
+import {
+  profileFirstName,
+  type SopActivityContext,
+  type SopActivityChecklistEvent,
+  type SopActivityPersonEvent,
+} from "@/lib/sops/sop-activity-feed"
 import type {
   DailyChecklistType,
   EscapePlanStatus,
   IssueStatus,
+  IssueLifecycleStage,
   ReadinessBadge,
   StandardStatus,
   Tables,
   TablesInsert,
+  TablesUpdate,
   TrainingProgressStatus,
   TypedSupabaseClient,
 } from "@/types/database"
@@ -156,6 +167,290 @@ export async function listSopsForBusiness(
   const { data, error } = await q
   if (error || !data) return []
   return data
+}
+
+/** Step counts keyed by standard id for SOP list cards. */
+export async function listStandardStepCountsForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<Map<string, number>> {
+  const supabase = await getClient(client)
+  const { data: standards, error: standardsErr } = await supabase
+    .from("standards")
+    .select("id")
+    .eq("business_id", businessId)
+
+  if (standardsErr || !standards?.length) return new Map()
+
+  const ids = standards.map((s) => s.id as string)
+  const { data: steps, error: stepsErr } = await supabase
+    .from("standard_steps")
+    .select("standard_id")
+    .in("standard_id", ids)
+
+  if (stepsErr || !steps) return new Map()
+
+  const counts = new Map<string, number>()
+  for (const row of steps) {
+    const sid = row.standard_id as string
+    counts.set(sid, (counts.get(sid) ?? 0) + 1)
+  }
+  return counts
+}
+
+const EMPTY_PLAY_COMPLETION_CONTEXT: SopPlayCompletionContext = {
+  stepRollupBySopId: new Map(),
+  mediaCountBySopId: new Map(),
+  trainingItemsBySopId: new Map(),
+  assignedEmployeesByModuleId: new Map(),
+  completionKeys: new Set(),
+}
+
+/** Rollups for documentation, training linkage, and ownership on SOP cards. */
+export async function fetchSopPlayCompletionContextForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<SopPlayCompletionContext> {
+  const supabase = await getClient(client)
+  const { data: standards, error: standardsErr } = await supabase
+    .from("standards")
+    .select("id")
+    .eq("business_id", businessId)
+
+  if (standardsErr || !standards?.length) return EMPTY_PLAY_COMPLETION_CONTEXT
+
+  const standardIds = standards.map((s) => s.id as string)
+
+  const stepRollupBySopId = new Map<string, StandardStepRollup>()
+  const { data: stepRows, error: stepsErr } = await supabase
+    .from("standard_steps")
+    .select("standard_id, media_url, requires_photo_confirmation")
+    .in("standard_id", standardIds)
+
+  if (!stepsErr && stepRows) {
+    for (const row of stepRows) {
+      const sid = row.standard_id as string
+      const prev = stepRollupBySopId.get(sid) ?? { stepCount: 0, hasStepMediaOrEvidence: false }
+      prev.stepCount += 1
+      if (
+        (row.media_url != null && String(row.media_url).trim().length > 0) ||
+        row.requires_photo_confirmation === true
+      ) {
+        prev.hasStepMediaOrEvidence = true
+      }
+      stepRollupBySopId.set(sid, prev)
+    }
+  }
+
+  const { data: mediaRows, error: mediaErr } = await supabase
+    .from("standard_media")
+    .select("standard_id")
+    .in("standard_id", standardIds)
+
+  const mediaCountBySopId = new Map<string, number>()
+  if (!mediaErr && mediaRows) {
+    for (const row of mediaRows) {
+      const sid = row.standard_id as string
+      mediaCountBySopId.set(sid, (mediaCountBySopId.get(sid) ?? 0) + 1)
+    }
+  }
+
+  const modules = await listTrainingModulesForBusiness(businessId, supabase)
+  const moduleIds = modules.map((m) => m.id)
+
+  const trainingItemsBySopId = new Map<string, { id: string; moduleId: string }[]>()
+  if (moduleIds.length > 0) {
+    const { data: itemRows, error: itemsErr } = await supabase
+      .from("training_items")
+      .select("id, module_id, standard_id")
+      .in("module_id", moduleIds)
+      .in("standard_id", standardIds)
+      .eq("required", true)
+
+    if (!itemsErr && itemRows) {
+      for (const row of itemRows) {
+        const sid = row.standard_id as string
+        const list = trainingItemsBySopId.get(sid) ?? []
+        list.push({ id: row.id as string, moduleId: row.module_id as string })
+        trainingItemsBySopId.set(sid, list)
+      }
+    }
+  }
+
+  const assignedEmployeesByModuleId = new Map<string, Set<string>>()
+  const completionKeys = new Set<string>()
+
+  if (moduleIds.length > 0) {
+    const progress = await listTrainingProgressForBusinessModules(moduleIds, supabase)
+    for (const row of progress) {
+      const moduleId = row.training_module_id
+      const set = assignedEmployeesByModuleId.get(moduleId) ?? new Set<string>()
+      set.add(row.employee_id)
+      assignedEmployeesByModuleId.set(moduleId, set)
+    }
+
+    const employeeIds = [...new Set(progress.map((p) => p.employee_id))]
+    if (employeeIds.length > 0) {
+      const completions = await listTrainingSopCompletionsForEmployeeIds(employeeIds, supabase)
+      for (const row of completions) {
+        completionKeys.add(`${row.employee_id}:${row.training_item_id}`)
+      }
+    }
+  }
+
+  return {
+    stepRollupBySopId,
+    mediaCountBySopId,
+    trainingItemsBySopId,
+    assignedEmployeesByModuleId,
+    completionKeys,
+  }
+}
+
+/** Recent edits, checklist runs, and training events for SOP card activity feeds. */
+export async function fetchSopActivityContextForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<SopActivityContext> {
+  const supabase = await getClient(client)
+
+  const profileFirstNameById = new Map<string, string>()
+  const profiles = await fetchProfilesForCurrentBusiness(supabase)
+  for (const profile of profiles) {
+    profileFirstNameById.set(profile.id, profileFirstName(profile.full_name))
+  }
+
+  const { data: businessRow } = await supabase
+    .from("businesses")
+    .select("owner_id")
+    .eq("id", businessId)
+    .maybeSingle()
+
+  if (businessRow?.owner_id && !profileFirstNameById.has(businessRow.owner_id)) {
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", businessRow.owner_id)
+      .maybeSingle()
+    if (ownerProfile?.full_name) {
+      profileFirstNameById.set(businessRow.owner_id, profileFirstName(ownerProfile.full_name))
+    }
+  }
+
+  const { data: standards } = await supabase
+    .from("standards")
+    .select("id")
+    .eq("business_id", businessId)
+
+  const standardIds = (standards ?? []).map((row) => row.id as string)
+  const trainingCompletionsBySopId = new Map<string, SopActivityPersonEvent[]>()
+  const trainingModuleCompletionsBySopId = new Map<string, SopActivityPersonEvent[]>()
+
+  const modules = await listTrainingModulesForBusiness(businessId, supabase)
+  const moduleIds = modules.map((module) => module.id)
+
+  if (moduleIds.length > 0 && standardIds.length > 0) {
+    const { data: itemRows } = await supabase
+      .from("training_items")
+      .select("id, module_id, standard_id")
+      .in("module_id", moduleIds)
+      .in("standard_id", standardIds)
+
+    const itemIds: string[] = []
+    const sopIdByItemId = new Map<string, string>()
+    const sopIdsByModuleId = new Map<string, Set<string>>()
+
+    for (const row of itemRows ?? []) {
+      const itemId = row.id as string
+      const sopId = row.standard_id as string
+      const moduleId = row.module_id as string
+      itemIds.push(itemId)
+      sopIdByItemId.set(itemId, sopId)
+      const sopIds = sopIdsByModuleId.get(moduleId) ?? new Set<string>()
+      sopIds.add(sopId)
+      sopIdsByModuleId.set(moduleId, sopIds)
+    }
+
+    if (itemIds.length > 0) {
+      const { data: completions } = await supabase
+        .from("employee_training_sop_completions")
+        .select("employee_id, training_item_id, completed_at")
+        .in("training_item_id", itemIds)
+
+      for (const row of completions ?? []) {
+        const sopId = sopIdByItemId.get(row.training_item_id as string)
+        if (!sopId) continue
+        const list = trainingCompletionsBySopId.get(sopId) ?? []
+        list.push({
+          employeeId: row.employee_id as string,
+          completedAt: row.completed_at as string,
+        })
+        trainingCompletionsBySopId.set(sopId, list)
+      }
+    }
+
+    const progress = await listTrainingProgressForBusinessModules(moduleIds, supabase)
+    for (const row of progress) {
+      if (row.status !== "completed") continue
+      const completedAt = row.completed_at ?? row.updated_at
+      if (!completedAt) continue
+
+      const sopIds = sopIdsByModuleId.get(row.training_module_id)
+      if (!sopIds) continue
+
+      for (const sopId of sopIds) {
+        const list = trainingModuleCompletionsBySopId.get(sopId) ?? []
+        list.push({
+          employeeId: row.employee_id,
+          completedAt,
+        })
+        trainingModuleCompletionsBySopId.set(sopId, list)
+      }
+    }
+  }
+
+  const checklistCompletionsByChecklistType = new Map<DailyChecklistType, SopActivityChecklistEvent[]>()
+  const { data: checklists } = await supabase
+    .from("daily_checklists")
+    .select("id, type")
+    .eq("business_id", businessId)
+
+  const checklistTypeById = new Map<string, DailyChecklistType>(
+    (checklists ?? []).map((row) => [row.id as string, row.type as DailyChecklistType])
+  )
+  const checklistIds = [...checklistTypeById.keys()]
+
+  if (checklistIds.length > 0) {
+    const { data: runs } = await supabase
+      .from("execution_records")
+      .select("employee_id, checklist_id, completed_at, updated_at, status")
+      .eq("business_id", businessId)
+      .in("checklist_id", checklistIds)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(120)
+
+    for (const run of runs ?? []) {
+      const checklistType = checklistTypeById.get(run.checklist_id as string)
+      if (!checklistType) continue
+      const completedAt = (run.completed_at ?? run.updated_at) as string | null
+      if (!completedAt) continue
+
+      const list = checklistCompletionsByChecklistType.get(checklistType) ?? []
+      list.push({
+        employeeId: run.employee_id as string,
+        completedAt,
+      })
+      checklistCompletionsByChecklistType.set(checklistType, list)
+    }
+  }
+
+  return {
+    profileFirstNameById,
+    checklistCompletionsByChecklistType,
+    trainingCompletionsBySopId,
+    trainingModuleCompletionsBySopId,
+  }
 }
 
 export async function fetchSopWithSteps(
@@ -313,6 +608,119 @@ export async function listTrainingSopCompletionsForEmployeeIds(
   return data
 }
 
+export async function listEmployeeModuleCertificationsForEmployeeIds(
+  employeeIds: string[],
+  client?: TypedSupabaseClient
+): Promise<Tables<"employee_module_certifications">[]> {
+  if (employeeIds.length === 0) return []
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("employee_module_certifications")
+    .select("*")
+    .in("employee_id", employeeIds)
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listManagerObservationsForEmployeeIds(
+  employeeIds: string[],
+  client?: TypedSupabaseClient
+): Promise<Tables<"employee_manager_observations">[]> {
+  if (employeeIds.length === 0) return []
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("employee_manager_observations")
+    .select("*")
+    .in("employee_id", employeeIds)
+    .order("observed_at", { ascending: false })
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listEmployeeStandardQuizCompletionsForEmployeeIds(
+  employeeIds: string[],
+  client?: TypedSupabaseClient
+): Promise<Tables<"employee_standard_quiz_completions">[]> {
+  if (employeeIds.length === 0) return []
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("employee_standard_quiz_completions")
+    .select("*")
+    .in("employee_id", employeeIds)
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listEmployeeStandardQuizCompletions(
+  employeeId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"employee_standard_quiz_completions">[]> {
+  return listEmployeeStandardQuizCompletionsForEmployeeIds([employeeId], client)
+}
+
+export async function resolveTrainingInviteByToken(
+  token: string,
+  client?: TypedSupabaseClient
+) {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase.rpc("resolve_training_invite", { p_token: token })
+  if (error) return null
+  return data
+}
+
+export async function listTrainingSopProgressForEmployee(
+  employeeId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"training_sop_progress">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("training_sop_progress")
+    .select("*")
+    .eq("employee_id", employeeId)
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listTrainingPortalInvitesForModule(
+  moduleId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"training_portal_invites">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("training_portal_invites")
+    .select("*")
+    .eq("training_module_id", moduleId)
+    .order("created_at", { ascending: false })
+
+  if (error || !data) return []
+  return data
+}
+
+export async function fetchSopsWithStepsForIds(
+  sopIds: string[],
+  client?: TypedSupabaseClient
+): Promise<StandardWithSteps[]> {
+  if (sopIds.length === 0) return []
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("standards")
+    .select("*, standard_steps(*), standard_media(*)")
+    .in("id", sopIds)
+
+  if (error || !data) return []
+  return (data as unknown as StandardWithSteps[]).map((row) => ({
+    ...row,
+    standard_steps: [...(row.standard_steps ?? [])].sort((a, b) => a.step_order - b.step_order),
+    standard_media: [...(row.standard_media ?? [])].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+  }))
+}
+
 export async function listEmployeeReadinessForBusiness(
   businessId: string,
   client?: TypedSupabaseClient
@@ -368,6 +776,27 @@ export async function ensureEmployeeReadinessRows(
   )
 }
 
+/** Completed shift runs per employee — for readiness shift-observation signal. */
+export async function countCompletedExecutionRecordsByEmployee(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<Map<string, number>> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("execution_records")
+    .select("employee_id")
+    .eq("business_id", businessId)
+    .eq("status", "completed")
+
+  const counts = new Map<string, number>()
+  if (error || !data) return counts
+  for (const row of data) {
+    const id = row.employee_id as string
+    counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  return counts
+}
+
 export async function syncEmployeeTrainingModuleProgress(
   moduleId: string,
   employeeId: string,
@@ -389,6 +818,21 @@ export async function syncEmployeeTrainingModuleProgress(
       })
       .eq("employee_id", employeeId)
       .eq("training_module_id", moduleId)
+
+    const { data: progressRow } = await supabase
+      .from("training_progress")
+      .select("business_id")
+      .eq("employee_id", employeeId)
+      .eq("training_module_id", moduleId)
+      .maybeSingle()
+
+    if (progressRow?.business_id) {
+      await syncEmployeeModuleCertification(supabase, {
+        businessId: progressRow.business_id as string,
+        employeeId,
+        moduleId,
+      })
+    }
     return
   }
 
@@ -413,6 +857,21 @@ export async function syncEmployeeTrainingModuleProgress(
     })
     .eq("employee_id", employeeId)
     .eq("training_module_id", moduleId)
+
+  const { data: progressRow } = await supabase
+    .from("training_progress")
+    .select("business_id")
+    .eq("employee_id", employeeId)
+    .eq("training_module_id", moduleId)
+    .maybeSingle()
+
+  if (progressRow?.business_id) {
+    await syncEmployeeModuleCertification(supabase, {
+      businessId: progressRow.business_id as string,
+      employeeId,
+      moduleId,
+    })
+  }
 }
 
 export async function listDailyChecklistsForBusiness(
@@ -547,7 +1006,7 @@ export async function listIssuesForBusiness(
     q = q.eq("status", options.status)
   }
   if (options?.unresolved) {
-    q = q.in("status", ["open", "in_progress"])
+    q = q.in("status", ["not_started", "investigating", "fix_in_progress"])
   }
   if (options?.resolvedOnly) {
     q = q.eq("status", "resolved")
@@ -576,6 +1035,122 @@ export async function fetchIssueById(
 
   if (error) return null
   return data
+}
+
+export async function listIssueLinksForBottleneck(
+  bottleneckId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"issue_links">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("issue_links")
+    .select("*")
+    .eq("bottleneck_id", bottleneckId)
+    .order("created_at", { ascending: true })
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listIssueLinksForBottleneckIds(
+  bottleneckIds: string[],
+  client?: TypedSupabaseClient
+): Promise<Tables<"issue_links">[]> {
+  if (bottleneckIds.length === 0) return []
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("issue_links")
+    .select("*")
+    .in("bottleneck_id", bottleneckIds)
+    .order("created_at", { ascending: true })
+
+  if (error || !data) return []
+  return data
+}
+
+export async function insertIssueLink(
+  row: TablesInsert<"issue_links">,
+  client?: TypedSupabaseClient
+): Promise<Tables<"issue_links"> | null> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase.from("issue_links").insert(row).select("*").maybeSingle()
+
+  if (error) return null
+  return data
+}
+
+export async function deleteIssueLinkById(
+  linkId: string,
+  client?: TypedSupabaseClient
+): Promise<boolean> {
+  const supabase = await getClient(client)
+  const { error } = await supabase.from("issue_links").delete().eq("id", linkId)
+
+  return !error
+}
+
+export async function listIssueLifecycleEvents(
+  bottleneckId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"issue_lifecycle_events">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("issue_lifecycle_events")
+    .select("*")
+    .eq("bottleneck_id", bottleneckId)
+    .order("created_at", { ascending: true })
+
+  if (error || !data) return []
+  return data
+}
+
+export async function upsertIssueLifecycleEvent(
+  row: Omit<TablesInsert<"issue_lifecycle_events">, "id" | "created_at">,
+  client?: TypedSupabaseClient
+): Promise<void> {
+  const supabase = await getClient(client)
+  await supabase.from("issue_lifecycle_events").upsert(row, {
+    onConflict: "bottleneck_id,stage",
+  })
+}
+
+export async function recordIssueLifecycleLogged(
+  bottleneckId: string,
+  businessId: string,
+  detail?: string,
+  client?: TypedSupabaseClient
+): Promise<void> {
+  await upsertIssueLifecycleEvent(
+    {
+      bottleneck_id: bottleneckId,
+      business_id: businessId,
+      stage: "logged",
+      detail: detail ?? "Issue captured.",
+    },
+    client
+  )
+}
+
+export async function recordIssueLifecycleStage(
+  bottleneckId: string,
+  businessId: string,
+  stage: IssueLifecycleStage,
+  detail?: string,
+  client?: TypedSupabaseClient
+): Promise<void> {
+  if (stage === "logged") {
+    await recordIssueLifecycleLogged(bottleneckId, businessId, detail, client)
+    return
+  }
+  await upsertIssueLifecycleEvent(
+    {
+      bottleneck_id: bottleneckId,
+      business_id: businessId,
+      stage,
+      detail: detail ?? null,
+    },
+    client
+  )
 }
 
 /** Count issues where the owner was flagged, created on/after `sinceIso` (inclusive). */
@@ -912,6 +1487,29 @@ export async function listOwnerInterruptionsForBusinessSince(
   return data
 }
 
+export async function listOwnerInterruptionsForBusiness(
+  businessId: string,
+  options?: { limit?: number },
+  client?: TypedSupabaseClient
+): Promise<Tables<"owner_interruptions">[]> {
+  const supabase = await getClient(client)
+  let q = supabase
+    .from("owner_interruptions")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("occurred_at", { ascending: false })
+
+  if (options?.limit) {
+    q = q.limit(options.limit)
+  } else {
+    q = q.limit(200)
+  }
+
+  const { data, error } = await q
+  if (error || !data) return []
+  return data
+}
+
 type OwnerInterruptionRowInsert = TablesInsert<"owner_interruptions">
 export type OwnerInterruptionInsertSelf = Omit<OwnerInterruptionRowInsert, "logged_by">
 
@@ -931,6 +1529,44 @@ export async function insertOwnerInterruption(
     .select("*")
     .single()
 
+  if (error) return null
+  return data
+}
+
+export async function fetchOwnerInterruptionById(
+  id: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"owner_interruptions"> | null> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase.from("owner_interruptions").select("*").eq("id", id).maybeSingle()
+  if (error || !data) return null
+  return data
+}
+
+type InterruptionActionPlanInsert = TablesInsert<"interruption_action_plans">
+
+export async function insertInterruptionActionPlan(
+  row: Omit<InterruptionActionPlanInsert, "id" | "created_at" | "updated_at">,
+  client?: TypedSupabaseClient
+): Promise<Tables<"interruption_action_plans"> | null> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase.from("interruption_action_plans").insert(row).select("*").single()
+  if (error) return null
+  return data
+}
+
+export async function updateInterruptionActionPlan(
+  id: string,
+  patch: TablesUpdate<"interruption_action_plans">,
+  client?: TypedSupabaseClient
+): Promise<Tables<"interruption_action_plans"> | null> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("interruption_action_plans")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single()
   if (error) return null
   return data
 }

@@ -49,7 +49,7 @@ const ROUTE_INTENTS: RouteIntentDef[] = [
   {
     prefix: "/issues/new",
     eyebrow: COPY.nav.bottlenecks,
-    intent: "Log a new bottleneck with severity and owner-required flags so the team can clear it.",
+    intent: "Full issue form with category, severity, ownership, and cost preview.",
     nextHref: "/issues",
     nextLabel: COPY.nav.bottlenecks,
   },
@@ -64,8 +64,8 @@ const ROUTE_INTENTS: RouteIntentDef[] = [
     prefix: "/issues",
     eyebrow: COPY.nav.bottlenecks,
     intent: "See what is still open, what waits on you, and close loops without losing the paper trail.",
-    nextHref: "/issues/new",
-    nextLabel: "Log a bottleneck",
+    nextHref: "/issues?capture=1",
+    nextLabel: COPY.issues.quickCaptureCta,
   },
   {
     prefix: "/sops",

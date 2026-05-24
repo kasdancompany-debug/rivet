@@ -15,12 +15,13 @@ function unlinkedProofStub(): ProofOfTransferView {
     columns: { transferred: [], fragile: [], owner_only: [], newly_stable: [] },
   }
 }
-import { formatIssueSeverity } from "@/lib/issues/constants"
+import { formatIssueSeverity, formatIssueStatus } from "@/lib/issues/constants"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { DashboardPulseMetrics } from "@/components/dashboard/dashboard-pulse-metrics"
+import { BiggestRisksThisWeekCard } from "@/components/dashboard/biggest-risks-this-week-card"
 import { OwnerRelianceHero } from "@/components/dashboard/owner-reliance-hero"
 import { FirstDayChecklist } from "@/components/dashboard/first-day-checklist"
 import { EscapeReadinessPanel } from "@/components/escape-readiness/escape-readiness-panel"
@@ -143,6 +144,7 @@ export function FounderDashboard({
   return (
     <div className="space-y-10 pb-12 sm:space-y-12">
       {checkoutBanner}
+      <BiggestRisksThisWeekCard risks={model.biggestRisksThisWeek} />
       {model.firstDayChecklist ? <FirstDayChecklist model={model.firstDayChecklist} /> : null}
       <DashboardPulseMetrics model={model} />
       <div id="first-day-escape" className="scroll-mt-24">
@@ -192,6 +194,7 @@ export function FounderDashboard({
           <div className="min-w-0 space-y-1">
             <p className="rivet-section-label">{COPY.interruptions.eyebrow}</p>
             <p className="text-sm font-semibold tracking-tight text-foreground">{COPY.nav.interruptions}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{COPY.interruptions.featureDescription}</p>
             <p className="text-[13px] leading-relaxed text-muted-foreground">
               {model.ownerInterruptionsThisWeekCount} {COPY.interruptions.dashboardStripLoggedSuffix}
               {model.ownerInterruptionsThisWeekMinutes > 0
@@ -240,7 +243,7 @@ export function FounderDashboard({
                         </div>
                         <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-foreground">{item.title}</p>
                         <p className="mt-1 text-[0.65rem] text-muted-foreground">
-                          {item.status === "open" ? COPY.dashboard.statusOpen : COPY.dashboard.statusProgress}
+                          {formatIssueStatus(item.status)}
                         </p>
                       </>
                     ) : (

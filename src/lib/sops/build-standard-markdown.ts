@@ -54,12 +54,28 @@ export function buildStandardMarkdown(params: {
   for (let idx = 0; idx < steps.length; idx++) {
     const s = steps[idx]!
     lines.push(`### ${String(idx + 1).padStart(2, "0")}. ${s.title}`)
+    if (s.is_critical) {
+      lines.push("")
+      lines.push("_Critical step._")
+    }
     if (s.requires_photo_confirmation) {
       lines.push("")
       lines.push("_Photo confirmation required._")
     }
+    if (s.estimated_time_minutes != null) {
+      lines.push("")
+      lines.push(`_Estimated time: ${s.estimated_time_minutes} min._`)
+    }
     lines.push("")
     lines.push(s.instructions?.trim() || "_No instructions._")
+    if (s.verification?.trim()) {
+      lines.push("")
+      lines.push(`**Verification:** ${s.verification.trim()}`)
+    }
+    if (s.notes?.trim()) {
+      lines.push("")
+      lines.push(`**Notes:** ${s.notes.trim()}`)
+    }
     lines.push("")
     if (s.media_url?.trim()) {
       const mu = s.media_url.trim()
