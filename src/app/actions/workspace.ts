@@ -24,6 +24,7 @@ const INDUSTRY_PACK_IDS = new Set([
   "contractors",
   "auto_dealership",
   "office",
+  "service",
 ])
 
 function ownerDisplayName(user: User): string {

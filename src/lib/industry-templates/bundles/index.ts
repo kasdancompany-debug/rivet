@@ -85,6 +85,12 @@ export const INDUSTRY_TEMPLATE_BUNDLES: IndustryTemplateBundle[] = [
     qualityId: "ind-office-deliverable-qa",
     openTitle: "Office day start",
   }),
+  bundle("other", "service", "Service", {
+    openId: "ind-svc-day-start",
+    closeId: "ind-svc-day-end",
+    qualityId: "ind-svc-deliverable-qa",
+    openTitle: "Day start & dispatch",
+  }),
 ]
 
 function assertFoundationBundles() {

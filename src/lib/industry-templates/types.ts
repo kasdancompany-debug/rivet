@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react"
 import type { IndustryId } from "@/lib/sop-templates/types"
 import type { OwnerInterruptionKind } from "@/types/database"
 
-/** Rivet onboarding industry cards (8 verticals). */
+/** Rivet onboarding industry cards (9 options including general service). */
 export type RivetIndustryTemplateId =
   | "cafe"
   | "restaurant"
@@ -13,6 +13,7 @@ export type RivetIndustryTemplateId =
   | "salon"
   | "retail"
   | "office"
+  | "other"
 
 export type IndustryTemplateCard = {
   id: RivetIndustryTemplateId

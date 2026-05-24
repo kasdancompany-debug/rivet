@@ -26,6 +26,12 @@ function envSet(key: string): boolean {
   return Boolean(process.env[key]?.trim())
 }
 
+/** Explicit kill-switch for QA — skips paywall and checkout when true. */
+export function isBillingDisabledByFlag(): boolean {
+  const v = process.env.RIVET_BILLING_DISABLED?.trim().toLowerCase()
+  return v === "1" || v === "true" || v === "yes"
+}
+
 /** Env vars that are unset among the billing set. */
 export function missingBillingEnvVars(): RequiredBillingEnvVar[] {
   return REQUIRED_BILLING_ENV_VARS.filter((key) => !envSet(key))
@@ -56,6 +62,14 @@ function billingMisconfiguredMessage(missing: RequiredBillingEnvVar[]): string {
 }
 
 export function getBillingReadiness(): BillingReadiness {
+  if (isBillingDisabledByFlag()) {
+    return {
+      status: "off",
+      missing: [],
+      message: "Billing disabled via RIVET_BILLING_DISABLED (paywall and checkout off).",
+    }
+  }
+
   const missing = missingBillingEnvVars()
   if (missing.length === 0) {
     return { status: "ready", missing: [], message: null }
@@ -73,12 +87,17 @@ export function isBillingFullyConfigured(): boolean {
 
 /** Unpaid users should be sent to /subscribe when billing is on or partially configured. */
 export function shouldEnforceBillingGate(): boolean {
+  if (isBillingDisabledByFlag()) return false
   const { status } = getBillingReadiness()
   return status === "ready" || status === "misconfigured"
 }
 
 export function logBillingReadinessInDevelopment(): void {
   if (process.env.NODE_ENV === "production") return
+  if (isBillingDisabledByFlag()) {
+    console.info("[rivet billing] Paywall off — RIVET_BILLING_DISABLED is set.")
+    return
+  }
   const readiness = getBillingReadiness()
   if (readiness.status === "ready") return
   if (readiness.status === "off") {

@@ -14,6 +14,7 @@ const KEYS = [
   "STRIPE_WEBHOOK_SECRET",
   "SUPABASE_SERVICE_ROLE_KEY",
   "NEXT_PUBLIC_SITE_URL",
+  "RIVET_BILLING_DISABLED",
 ] as const
 
 describe("billing readiness", () => {
@@ -39,6 +40,17 @@ describe("billing readiness", () => {
     expect(getBillingReadiness().status).toBe("off")
     expect(isBillingEnforced()).toBe(false)
     expect(shouldEnforceBillingGate()).toBe(false)
+  })
+
+  it("disables paywall and checkout when RIVET_BILLING_DISABLED is set", () => {
+    for (const k of KEYS) {
+      process.env[k] = "set"
+    }
+    process.env.RIVET_BILLING_DISABLED = "true"
+    expect(getBillingReadiness().status).toBe("off")
+    expect(isBillingEnforced()).toBe(false)
+    expect(shouldEnforceBillingGate()).toBe(false)
+    expect(getBillingReadiness().message).toContain("RIVET_BILLING_DISABLED")
   })
 
   it("reports misconfigured when only some vars are set", () => {

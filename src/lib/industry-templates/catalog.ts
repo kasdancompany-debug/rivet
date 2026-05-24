@@ -1,5 +1,6 @@
 import {
   Building2,
+  Briefcase,
   Car,
   Coffee,
   HardHat,
@@ -67,6 +68,13 @@ export const RIVET_INDUSTRY_CARDS: IndustryTemplateCard[] = [
     subtitle: "Clients, deliverables, and handoffs without you in every thread.",
     icon: Building2,
     sopPackId: "office",
+  },
+  {
+    id: "other",
+    name: "Other / General service",
+    subtitle: "Dispatch, handoffs, and proof when you don't fit a vertical box.",
+    icon: Briefcase,
+    sopPackId: "service",
   },
 ]
 
