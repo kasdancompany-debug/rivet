@@ -12,122 +12,101 @@ export const LANDING_POSITIONING_LINE =
 export const LANDING_OG_TITLE = `Rivet — ${EMOTIONAL_PROMISE}`
 
 export const LANDING_META_DESCRIPTION =
-  "$799 CAD once. Document procedures, track training, log what still routes back to you, and see if your business can run without you. No monthly subscription."
+  "$799 CAD once. Document procedures, train the team, log what routes back to you, and see if the business can run without you."
 
 export const LANDING_HEADER_SIGN_IN = "Sign in" as const
 
 export const LANDING_CTA = {
   primary: "Get Rivet",
   secondary: "Take Free Scan",
-  tertiary: "View Layers",
+  tertiary: "How it works",
 } as const
 
-/** Free diagnostic — secondary CTA; not a substitute for the paid license. */
 export const LANDING_SCAN_CTA = {
   label: LANDING_CTA.secondary,
-  subline: "Owner Dependency Score · about 2 minutes · no account",
+  subline: "Owner Dependency Score · ~2 min · no account",
 } as const
 
+/** 1 · Hero */
 export const LANDING_HERO = {
   eyebrow: "For owner-operators",
   headline: "Get your business\nout of your head.",
-  subheadline:
-    "Write down how work actually runs, track training gaps, log what still routes back to you, and see whether the team could hold a week without you on the phone.",
+  subheadline: "Document how work runs, train against it, and see whether the team could hold a week without you.",
   ctaPrimary: LANDING_CTA.primary,
   ctaSecondary: LANDING_CTA.secondary,
   ctaTertiary: LANDING_CTA.tertiary,
-  trustChips: ["$799 CAD once", "No monthly subscription", "Lifetime access"] as const,
 } as const
 
-/** Existing accounts: sign in first, then Stripe Checkout on `/subscribe`. */
 export const LANDING_EXISTING_WORKSPACE_CHECKOUT = {
   lead: "Already have a workspace?",
   linkLabel: "Sign in to complete checkout",
   href: "/login?next=/subscribe",
 } as const
 
-/** Week-in-the-life narrative — what still routes back to the owner, not abstract “signals.” */
-export const LANDING_OWNER_SPINE = {
-  eyebrow: "A typical week",
+/** 2 · Pain */
+export const LANDING_PAIN = {
+  eyebrow: "The problem",
   title: "Your phone is still the operations manual.",
-  subtitle: "When answers live in your head, the same questions and fires find you every day.",
+  hook: "Same questions. Same fires. Every week.",
   events: [
     { time: "7:14 AM", text: "Where is the onboarding checklist?" },
     { time: "8:42 AM", text: "Did the estimate get sent?" },
     { time: "10:13 AM", text: "Who owns this task?" },
     { time: "11:52 AM", text: "Client follow-up overdue" },
   ] as const,
-  statLine: "17 owner pulls logged this week",
-  statDelta: "Same themes repeat when nothing is written down",
-  traceTitle: "Usually because",
-  traces: [
-    "Procedures not written (or not findable)",
-    "Training not tied to real tasks",
-    "No named owner on recurring decisions",
-  ] as const,
-  diagnosisEyebrow: "Examples",
-  diagnosis: [
-    { id: "SOP", line: "Opening steps still live in memory—not in Rivet" },
-    { id: "TRN", line: "New hire shadowing you instead of a module" },
-    { id: "OWN", line: "Key decisions still wait on your OK" },
-  ] as const,
-  footnote: "Illustrative week · anonymized",
 } as const
 
-export const LANDING_YOU_FEEL_THIS = {
-  eyebrow: "Sound familiar?",
-  title: "If this is your week, you are not alone.",
-  cards: [
-    "Staff ask you the same questions every week",
-    "Training happens when you have time—not on paper",
-    "You cannot leave without the phone lighting up",
-  ],
-} as const
-
-/** What v1 actually ships — five pillars aligned to product scope. */
-export const LANDING_INSTALLS = {
-  title: "What $799 puts in your workspace",
-  lead: "Five tools owners use in week one—no separate checklist app, no mystery dashboards.",
-  pillars: [
-    {
-      title: "Written procedures (SOPs)",
-      sentence:
-        "Capture and edit how open, close, and daily work actually run—so the team reads the same steps, not your memory.",
-    },
-    {
-      title: COPY.interruptions.featureTitle,
-      sentence: COPY.interruptions.featureDescription,
-    },
-    {
-      title: "Training tied to your SOPs",
-      sentence:
-        "Build modules linked to real procedures and track who has completed them—not a binder nobody opens under pressure.",
-    },
-    {
-      title: "Bottlenecks (issues)",
-      sentence:
-        "Log what still hunts you, who owns it, and what is open—instead of recycling the same texts.",
-    },
-    {
-      title: "Escape readiness + overview",
-      sentence:
-        "One score for “could this run a week without me?” plus an owner overview: what still routes back to you, missing procedures, training gaps.",
-    },
-  ],
-} as const
-
-/** Illustrative owner overview metrics for marketing — not live workspace data. */
-export const LANDING_WORKSPACE_SNAPSHOT = {
-  title: "Inside a Rivet workspace",
-  disclaimer: "Illustrative workspace for demonstration",
-  workspaceLabel: "Workspace · Oak Ridge",
+/** 3 · Diagnosis */
+export const LANDING_DIAGNOSIS = {
+  eyebrow: "Diagnosis",
+  title: "See how owner-dependent you really are.",
+  hook: "Rivet turns gut feel into numbers you can act on.",
   metrics: [
-    { id: "sops", label: "SOPs", value: "142" },
-    { id: "training", label: "Training completion", value: "81%" },
-    { id: "bottlenecks", label: "Open bottlenecks", value: "6" },
-    { id: "interrupts", label: "Routed back to you / week", value: "12" },
-    { id: "escape", label: "Escape readiness score", value: "73%" },
-  ],
+    { label: "Owner pulls / week", value: "17" },
+    { label: "Owner load index", value: "68" },
+    { label: "Escape readiness", value: "28%" },
+  ] as const,
+} as const
+
+/** 4 · Mechanism */
+export const LANDING_MECHANISM = {
+  eyebrow: "The mechanism",
+  title: "How Rivet works",
+  hook: "Four moves—from memory to a business the team can run.",
+  steps: [
+    { title: "Capture procedures", detail: "Write how work actually runs." },
+    { title: "Train people", detail: "Link modules to real tasks." },
+    { title: "Track interruptions", detail: "Log what still routes to you." },
+    { title: "Measure escape readiness", detail: "One score for five days away." },
+  ] as const,
+} as const
+
+/** 5 · Transformation */
+export const LANDING_TRANSFORMATION = {
+  eyebrow: "Transformation",
+  title: "Before Rivet vs After Rivet",
+  hook: "Less routing through you—not less ambition.",
+  comparison: {
+    before: { label: "Before", value: 17, unit: "interruptions/week" },
+    after: { label: "After", value: 7, unit: "interruptions/week" },
+    maxValue: 17,
+  },
+  estimated: {
+    label: "Estimated",
+    value: 260,
+    unit: "owner hours recovered annually",
+  },
+  beforeBullets: [
+    "Judgment lives in your head",
+    "Training is “watch me”",
+    "Same texts every week",
+  ] as const,
+  afterBullets: [
+    "Procedures staff can read",
+    "Training tied to real work",
+    "Interruptions logged and owned",
+  ] as const,
+  disclaimer: "Illustrative example · not a customer case study",
 } as const
 
 /** Illustrative escape readiness for marketing (not live workspace data). */
@@ -182,95 +161,35 @@ export const LANDING_ESCAPE_READINESS_DEMO: EscapeReadinessView = finalizeEscape
   ],
 })
 
-export const LANDING_RESULTS = {
-  eyebrow: "Results",
-  title: "What $799 is buying—in plain numbers",
-  lead: "Not a testimonial. A worked example of what changes when procedures, training, and interrupts are on the record instead of in your head.",
-  exampleBadge: "Example outcome",
-  patternNote: "Based on common owner-operated business patterns",
-  scenario: "Illustrative · owner-led team · ~12 people · first 90 days with Rivet",
-  beforeRivet: {
-    heading: "Before Rivet",
-    summary: "You are the system. Everyone routes judgment through you.",
-    items: [
-      "22 pulls routed back to you per week (texts, calls, walk-ups)",
-      "Training lived in memory—same lessons repeated every hire",
-      "Procedures changed by whoever was working that day",
-    ],
-  },
-  afterRivet: {
-    heading: "After Rivet",
-    summary: "The team has a source of truth. You see load before it becomes another fire.",
-    items: [
-      "7 pulls routed back to you per week (logged, so you can see the trend)",
-      "SOPs visible where staff actually work",
-      "Staff training tracked against real procedures",
-      "Repeat issues logged with an owner—not recycled in chat",
-    ],
-  },
-  financial: {
-    heading: "Example math (not a guarantee)",
-    steps: [
-      "15 fewer pulls routed back to you per week in this example",
-      "~12 minutes each to answer, decide, or fix on the spot",
-      "≈ 3 owner hours per week back (15 × 12 min)",
-      "× 50 working weeks × $50/hr owner-equivalent (example rate)",
-    ],
-    annualExampleLabel: "Illustrative annual owner time at risk",
-    annualExampleAmount: "$7,500",
-    licenseLabel: "Rivet license",
-    licenseAmount: "$799",
-    licenseNote: "CAD · one-time · no monthly subscription",
-    punchline:
-      "If logging and documenting work pulls even a fraction of that time off your plate, the license is not the expensive line item—the interrupts are.",
-  },
-  disclaimer:
-    "Example outcome only. Not a customer case study. Your workspace tracks your real interruption count, training completion, and escape readiness after install.",
+/** 6 · Escape readiness payoff */
+export const LANDING_ESCAPE_PAYOFF = {
+  eyebrow: "Escape readiness",
+  title: "Could you step away for five days?",
+  hook: "One score that tells you if the business holds without you on the phone.",
 } as const
 
-export const LANDING_BEFORE_AFTER = {
-  eyebrow: "Before and after",
-  title: "From memory to something the team can run",
-  before: [
-    "Quality depends on who showed up and what you remembered to say",
-    "The same questions hit your phone every day",
-    "Training is “watch me” until it sticks",
-  ],
-  after: [
-    "Procedures live where staff can read them",
-    "Interruptions and bottlenecks are logged with owners",
-    "Training modules link to the work you actually run",
-  ],
+/** 7 · Price / value */
+export const LANDING_VALUE = {
+  eyebrow: "Price / value",
+  title: "Owner time is the expensive line item.",
+  hook: "One payment vs a year of interruptions.",
+  ownerTimeAtRisk: {
+    label: "Illustrative owner time at risk",
+    value: "260 hrs",
+    note: "recovered annually in the example outcome",
+  },
+  rivetCost: {
+    label: "Rivet license",
+    value: "$799",
+    note: "CAD · one-time · no monthly subscription",
+  },
+  microcopy: "If Rivet pulls even a fraction of that time off your plate, the license is not the expensive line item.",
 } as const
 
 export const LANDING_PRICING = {
-  cardTitle: "What $799 gets you",
   priceDisplay: "$799",
   currencyLabel: "CAD · one-time",
-  installmentLine: null as string | null,
-  includes: [
-    "Unlimited SOPs + standards capture",
-    COPY.interruptions.featureTitle,
-    "Training modules & progress",
-    "Industry starter templates",
-    "Escape readiness score",
-    "Owner overview (Rivet Index)",
-    "One year of updates",
-    "Lifetime access",
-  ],
-  paysForItselfHeading: "Pays for itself if it saves:",
-  paysForItselfItems: [
-    "four owner hours a month",
-    "one retraining cycle you do not repeat",
-    "one expensive mistake you avoid",
-  ],
-  microcopy: "One payment. Full workspace. No monthly subscription.",
   ctaPrimary: LANDING_CTA.primary,
-} as const
-
-export const LANDING_PRICING_SECTION = {
-  eyebrow: "Pricing",
-  title: "$799 once. Everything in v1—no monthly fee.",
 } as const
 
 export const LANDING_FAQ_TITLE = "Questions" as const
@@ -281,26 +200,90 @@ export const LANDING_FOOTER_TRUST =
 export const LANDING_FOOTER_TAGLINE =
   "Rivet — get your business out of your head."
 
+/** 8 · Final CTA */
 export const LANDING_FINAL_CTA = {
-  title: "Stop carrying the operation in your head.",
-  body: "Document it once. Train against it. See if the business can run without you on the phone.",
+  title: "Get your business out of your head.",
+  body: "Document it once. See if the team can run without you.",
 } as const
 
 export const LANDING_FAQ = [
   {
     q: "Is this a subscription?",
-    a: "No. One payment in CAD. Lifetime access to your workspace, with one year of product updates included.",
+    a: "No. One payment in CAD. Lifetime access, with one year of product updates included.",
   },
   {
     q: "What is Rivet—not payroll or POS?",
-    a: "It is how you document work, train the team, log what still routes back to you, and track bottlenecks. Payrolls and tickets stay in your other tools.",
+    a: "How you document work, train the team, log owner pulls, and track bottlenecks. Your other tools stay where they are.",
   },
   {
     q: "Is there a staff mobile app?",
-    a: "v1 is a web workspace for the owner (and team leads you invite). There is no separate daily checklist app in this release.",
+    a: "v1 is a web workspace for the owner and team leads you invite.",
   },
   {
     q: "Why $799?",
-    a: "Because staying the default answer is expensive. This buys a durable workspace for procedures, training, and owner-load—not another tab you cancel.",
+    a: "Staying the default answer is expensive. This buys a durable workspace—not another tab you cancel.",
   },
 ] as const
+
+/** @deprecated Use narrative sections — kept for legacy imports. */
+export const LANDING_OWNER_SPINE = {
+  eyebrow: LANDING_PAIN.eyebrow,
+  title: LANDING_PAIN.title,
+  subtitle: LANDING_PAIN.hook,
+  events: LANDING_PAIN.events,
+  statLine: "17 owner pulls logged this week",
+  statDelta: "Same themes repeat when nothing is written down",
+  traceTitle: "Usually because",
+  traces: [
+    "Procedures not written (or not findable)",
+    "Training not tied to real tasks",
+    "No named owner on recurring decisions",
+  ] as const,
+  diagnosisEyebrow: "Examples",
+  diagnosis: [
+    { id: "SOP", line: "Opening steps still live in memory—not in Rivet" },
+    { id: "TRN", line: "New hire shadowing you instead of a module" },
+    { id: "OWN", line: "Key decisions still wait on your OK" },
+  ] as const,
+  footnote: "Illustrative week · anonymized",
+} as const
+
+export const LANDING_YOU_FEEL_THIS = {
+  eyebrow: "Sound familiar?",
+  title: LANDING_PAIN.title,
+  cards: [
+    "Staff ask you the same questions every week",
+    "Training happens when you have time—not on paper",
+    "You cannot leave without the phone lighting up",
+  ] as const,
+} as const
+
+export const LANDING_INSTALLS = {
+  title: "What's included",
+  items: LANDING_MECHANISM.steps.map((s) => s.title),
+} as const
+
+export const LANDING_WORKSPACE_SNAPSHOT = {
+  title: LANDING_MECHANISM.title,
+  bullets: LANDING_MECHANISM.steps.map((s) => s.title),
+} as const
+
+export const LANDING_RESULTS = {
+  eyebrow: LANDING_TRANSFORMATION.eyebrow,
+  title: LANDING_TRANSFORMATION.title,
+  comparison: LANDING_TRANSFORMATION.comparison,
+  estimated: LANDING_TRANSFORMATION.estimated,
+  disclaimer: LANDING_TRANSFORMATION.disclaimer,
+} as const
+
+export const LANDING_BEFORE_AFTER = {
+  eyebrow: LANDING_TRANSFORMATION.eyebrow,
+  title: LANDING_TRANSFORMATION.title,
+  before: LANDING_TRANSFORMATION.beforeBullets,
+  after: LANDING_TRANSFORMATION.afterBullets,
+} as const
+
+export const LANDING_PRICING_SECTION = {
+  eyebrow: LANDING_VALUE.eyebrow,
+  title: LANDING_VALUE.title,
+} as const

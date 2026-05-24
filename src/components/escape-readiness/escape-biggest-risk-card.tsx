@@ -101,46 +101,24 @@ export function EscapeBiggestRiskCard({
         </div>
       </div>
 
-      <h3 className={cn("mt-3 text-base font-semibold leading-snug sm:text-lg", title)}>{risk.title}</h3>
+      <h3 className={cn("mt-3 text-lg font-semibold leading-snug sm:text-xl", title)}>{risk.title}</h3>
 
-      <div className="mt-4">
-        <p className={cn("text-[11px] font-semibold uppercase tracking-[0.08em]", muted)}>
-          If you disappeared tomorrow…
-        </p>
-        <p className={cn("mt-2 text-sm leading-relaxed", body)}>{risk.disappearingTomorrow}</p>
-      </div>
-
-      <div className="mt-4">
-        <p className={cn("text-[11px] font-semibold uppercase tracking-[0.08em]", muted)}>Predicted breakdowns</p>
-        <ul className="mt-2.5 space-y-2">
-          {risk.predictedBreakdowns.map((line) => (
-            <li key={line} className="flex gap-2.5 text-sm leading-relaxed">
-              <span className={cn("mt-2 size-1.5 shrink-0 rounded-full", tone.bar)} aria-hidden />
-              <span className={body}>{line}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div
-        className={cn(
-          "mt-4 flex items-center justify-between gap-3 rounded-xl border px-3 py-3",
-          dark ? "border-white/[0.08] bg-black/20" : "border-border/60 bg-background/60"
-        )}
-      >
-        <div>
-          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.08em]", muted)}>
-            Estimated interruptions
-          </p>
-          <p className={cn("mt-1 text-sm font-semibold tabular-nums", title)}>{risk.estimatedInterruptions.label}</p>
-        </div>
-        <div className="text-right">
-          <p className={cn("text-2xl font-semibold tabular-nums leading-none", title)}>
-            {risk.estimatedInterruptions.count}
-          </p>
-          <p className={cn("mt-1 text-[10px] uppercase tracking-wide", muted)}>pulls</p>
-        </div>
-      </div>
+      <ul className="mt-4 space-y-2.5">
+        {risk.futureStateLines.map((line, index) => (
+          <li key={line} className="flex gap-2.5 text-sm leading-relaxed sm:text-[15px]">
+            <span className={cn("mt-2 size-1.5 shrink-0 rounded-full", tone.bar)} aria-hidden />
+            <span
+              className={cn(
+                body,
+                index === 2 && "font-medium tabular-nums",
+                index === risk.futureStateLines.length - 1 && "font-medium"
+              )}
+            >
+              {line}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

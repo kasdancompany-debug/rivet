@@ -13,10 +13,12 @@ export type RepeatedMistakesBand = "rarely" | "monthly" | "weekly" | "daily"
 export type OwnerInterruptionCadence = "rarely" | "weekly" | "daily" | "constantly"
 
 export type OperationalScanAnswers = {
+  firstName: string
   businessName: string
   website: string
   industry: string
   email: string
+  phone: string
   staffQuestionsPerWeek: WeeklyCountBand
   ownerTextsCallsPerWeek: WeeklyCountBand
   staffCanOpenWithoutOwner: YesPartialNo

@@ -1,18 +1,19 @@
 "use client"
 
 import Link from "next/link"
-import { useId, useState, useTransition } from "react"
-import { ArrowRight, Loader2 } from "lucide-react"
+import { useState, useTransition } from "react"
+import { ArrowRight } from "lucide-react"
 
-import { submitScanLead } from "@/app/(marketing)/scan/actions"
+import { resendScanReport, submitScanLead } from "@/app/(marketing)/scan/actions"
 import { Logo } from "@/components/logo"
 import { OperationalScanResults } from "@/components/operational-scan/operational-scan-results"
+import type { SaveScanReportFields } from "@/components/operational-scan/save-scan-report-card"
 import { ScanProgress } from "@/components/operational-scan/scan-progress"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LANDING_HEADER_SIGN_IN } from "@/lib/marketing-landing-copy"
-import { SCAN_EMAIL_STEP, SCAN_INTRO } from "@/lib/operational-scan/scan-copy"
+import { SCAN_INTRO } from "@/lib/operational-scan/scan-copy"
 import {
   type OperationalScanAnswers,
   type OperationalScanResult,
@@ -40,10 +41,12 @@ const INDUSTRIES = [
 const QUESTION_COUNT = 8
 
 const initialAnswers: OperationalScanAnswers = {
+  firstName: "",
   businessName: "",
   website: "",
   industry: INDUSTRIES[0],
   email: "",
+  phone: "",
   staffQuestionsPerWeek: "16-30",
   ownerTextsCallsPerWeek: "16-30",
   staffCanOpenWithoutOwner: "partial",
@@ -54,7 +57,7 @@ const initialAnswers: OperationalScanAnswers = {
   repeatedMistakesIssues: "weekly",
 }
 
-type Phase = "intro" | "business" | "questions" | "email" | "results"
+type Phase = "intro" | "business" | "questions" | "results"
 
 function choiceButton(selected: boolean) {
   return cn(
@@ -128,14 +131,14 @@ function WeeklyBandPicker({
 }
 
 export function OperationalScanFlow() {
-  const bizHintId = useId()
-  const emailHintId = useId()
   const [phase, setPhase] = useState<Phase>("intro")
   const [questionIndex, setQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<OperationalScanAnswers>(initialAnswers)
   const [result, setResult] = useState<OperationalScanResult | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submissionSaved, setSubmissionSaved] = useState(false)
+  const [reportPublicId, setReportPublicId] = useState<string | null>(null)
+  const [reportUrl, setReportUrl] = useState<string | null>(null)
   const [reportGeneratedAt, setReportGeneratedAt] = useState<Date | null>(null)
   const [isSubmitting, startTransition] = useTransition()
 
@@ -143,30 +146,50 @@ export function OperationalScanFlow() {
     setAnswers((prev) => ({ ...prev, [key]: value }))
   }
 
-  const canProceedBusiness = answers.businessName.trim().length >= 2 && answers.industry.trim().length > 0
-  const emailTrim = answers.email.trim()
-  const canProceedContact = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)
+  const canProceedBusiness = answers.industry.trim().length > 0
 
-  const submit = () => {
+  const revealResults = () => {
+    setResult(computeOperationalScanScores(answers))
+    setReportGeneratedAt(new Date())
+    setPhase("results")
+  }
+
+  const saveReport = (fields: SaveScanReportFields) => {
+    if (!result) return
     setSubmitError(null)
     const payload: OperationalScanAnswers = {
       ...answers,
-      businessName: answers.businessName.trim(),
-      website: answers.website.trim(),
-      industry: answers.industry.trim(),
-      email: answers.email.trim(),
+      firstName: fields.firstName,
+      email: fields.email,
+      businessName: fields.businessName || answers.businessName,
+      phone: fields.phone,
     }
     startTransition(async () => {
-      const res = await submitScanLead(payload)
+      const res = await submitScanLead(payload, reportGeneratedAt?.toISOString())
+      if (!res.ok) {
+        setSubmitError(res.error)
+        if (res.publicId) setReportPublicId(res.publicId)
+        if (res.reportUrl) setReportUrl(res.reportUrl)
+        return
+      }
+      setSubmissionSaved(true)
+      setReportPublicId(res.publicId)
+      setReportUrl(res.reportUrl)
+      setAnswers(payload)
+    })
+  }
+
+  const resendReport = () => {
+    if (!reportPublicId) return
+    setSubmitError(null)
+    startTransition(async () => {
+      const res = await resendScanReport(reportPublicId)
       if (!res.ok) {
         setSubmitError(res.error)
         return
       }
       setSubmissionSaved(true)
-      setReportGeneratedAt(new Date())
-      setAnswers(payload)
-      setResult(computeOperationalScanScores(payload))
-      setPhase("results")
+      if (res.reportUrl) setReportUrl(res.reportUrl)
     })
   }
 
@@ -175,6 +198,8 @@ export function OperationalScanFlow() {
     setResult(null)
     setSubmitError(null)
     setSubmissionSaved(false)
+    setReportPublicId(null)
+    setReportUrl(null)
     setReportGeneratedAt(null)
     setQuestionIndex(0)
     setPhase("intro")
@@ -184,7 +209,7 @@ export function OperationalScanFlow() {
     if (questionIndex < QUESTION_COUNT - 1) {
       setQuestionIndex((i) => i + 1)
     } else {
-      setPhase("email")
+      revealResults()
     }
   }
 
@@ -269,6 +294,10 @@ export function OperationalScanFlow() {
               answers={answers}
               reportDate={reportGeneratedAt}
               submissionSaved={submissionSaved}
+              reportUrl={reportUrl ?? undefined}
+              submitError={submitError}
+              onSaveReport={saveReport}
+              onResendReport={reportPublicId ? resendReport : undefined}
               onRunAgain={reset}
             />
           </section>
@@ -276,7 +305,7 @@ export function OperationalScanFlow() {
           <section className="flex-1 border-b border-zinc-200 bg-white py-16 dark:border-zinc-800 dark:bg-zinc-950">
             <div className={cn(landingContainer, "max-w-lg")}>
               <h2 className="text-lg font-semibold tracking-[-0.02em]">Report unavailable</h2>
-              <p className="mt-2 text-[14px] text-zinc-600 dark:text-zinc-400">Submit your email again or restart the scan.</p>
+              <p className="mt-2 text-[14px] text-zinc-600 dark:text-zinc-400">Restart the scan to try again.</p>
               <Button type="button" className="mt-6" onClick={reset}>
                 Start over
               </Button>
@@ -296,22 +325,9 @@ export function OperationalScanFlow() {
                     Tell us about your operation
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-400">
-                    So your report has a name—not a generic placeholder.
+                    So your report is tailored to your sector—not a generic placeholder.
                   </p>
                   <div className="mt-6 space-y-5">
-                    <div>
-                      <Label htmlFor="biz-name">Business name</Label>
-                      <Input
-                        id="biz-name"
-                        className="mt-1.5 h-10"
-                        value={answers.businessName}
-                        onChange={(e) => update("businessName", e.target.value)}
-                        aria-describedby={bizHintId}
-                      />
-                      <p id={bizHintId} className="mt-1.5 text-[12px] text-zinc-500">
-                        Required · at least 2 characters.
-                      </p>
-                    </div>
                     <div>
                       <Label htmlFor="web">Website (optional)</Label>
                       <Input
@@ -472,69 +488,6 @@ export function OperationalScanFlow() {
                     </Button>
                   </div>
                 </div>
-              ) : null}
-
-              {phase === "email" ? (
-                <form
-                  className="mt-2"
-                  noValidate
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    if (!canProceedContact || isSubmitting) return
-                    submit()
-                  }}
-                >
-                  <h2 className="text-xl font-semibold tracking-[-0.025em] text-zinc-950 dark:text-white">
-                    {SCAN_EMAIL_STEP.title}
-                  </h2>
-                  <p className="mt-3 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-400">{SCAN_EMAIL_STEP.body}</p>
-                  <div className="mt-6">
-                    <Label htmlFor="email">Work email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      className="mt-1.5 h-10"
-                      placeholder="you@company.com"
-                      value={answers.email}
-                      onChange={(e) => update("email", e.target.value)}
-                      aria-describedby={emailHintId}
-                    />
-                    <p id={emailHintId} className="mt-1.5 text-[12px] text-zinc-500">
-                      Required · we send your score and cost read.
-                    </p>
-                    {submitError ? (
-                      <p
-                        role="alert"
-                        className="mt-3 rounded-md border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-200"
-                      >
-                        {submitError}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className={formNavRow}>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={formBtnSecondary}
-                      onClick={() => {
-                        setQuestionIndex(QUESTION_COUNT - 1)
-                        setPhase("questions")
-                      }}
-                    >
-                      Back
-                    </Button>
-                    <Button type="submit" className={cn(formBtnPrimary, "gap-2")} disabled={!canProceedContact || isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="size-4 animate-spin" data-icon="inline-start" aria-hidden />
-                          {SCAN_EMAIL_STEP.submitting}
-                        </>
-                      ) : (
-                        SCAN_EMAIL_STEP.submit
-                      )}
-                    </Button>
-                  </div>
-                </form>
               ) : null}
             </div>
           </section>

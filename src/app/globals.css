@@ -249,6 +249,26 @@
   }
 }
 
+@keyframes scan-score-reveal-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+.scan-score-reveal-glow {
+  animation: scan-score-reveal-glow 2.2s ease-in-out infinite;
+}
+
+.scan-score-reveal-pulse {
+  animation: landing-score-pulse 1.4s ease-in-out infinite;
+}
+
 @keyframes landing-bar-breathe {
   0%,
   100% {

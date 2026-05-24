@@ -10,53 +10,32 @@ export type EscapeBiggestRiskContext = {
   openIssuesCount?: number
 }
 
-const RISK_TITLE: Record<EscapeReadinessFactorId, string> = {
-  sop_coverage: "SOP coverage is thin",
-  training_coverage: "Training coverage is incomplete",
-  unresolved_issues: "Too many unresolved issues",
-  owner_interruptions: "Too much still routes back to you",
-  undocumented_procedures: "Too much still undocumented",
-}
+export const BIGGEST_RISK_TITLE = "Tomorrow without you"
 
-const DISAPPEARING_TOMORROW: Record<EscapeReadinessFactorId, string> = {
-  sop_coverage:
-    "If you disappeared tomorrow, opening and close would run on memory—one missed step becomes a customer-visible mistake before noon.",
-  training_coverage:
-    "If you disappeared tomorrow, trained tasks would stall on judgment calls—staff would hunt you instead of the checklist.",
-  unresolved_issues:
-    "If you disappeared tomorrow, open issues would stack with no owner—small fires become all-day escalations by day two.",
-  owner_interruptions:
-    "If you disappeared tomorrow, staff would flood your phone before close—every ambiguous call would pause the floor.",
-  undocumented_procedures:
-    "If you disappeared tomorrow, mid-shift gaps would surface fast—plays that live only in your head would not run without you.",
-}
-
-const BREAKDOWNS_BY_FACTOR: Record<EscapeReadinessFactorId, string[]> = {
-  sop_coverage: [
-    "Opening or closing runs without a written playbook",
-    "Variance on your highest-repeat procedure",
-    "New hire asks how it is really done",
-  ],
-  training_coverage: [
-    "Judgment calls on tasks that were never assigned",
-    "Same training questions repeated every shift",
-    "Coverage gaps when the usual person is out",
-  ],
-  unresolved_issues: [
-    "Open issues default to your inbox",
-    "Repeat mistakes with no assigned fix",
-    "Vendor or customer fires with no owner",
-  ],
-  owner_interruptions: [
-    "Texts and walk-ups stack within the first shift",
-    "Judgment calls pause until someone reaches you",
-    "Repeat questions because answers live with you",
-  ],
-  undocumented_procedures: [
-    "Procedure gap mid-shift with no written path",
-    "Only you know the vendor or pricing exception",
-    "Staff improvise when the playbook is missing",
-  ],
+const FUTURE_STATE_BY_FACTOR: Record<
+  EscapeReadinessFactorId,
+  { lead: [string, string]; consequence: string }
+> = {
+  sop_coverage: {
+    lead: ["Opening runs from memory", "Questions route back to staff phones"],
+    consequence: "Customer-facing mistakes become likely",
+  },
+  training_coverage: {
+    lead: ["Trained tasks stall on judgment calls", "New hires hunt the floor instead of the checklist"],
+    consequence: "Quality slips show up before you return",
+  },
+  unresolved_issues: {
+    lead: ["Open issues stack with no owner", "Repeat mistakes recycle without a fix"],
+    consequence: "Small fires become all-day escalations",
+  },
+  owner_interruptions: {
+    lead: ["Texts and walk-ups stack within the first shift", "Questions route back to staff phones"],
+    consequence: "The floor stalls until you answer",
+  },
+  undocumented_procedures: {
+    lead: ["Mid-shift gaps surface with no written path", "Staff improvise when the playbook is missing"],
+    consequence: "Customer-facing mistakes become likely",
+  },
 }
 
 function severityFromWeakestPercent(percent: number): {
@@ -87,6 +66,11 @@ function estimateWeeklyPulls(interruptFactorPercent: number | null, knownCount?:
   return 3
 }
 
+export function formatInterruptionFutureLine(low: number, high: number): string {
+  if (low === high) return `${low} interruptions expected within 48 hours`
+  return `${low}–${high} interruptions expected within 48 hours`
+}
+
 export function estimateAbsenceInterruptions(
   weeklyPulls: number,
   interruptFactorPercent: number | null
@@ -102,30 +86,23 @@ export function estimateAbsenceInterruptions(
     count,
     low,
     high,
-    periodLabel: "first 48 hours",
-    label: low === high ? `${low} pulls · first 48 hours` : `${low}–${high} pulls · first 48 hours`,
+    periodLabel: "within 48 hours",
+    label: formatInterruptionFutureLine(low, high),
   }
 }
 
-function buildPredictedBreakdowns(
+function buildFutureStateLines(
   primary: EscapeReadinessFactorInput & { percent: number },
-  secondary: (EscapeReadinessFactorInput & { percent: number }) | null,
+  interruptions: EscapeReadinessBiggestRisk["estimatedInterruptions"],
   ctx: EscapeBiggestRiskContext
 ): string[] {
-  const out: string[] = []
-  const primaryLines = BREAKDOWNS_BY_FACTOR[primary.id]
-  out.push(primaryLines[0]!)
-  out.push(primaryLines[1]!)
+  const copy = FUTURE_STATE_BY_FACTOR[primary.id]
+  const firstLine =
+    primary.id === "unresolved_issues" && ctx.openIssuesCount != null && ctx.openIssuesCount > 0
+      ? `${ctx.openIssuesCount} open issue(s) wait with no owner`
+      : copy.lead[0]
 
-  if (primary.id === "unresolved_issues" && ctx.openIssuesCount != null && ctx.openIssuesCount > 0) {
-    out.push(`${ctx.openIssuesCount} open issue(s) with no clear owner while you are out`)
-  } else if (secondary) {
-    out.push(BREAKDOWNS_BY_FACTOR[secondary.id][0]!)
-  } else {
-    out.push(primaryLines[2]!)
-  }
-
-  return out.slice(0, 3)
+  return [firstLine, copy.lead[1], interruptions.label, copy.consequence]
 }
 
 export function buildBiggestRisk(
@@ -137,18 +114,17 @@ export function buildBiggestRisk(
 
   scored.sort((a, b) => a.percent - b.percent)
   const weakest = scored[0]!
-  const secondary = scored[1] ?? null
   const interruptFactor = factors.find((f) => f.id === "owner_interruptions")
   const weeklyPulls = estimateWeeklyPulls(interruptFactor?.percent ?? null, ctx.ownerInterruptionsThisWeekCount)
   const severity = severityFromWeakestPercent(weakest.percent)
+  const estimatedInterruptions = estimateAbsenceInterruptions(weeklyPulls, interruptFactor?.percent ?? null)
 
   return {
     factorId: weakest.id,
-    title: RISK_TITLE[weakest.id],
+    title: BIGGEST_RISK_TITLE,
     detail: weakest.hint,
-    disappearingTomorrow: DISAPPEARING_TOMORROW[weakest.id],
-    predictedBreakdowns: buildPredictedBreakdowns(weakest, secondary, ctx),
-    estimatedInterruptions: estimateAbsenceInterruptions(weeklyPulls, interruptFactor?.percent ?? null),
+    futureStateLines: buildFutureStateLines(weakest, estimatedInterruptions, ctx),
+    estimatedInterruptions,
     severity: severity.severity,
     severityLabel: severity.label,
     severityPercent: severity.indicatorPercent,

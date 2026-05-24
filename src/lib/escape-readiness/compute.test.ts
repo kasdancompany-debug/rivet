@@ -60,10 +60,12 @@ describe("computeEscapeReadiness", () => {
 
 describe("computeEscapeReadinessFromScan", () => {
   const answers: OperationalScanAnswers = {
+    firstName: "Test",
     businessName: "Test Cafe",
     website: "",
     industry: "cafe",
     email: "a@b.com",
+    phone: "",
     staffQuestionsPerWeek: "16-30",
     ownerTextsCallsPerWeek: "16-30",
     staffCanOpenWithoutOwner: "partial",

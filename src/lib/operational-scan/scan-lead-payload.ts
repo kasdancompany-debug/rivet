@@ -16,17 +16,25 @@ function staffBandToEmployees(band: OperationalScanAnswers["staffQuestionsPerWee
   return 3
 }
 
-export function validateScanAnswersForLead(answers: OperationalScanAnswers): ScanLeadValidationError | null {
+function leadBusinessName(answers: OperationalScanAnswers): string {
   const business = answers.businessName.trim()
-  if (business.length < 2) {
-    return { field: "businessName", message: "Business name is required (at least 2 characters)." }
-  }
-  if (!answers.industry.trim()) {
-    return { field: "industry", message: "Industry is required." }
+  if (business.length >= 2) return business
+  const first = answers.firstName.trim()
+  if (first.length >= 1) return `${first}'s business`
+  return "Scan lead"
+}
+
+export function validateScanAnswersForLead(answers: OperationalScanAnswers): ScanLeadValidationError | null {
+  const firstName = answers.firstName.trim()
+  if (firstName.length < 1) {
+    return { field: "firstName", message: "First name is required." }
   }
   const email = answers.email.trim().toLowerCase()
   if (!EMAIL_RE.test(email)) {
     return { field: "email", message: "A valid email is required." }
+  }
+  if (!answers.industry.trim()) {
+    return { field: "industry", message: "Industry is required." }
   }
   return null
 }
@@ -45,7 +53,7 @@ export function answersToScanLeadRow(
     answers.repeatedMistakesIssues === "rarely" || answers.repeatedMistakesIssues === "monthly"
 
   return {
-    business_name: answers.businessName.trim(),
+    business_name: leadBusinessName(answers),
     website: answers.website.trim(),
     industry: answers.industry.trim(),
     employees: staffBandToEmployees(answers.staffQuestionsPerWeek),

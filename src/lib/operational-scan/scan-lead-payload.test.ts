@@ -4,10 +4,12 @@ import { answersToScanLeadRow, validateScanAnswersForLead } from "@/lib/operatio
 import { computeOperationalScanScores, type OperationalScanAnswers } from "@/lib/operational-scan/score"
 
 const baseAnswers: OperationalScanAnswers = {
+  firstName: "Alex",
   businessName: "Acme Cafe",
   website: "https://acme.test",
   industry: "Hospitality",
   email: "owner@test.co",
+  phone: "",
   staffQuestionsPerWeek: "6-15",
   ownerTextsCallsPerWeek: "16-30",
   staffCanOpenWithoutOwner: "partial",
@@ -19,6 +21,10 @@ const baseAnswers: OperationalScanAnswers = {
 }
 
 describe("scan-lead-payload v3", () => {
+  it("validateScanAnswersForLead rejects missing first name", () => {
+    expect(validateScanAnswersForLead({ ...baseAnswers, firstName: "" })?.field).toBe("firstName")
+  })
+
   it("validateScanAnswersForLead rejects bad email", () => {
     expect(validateScanAnswersForLead({ ...baseAnswers, email: "not-an-email" })?.field).toBe("email")
   })

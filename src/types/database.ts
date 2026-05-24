@@ -1386,6 +1386,60 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_reports: {
+        Row: {
+          id: string
+          public_id: string
+          created_at: string
+          user_id: string | null
+          scan_lead_id: string | null
+          recipient_email: string
+          first_name: string
+          report_payload: Record<string, unknown>
+          email_status: string
+          email_provider: string | null
+          email_provider_id: string | null
+          delivery_log: Record<string, unknown>[]
+          retry_count: number
+          last_send_attempt_at: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          public_id?: string
+          created_at?: string
+          user_id?: string | null
+          scan_lead_id?: string | null
+          recipient_email: string
+          first_name?: string
+          report_payload: Record<string, unknown>
+          email_status?: string
+          email_provider?: string | null
+          email_provider_id?: string | null
+          delivery_log?: Record<string, unknown>[]
+          retry_count?: number
+          last_send_attempt_at?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          public_id?: string
+          created_at?: string
+          user_id?: string | null
+          scan_lead_id?: string | null
+          recipient_email?: string
+          first_name?: string
+          report_payload?: Record<string, unknown>
+          email_status?: string
+          email_provider?: string | null
+          email_provider_id?: string | null
+          delivery_log?: Record<string, unknown>[]
+          retry_count?: number
+          last_send_attempt_at?: string | null
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {

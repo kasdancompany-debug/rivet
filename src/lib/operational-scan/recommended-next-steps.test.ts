@@ -4,10 +4,12 @@ import { recommendedFirstFixes, recommendedNextSteps } from "@/lib/operational-s
 import { computeOperationalScanScores, type OperationalScanAnswers } from "@/lib/operational-scan/score"
 
 const base: OperationalScanAnswers = {
+  firstName: "Test",
   businessName: "Test",
   website: "",
   industry: "Retail",
   email: "a@b.co",
+  phone: "",
   staffQuestionsPerWeek: "16-30",
   ownerTextsCallsPerWeek: "31-50",
   staffCanOpenWithoutOwner: "no",

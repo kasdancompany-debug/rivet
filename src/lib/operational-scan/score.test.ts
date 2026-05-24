@@ -9,10 +9,12 @@ import {
 } from "@/lib/operational-scan/score"
 
 const base: OperationalScanAnswers = {
+  firstName: "Test",
   businessName: "Test Co",
   website: "",
   industry: "Retail",
   email: "a@b.co",
+  phone: "",
   staffQuestionsPerWeek: "16-30",
   ownerTextsCallsPerWeek: "16-30",
   staffCanOpenWithoutOwner: "partial",

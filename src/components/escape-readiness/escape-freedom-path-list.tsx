@@ -65,10 +65,23 @@ export function EscapeFreedomPathList({
                 >
                   <div>
                     <dt className={cn("text-[10px] font-medium uppercase tracking-[0.08em]", muted)}>
-                      Est. score gain
+                      Impact
                     </dt>
-                    <dd className={cn("mt-0.5 text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400")}>
-                      +{item.estimatedScoreGain}
+                    <dd className="mt-0.5">
+                      <p
+                        className={cn(
+                          "text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400"
+                        )}
+                      >
+                        +{item.estimatedScoreGain} Escape Readiness
+                      </p>
+                      <p
+                        className={cn(
+                          "mt-0.5 text-xs font-medium leading-snug text-emerald-700/90 dark:text-emerald-400/90"
+                        )}
+                      >
+                        {item.translatedOutcome}
+                      </p>
                     </dd>
                   </div>
                   <div>

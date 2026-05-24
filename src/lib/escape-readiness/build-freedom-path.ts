@@ -3,6 +3,7 @@ import type {
   EscapeReadinessFactorInput,
   EscapeReadinessFactorId,
 } from "@/lib/escape-readiness/types"
+import { translateScoreGainOutcome } from "@/lib/escape-readiness/translate-score-gain-outcome"
 
 type PathTemplate = {
   title: string
@@ -105,6 +106,7 @@ function buildPathItem(
     title: template.title,
     action: template.action,
     estimatedScoreGain,
+    translatedOutcome: translateScoreGainOutcome(estimatedScoreGain, currentScore, factor?.id ?? null),
     effort: template.effort,
     timeRequired: template.timeRequired,
     potentialResultingScore,

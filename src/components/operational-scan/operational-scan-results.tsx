@@ -1,8 +1,14 @@
 import Link from "next/link"
-import { ArrowRight, Mail, Printer } from "lucide-react"
+import { ArrowRight, Printer } from "lucide-react"
 
 import { EscapeReadinessPanel } from "@/components/escape-readiness/escape-readiness-panel"
 import { OperationalScanPrintReport } from "@/components/operational-scan/operational-scan-print-report"
+import { ScanScoreReveal } from "@/components/operational-scan/scan-score-reveal"
+import {
+  SaveScanReportCard,
+  type SaveScanReportFields,
+} from "@/components/operational-scan/save-scan-report-card"
+import { estimatedDaysFromScore } from "@/lib/escape-readiness/absence-capacity"
 import { computeEscapeReadinessFromScan } from "@/lib/escape-readiness/compute-from-scan"
 import { SCAN_RESULTS } from "@/lib/operational-scan/scan-copy"
 import { recommendedFirstFixes } from "@/lib/operational-scan/recommended-next-steps"
@@ -11,68 +17,11 @@ import {
   type OperationalScanAnswers,
   type OperationalScanResult,
   formatCurrencyCad,
-  formatSeverityLabel,
   severityStyles,
 } from "@/lib/operational-scan/score"
 import { cn } from "@/lib/utils"
 
 const container = "mx-auto w-full max-w-2xl px-4 sm:px-6"
-
-function DependencyScoreHero({ result }: { result: OperationalScanResult }) {
-  const styles = severityStyles(result.severity)
-  const pct = result.ownerDependencyScore / 100
-  const r = 52
-  const c = 2 * Math.PI * r
-  const dash = c * pct
-
-  return (
-    <div className="relative flex flex-col items-center text-center">
-      <div
-        className="relative aspect-square w-[min(18rem,82vw)] max-w-[18rem]"
-        role="img"
-        aria-label={`Owner Dependency Score ${result.ownerDependencyScore} out of 100`}
-      >
-        <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden>
-          <circle cx="60" cy="60" r={r} fill="none" stroke="rgb(255 255 255 / 0.06)" strokeWidth="4" />
-          <circle
-            cx="60"
-            cy="60"
-            r={r}
-            fill="none"
-            className={styles.ring}
-            strokeWidth="4"
-            strokeLinecap="butt"
-            strokeDasharray={`${dash} ${c - dash + 0.001}`}
-          />
-        </svg>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-            Owner Dependency Score
-          </p>
-          <p
-            className={cn(
-              "mt-2 text-[clamp(3.25rem,11vw,4.25rem)] font-semibold tabular-nums leading-none tracking-[-0.05em]",
-              styles.score
-            )}
-          >
-            {result.ownerDependencyScore}
-          </p>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-600">
-            0–100 · higher = more depends on you
-          </p>
-        </div>
-      </div>
-      <p
-        className={cn(
-          "mt-6 inline-flex rounded-md border px-4 py-1.5 text-[12px] font-semibold tracking-tight",
-          styles.badge
-        )}
-      >
-        Severity · {formatSeverityLabel(result.severity)}
-      </p>
-    </div>
-  )
-}
 
 function CostStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -84,19 +33,14 @@ function CostStat({ label, value, sub }: { label: string; value: string; sub?: s
   )
 }
 
-function buildEmailScanBody(answers: OperationalScanAnswers, result: OperationalScanResult): string {
-  const biz = answers.businessName.trim() || "My business"
+function buildRefLine(answers: OperationalScanAnswers, reportDate: Date): string {
   return [
-    `Rivet Scan — ${biz}`,
-    ``,
-    `Owner Dependency Score: ${result.ownerDependencyScore}/100`,
-    `Severity: ${formatSeverityLabel(result.severity)}`,
-    `Est. routed back to you / month: ~${result.estimatedInterruptionsPerMonth}`,
-    `Est. owner hours lost / month: ~${result.estimatedOwnerHoursLostPerMonth}h`,
-    `Est. annual cost: ${formatCurrencyCad(result.estimatedAnnualCost)}`,
-    ``,
-    `View full report: ${typeof window !== "undefined" ? window.location.href : "https://rivet-tan.vercel.app/scan"}`,
-  ].join("\n")
+    answers.businessName.trim() || "Your operation",
+    answers.industry,
+    reportDate.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" }),
+  ]
+    .filter(Boolean)
+    .join(" · ")
 }
 
 export function OperationalScanResults({
@@ -104,31 +48,27 @@ export function OperationalScanResults({
   answers,
   reportDate,
   submissionSaved = false,
+  submitError = null,
+  reportUrl,
+  onSaveReport,
+  onResendReport,
   onRunAgain,
 }: {
   result: OperationalScanResult
   answers: OperationalScanAnswers
   reportDate: Date
   submissionSaved?: boolean
+  submitError?: string | null
+  reportUrl?: string
+  onSaveReport: (fields: SaveScanReportFields) => void | Promise<void>
+  onResendReport?: () => void | Promise<void>
   onRunAgain: () => void
 }) {
   const fixes = recommendedFirstFixes(result, answers)
   const escapeReadiness = computeEscapeReadinessFromScan(answers)
+  const stepAwayDays = estimatedDaysFromScore(escapeReadiness.score ?? 0)
   const styles = severityStyles(result.severity)
-  const email = answers.email.trim()
-
-  const refLine = [
-    answers.businessName.trim() || "Unnamed operation",
-    answers.industry,
-    reportDate.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" }),
-  ]
-    .filter(Boolean)
-    .join(" · ")
-
-  const mailtoHref =
-    email.length > 0
-      ? `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(`Rivet Scan — ${answers.businessName.trim() || "Owner dependency"}`)}&body=${encodeURIComponent(buildEmailScanBody(answers, result))}`
-      : undefined
+  const refLine = buildRefLine(answers, reportDate)
 
   return (
     <>
@@ -146,19 +86,11 @@ export function OperationalScanResults({
           <p className="mt-2 font-mono text-[11px] text-zinc-600">{refLine}</p>
         </div>
 
-        {submissionSaved && email ? (
-          <div className="border-b border-emerald-500/15 bg-emerald-950/25 px-4 py-3 sm:px-6">
-            <p className="text-[12px] text-zinc-400">
-              <span className="font-medium text-emerald-400/90">{SCAN_RESULTS.emailedNote}</span> {email}
-            </p>
-          </div>
-        ) : null}
-
         <div className={cn(container, "py-10 sm:py-12")}>
           <p className="text-center text-[15px] leading-relaxed text-zinc-400 sm:text-base">{SCAN_RESULTS.hook}</p>
 
           <div className="mt-10 flex justify-center">
-            <DependencyScoreHero result={result} />
+            <ScanScoreReveal result={result} stepAwayDays={stepAwayDays} />
           </div>
 
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
@@ -183,6 +115,18 @@ export function OperationalScanResults({
             {SCAN_RESULTS.underestimate}
           </p>
 
+          <div id="save-scan-report" className="mt-10 scroll-mt-24">
+            <SaveScanReportCard
+              initialBusinessName={answers.businessName}
+              onSubmit={onSaveReport}
+              onResend={onResendReport}
+              saved={submissionSaved}
+              savedEmail={answers.email.trim() || undefined}
+              reportUrl={reportUrl}
+              error={submitError}
+            />
+          </div>
+
           <div className="mt-12">
             <EscapeReadinessPanel model={escapeReadiness} compact dark />
           </div>
@@ -203,29 +147,36 @@ export function OperationalScanResults({
             </ol>
           </div>
 
-          <div className="mt-12 space-y-3 border-t border-white/[0.08] pt-10">
-            <Button
-              size="lg"
-              className="h-12 w-full rounded-md bg-white text-[14px] font-semibold text-zinc-950 hover:bg-zinc-100"
-              nativeButton={false}
-              render={<Link href="/signup?from=scan" />}
-            >
-              {SCAN_RESULTS.primaryCta}
-              <ArrowRight className="size-4 opacity-60" data-icon="inline-end" />
-            </Button>
-            {mailtoHref ? (
+          <div className="mt-12 border-t border-white/[0.08] pt-10 text-center">
+            <h2 className="text-balance text-2xl font-semibold tracking-tight text-white sm:text-[1.75rem]">
+              {SCAN_RESULTS.bottomCtaHeadline}
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-pretty text-[15px] leading-relaxed text-zinc-400">
+              {SCAN_RESULTS.bottomCtaSubtext}
+            </p>
+
+            <div className="mx-auto mt-8 max-w-md space-y-3">
+              <Button
+                size="lg"
+                className="h-12 w-full rounded-md bg-white text-[14px] font-semibold text-zinc-950 hover:bg-zinc-100"
+                nativeButton={false}
+                render={<Link href="/signup?from=scan" />}
+              >
+                {SCAN_RESULTS.primaryCta}
+                <ArrowRight className="size-4 opacity-60" data-icon="inline-end" />
+              </Button>
               <Button
                 size="lg"
                 variant="outline"
                 className="h-12 w-full rounded-md border-white/18 bg-transparent text-[14px] font-medium text-zinc-100 hover:bg-white/[0.06]"
                 nativeButton={false}
-                render={<a href={mailtoHref} />}
+                render={<a href="#save-scan-report" />}
               >
-                <Mail className="size-4 opacity-70" data-icon="inline-start" />
                 {SCAN_RESULTS.secondaryCta}
               </Button>
-            ) : null}
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
               <Button
                 type="button"
                 variant="ghost"
@@ -235,7 +186,12 @@ export function OperationalScanResults({
                 <Printer className="size-3.5 opacity-70" data-icon="inline-start" />
                 Print report
               </Button>
-              <Button type="button" variant="ghost" className="h-9 text-[12px] text-zinc-500 hover:text-zinc-200" onClick={onRunAgain}>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 text-[12px] text-zinc-500 hover:text-zinc-200"
+                onClick={onRunAgain}
+              >
                 Run again
               </Button>
             </div>

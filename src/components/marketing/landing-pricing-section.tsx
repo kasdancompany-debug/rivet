@@ -1,91 +1,81 @@
-import Link from "next/link"
-import { Check } from "lucide-react"
+import Link from "next/link";
 
-import { LandingCtaCluster } from "@/components/marketing/landing-inline-ctas"
+import { LandingCtaCluster } from "@/components/marketing/landing-inline-ctas";
 import {
   LANDING_EXISTING_WORKSPACE_CHECKOUT,
-  LANDING_PRICING,
-  LANDING_PRICING_SECTION,
-} from "@/lib/marketing-landing-copy"
+  LANDING_VALUE,
+} from "@/lib/marketing-landing-copy";
 
-const container = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8"
+const container = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 
 export function LandingPricingSection() {
+  const { eyebrow, title, hook, ownerTimeAtRisk, rivetCost, microcopy } =
+    LANDING_VALUE;
+
   return (
     <section
-      className="border-b border-zinc-200 bg-white py-14 sm:py-16 dark:border-zinc-800 dark:bg-zinc-950"
+      className="border-b border-zinc-200 bg-zinc-50 py-8 sm:py-10 dark:border-zinc-800 dark:bg-zinc-900/25"
       aria-labelledby="pricing-heading"
     >
       <div className={container}>
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          {LANDING_PRICING_SECTION.eyebrow}
+          {eyebrow}
         </p>
         <h2
           id="pricing-heading"
-          className="mt-3 max-w-[36ch] text-2xl font-semibold leading-[1.12] tracking-[-0.03em] text-zinc-950 sm:max-w-[48ch] dark:text-white"
+          className="mt-3 max-w-[32ch] text-xl font-semibold tracking-[-0.03em] text-zinc-950 sm:text-2xl dark:text-white"
         >
-          {LANDING_PRICING_SECTION.title}
+          {title}
         </h2>
+        <p className="mt-2 max-w-[44ch] text-sm text-zinc-600 dark:text-zinc-400">
+          {hook}
+        </p>
 
-        <article className="mt-8 max-w-2xl rounded-lg border border-zinc-200 bg-zinc-50/50 p-6 ring-1 ring-zinc-950/[0.04] sm:p-8 dark:border-zinc-800 dark:bg-zinc-900/30 dark:ring-white/[0.06]">
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
-            <div className="flex flex-wrap items-end gap-x-2 gap-y-0">
-              <span className="text-[2.75rem] font-semibold tabular-nums leading-none tracking-[-0.04em] text-zinc-950 sm:text-5xl dark:text-white">
-                {LANDING_PRICING.priceDisplay}
-              </span>
-              <span className="pb-1 text-sm font-medium text-zinc-500">{LANDING_PRICING.currencyLabel}</span>
-            </div>
-            {LANDING_PRICING.installmentLine ? (
-              <p className="text-[12px] font-medium leading-snug text-zinc-500 dark:text-zinc-400">
-                {LANDING_PRICING.installmentLine}
-              </p>
-            ) : null}
-          </div>
-
-          <h3 className="mt-6 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">
-            {LANDING_PRICING.cardTitle}
-          </h3>
-          <ul className="mt-4 space-y-2.5">
-            {LANDING_PRICING.includes.map((line) => (
-              <li key={line} className="flex gap-2.5 text-[14px] leading-snug text-zinc-800 dark:text-zinc-200">
-                <Check
-                  className="mt-0.5 size-4 shrink-0 text-zinc-950 dark:text-white"
-                  strokeWidth={2.25}
-                  aria-hidden
-                />
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-8 rounded-lg border border-zinc-200/80 bg-white px-4 py-4 dark:border-zinc-700/80 dark:bg-zinc-950/50 sm:px-5 sm:py-5">
-            <p className="text-[13px] font-semibold text-zinc-950 dark:text-white">
-              {LANDING_PRICING.paysForItselfHeading}
+        <div className="mt-6 grid max-w-3xl gap-4 sm:grid-cols-2">
+          <article className="rounded-lg border border-rose-500/20 bg-white p-5 dark:border-rose-500/15 dark:bg-zinc-950">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              {ownerTimeAtRisk.label}
             </p>
-            <ul className="mt-3 space-y-2">
-              {LANDING_PRICING.paysForItselfItems.map((line) => (
-                <li key={line} className="flex gap-2 text-[13px] leading-snug text-zinc-600 dark:text-zinc-400">
-                  <span className="mt-2 size-1 shrink-0 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-800 dark:text-rose-200">
+              {ownerTimeAtRisk.value}
+            </p>
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+              {ownerTimeAtRisk.note}
+            </p>
+          </article>
+          <article className="rounded-lg border border-zinc-300 bg-white p-5 ring-1 ring-zinc-950/[0.04] dark:border-zinc-700 dark:bg-zinc-950 dark:ring-white/[0.06]">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              {rivetCost.label}
+            </p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-zinc-950 dark:text-white">
+              {rivetCost.value}
+            </p>
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+              {rivetCost.note}
+            </p>
+          </article>
+        </div>
 
-          <p className="mt-6 text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-400">{LANDING_PRICING.microcopy}</p>
+        <p className="mt-4 max-w-3xl text-sm text-zinc-700 dark:text-zinc-300">
+          {microcopy}
+        </p>
 
-          <LandingCtaCluster surface="onLight" scanFrom="landing-pricing" className="mt-7" />
-          <p className="mt-3 text-[12px] leading-snug text-zinc-500 dark:text-zinc-400">
-            {LANDING_EXISTING_WORKSPACE_CHECKOUT.lead}{" "}
-            <Link
-              href={LANDING_EXISTING_WORKSPACE_CHECKOUT.href}
-              className="font-medium text-zinc-700 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-zinc-950 dark:text-zinc-200 dark:decoration-zinc-600 dark:hover:text-white"
-            >
-              {LANDING_EXISTING_WORKSPACE_CHECKOUT.linkLabel}
-            </Link>
-          </p>
-        </article>
+        <LandingCtaCluster
+          surface="onLight"
+          scanFrom="landing-pricing"
+          showScanSubline={false}
+          className="mt-6"
+        />
+        <p className="mt-3 text-[12px] text-zinc-500">
+          {LANDING_EXISTING_WORKSPACE_CHECKOUT.lead}{" "}
+          <Link
+            href={LANDING_EXISTING_WORKSPACE_CHECKOUT.href}
+            className="font-medium text-zinc-700 underline decoration-zinc-300 underline-offset-2 hover:text-zinc-950 dark:text-zinc-300"
+          >
+            {LANDING_EXISTING_WORKSPACE_CHECKOUT.linkLabel}
+          </Link>
+        </p>
       </div>
     </section>
-  )
+  );
 }

@@ -16,19 +16,25 @@ export function OperationalScanPrintReport({
   answers,
   reportDate,
   fixes,
+  visible = false,
 }: {
   result: OperationalScanResult
   answers: OperationalScanAnswers
   reportDate: Date
   fixes: [string, string, string]
+  visible?: boolean
 }) {
   const business = answers.businessName.trim() || "Operation"
 
   return (
     <div
       id="scan-print-report"
-      className="hidden bg-[#fafafa] text-zinc-950 print:block print:bg-white print:text-black"
-      aria-hidden
+      className={
+        visible
+          ? "rounded-xl border border-white/[0.08] bg-[#fafafa] text-zinc-950 shadow-xl"
+          : "hidden bg-[#fafafa] text-zinc-950 print:block print:bg-white print:text-black"
+      }
+      aria-hidden={visible ? undefined : true}
     >
       <div className="mx-auto max-w-[210mm] px-10 py-12 print:max-w-none print:px-0 print:py-0">
         <header className="border-b border-zinc-300 pb-6 print:border-zinc-900/20">

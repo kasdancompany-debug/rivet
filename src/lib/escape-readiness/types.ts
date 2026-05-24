@@ -40,8 +40,8 @@ export type EscapeReadinessBiggestRisk = {
   factorId: EscapeReadinessFactorId
   title: string
   detail: string
-  disappearingTomorrow: string
-  predictedBreakdowns: string[]
+  /** Future-state predictions shown as bullet lines on the risk card. */
+  futureStateLines: string[]
   estimatedInterruptions: {
     count: number
     low: number
@@ -64,6 +64,8 @@ export type EscapeFreedomPathItem = {
   title: string
   action: string
   estimatedScoreGain: number
+  /** Human-readable impact paired with the score gain (e.g. owner-free days). */
+  translatedOutcome: string
   effort: EscapeFreedomPathEffort
   timeRequired: string
   potentialResultingScore: number

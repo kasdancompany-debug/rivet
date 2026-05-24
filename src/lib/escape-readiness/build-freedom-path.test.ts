@@ -19,6 +19,7 @@ describe("buildFreedomPath", () => {
     expect(path).toHaveLength(3)
     expect(path[0]!.factorId).toBe("owner_interruptions")
     expect(path[0]!.estimatedScoreGain).toBeGreaterThan(0)
+    expect(path[0]!.translatedOutcome.length).toBeGreaterThan(0)
     expect(path[0]!.potentialResultingScore).toBeGreaterThan(73)
     expect(path[0]!.timeRequired.length).toBeGreaterThan(0)
     expect(["low", "medium", "high"]).toContain(path[0]!.effort)
