@@ -1019,6 +1019,10 @@ export type Database = {
         Args: { p_name: string; p_industry?: string }
         Returns: string
       }
+      provision_business_workspace: {
+        Args: { p_name: string; p_industry?: string; p_display_name?: string }
+        Returns: string
+      }
     }
     Enums: {
       standard_status: StandardStatus

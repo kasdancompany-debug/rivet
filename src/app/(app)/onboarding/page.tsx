@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import { IndustryTemplateOnboarding } from "@/components/onboarding/industry-template-onboarding"
 import { OwnerOnboardingWizard } from "@/components/onboarding/owner-onboarding-wizard"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
+import { businessHasPaidRivetPurchase } from "@/lib/billing/rivet-access"
+import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
 import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
 import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
@@ -26,6 +28,13 @@ export default async function OnboardingPage({
   const business = await fetchBusinessForCurrentUser(supabase)
   if (!business) {
     redirect("/setup")
+  }
+
+  if (shouldEnforceBillingGate()) {
+    const paid = await businessHasPaidRivetPurchase(supabase, business.id)
+    if (!paid) {
+      redirect("/subscribe")
+    }
   }
 
   const showRealityCheck = Boolean(business.template_installed_at) || sp.phase === "reality-check"

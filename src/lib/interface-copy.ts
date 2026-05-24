@@ -27,6 +27,8 @@ export const COPY = {
     namePlaceholder: "e.g. Northside Cafe",
     industryLabel: "How do you mainly run?",
     footerHint: "Next: pick one of eight business types—we install SOPs, training, and workflows automatically.",
+    footerHintBeforeCheckout:
+      "Next: complete checkout to unlock Rivet, then pick your business type.",
     submit: "Continue",
     submitting: "Creating workspace…",
   },

@@ -3,10 +3,13 @@ import { redirect } from "next/navigation"
 
 import { GuidedSetupForm } from "@/components/onboarding/guided-setup-form"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
+import { businessHasPaidRivetPurchase } from "@/lib/billing/rivet-access"
+import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
 import {
   fetchBusinessForCurrentUser,
   fetchLatestDependencyAssessment,
 } from "@/lib/db/queries"
+import { getPostSetupRedirectPath } from "@/lib/onboarding/post-setup-redirect"
 import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
 import { getServerAuthUser, requireAuthUser } from "@/lib/auth/server-auth"
@@ -22,6 +25,12 @@ export default async function SetupPage() {
   const supabase = await createClient()
   const business = await fetchBusinessForCurrentUser(supabase)
   if (business) {
+    if (shouldEnforceBillingGate()) {
+      const paid = await businessHasPaidRivetPurchase(supabase, business.id)
+      if (!paid) {
+        redirect("/subscribe")
+      }
+    }
     if (!business.template_installed_at) {
       redirect("/onboarding")
     }
@@ -43,7 +52,7 @@ export default async function SetupPage() {
   return (
     <DashboardRouteShell routePath="/setup" fetchLines={fetchLines}>
       <div className="pb-4">
-        <GuidedSetupForm />
+        <GuidedSetupForm postSetupHref={getPostSetupRedirectPath()} />
       </div>
     </DashboardRouteShell>
   )
