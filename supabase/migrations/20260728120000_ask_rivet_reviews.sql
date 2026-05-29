@@ -1,13 +1,37 @@
 -- Ask Rivet owner review workflow: approve or improve staff-facing answers.
--- Requires: 20260707120000_rivet_ask_rivet.sql (creates public.rivet_ask_queries)
+-- Bootstraps rivet_ask_queries when 20260707120000 was not applied yet.
 
-DO $$
-BEGIN
-  IF to_regclass('public.rivet_ask_queries') IS NULL THEN
-    RAISE EXCEPTION
-      'Missing table public.rivet_ask_queries — run migration 20260707120000_rivet_ask_rivet.sql first.';
-  END IF;
-END $$;
+CREATE TABLE IF NOT EXISTS public.rivet_ask_queries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id uuid NOT NULL REFERENCES public.businesses (id) ON DELETE CASCADE,
+  asked_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
+  question_text text NOT NULL,
+  normalized_question text NOT NULL,
+  standard_id uuid REFERENCES public.standards (id) ON DELETE SET NULL,
+  matched_source text,
+  response jsonb NOT NULL DEFAULT '{}'::jsonb,
+  prevented_owner_interrupt boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT rivet_ask_queries_question_len CHECK (char_length(question_text) <= 500)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rivet_ask_queries_business_created
+  ON public.rivet_ask_queries (business_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_rivet_ask_queries_business_normalized
+  ON public.rivet_ask_queries (business_id, normalized_question);
+
+ALTER TABLE public.rivet_ask_queries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "rivet_ask_queries_select" ON public.rivet_ask_queries;
+CREATE POLICY "rivet_ask_queries_select"
+ON public.rivet_ask_queries FOR SELECT TO authenticated
+USING (public.user_can_access_business (business_id));
+
+DROP POLICY IF EXISTS "rivet_ask_queries_insert" ON public.rivet_ask_queries;
+CREATE POLICY "rivet_ask_queries_insert"
+ON public.rivet_ask_queries FOR INSERT TO authenticated
+WITH CHECK (public.user_can_access_business (business_id));
 
 DO $$
 BEGIN
