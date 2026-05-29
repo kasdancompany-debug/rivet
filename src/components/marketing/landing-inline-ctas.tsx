@@ -7,8 +7,12 @@ import { cn } from "@/lib/utils";
 
 export type LandingCtaSurface = "onDark" | "onLight";
 
+export type LandingCtaPrimary = "founder" | "scan";
+
 type LandingCtaClusterProps = {
   surface: LandingCtaSurface;
+  /** Which action leads — scan-first on final CTA, founder-first elsewhere. */
+  primary?: LandingCtaPrimary;
   /** `from` query param on `/scan` for attribution. */
   scanFrom?: string;
   align?: "start" | "center";
@@ -17,9 +21,10 @@ type LandingCtaClusterProps = {
   className?: string;
 };
 
-/** Primary / secondary / tertiary CTA stack — shared across landing sections. */
+/** Primary / secondary CTA stack — shared across landing sections. */
 export function LandingCtaCluster({
   surface,
+  primary = "founder",
   scanFrom = "landing",
   align = "start",
   showScanSubline = true,
@@ -27,6 +32,55 @@ export function LandingCtaCluster({
 }: LandingCtaClusterProps) {
   const onDark = surface === "onDark";
   const centered = align === "center";
+  const scanFirst = primary === "scan";
+
+  const founderButton = (
+    <Button
+      key="founder"
+      size="lg"
+      variant={scanFirst ? "outline" : undefined}
+      nativeButton={false}
+      render={<Link href="/signup" />}
+      className={cn(
+        "h-10 w-full rounded-md px-5 text-[13px] font-semibold shadow-none sm:w-auto sm:min-w-[11rem]",
+        scanFirst
+          ? onDark
+            ? "border-white/14 bg-transparent text-zinc-300 hover:border-white/22 hover:bg-white/[0.04] hover:text-zinc-100"
+            : "border-zinc-300 bg-transparent text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900/60"
+          : onDark
+            ? "bg-white text-zinc-950 hover:bg-zinc-100"
+            : "bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200",
+        !scanFirst && "font-semibold",
+      )}
+    >
+      {LANDING_CTA.primary}
+      <ArrowRight className="size-3.5 opacity-50" data-icon="inline-end" />
+    </Button>
+  );
+
+  const scanButton = (
+    <Button
+      key="scan"
+      size="lg"
+      variant={scanFirst ? undefined : "outline"}
+      nativeButton={false}
+      render={<Link href={`/scan?from=${scanFrom}`} />}
+      className={cn(
+        "h-10 w-full rounded-md px-5 text-[13px] font-medium shadow-none sm:w-auto sm:min-w-[11rem]",
+        scanFirst
+          ? onDark
+            ? "bg-white text-zinc-950 hover:bg-zinc-100"
+            : "bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+          : onDark
+            ? "border-white/14 bg-transparent text-zinc-300 hover:border-white/22 hover:bg-white/[0.04] hover:text-zinc-100"
+            : "border-zinc-300 bg-transparent text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900/60",
+        scanFirst && "font-semibold",
+      )}
+    >
+      {LANDING_CTA.secondary}
+      <ArrowRight className="size-3.5 opacity-50" data-icon="inline-end" />
+    </Button>
+  );
 
   return (
     <div
@@ -42,34 +96,7 @@ export function LandingCtaCluster({
           centered && "sm:justify-center",
         )}
       >
-        <Button
-          size="lg"
-          nativeButton={false}
-          render={<Link href="/signup" />}
-          className={cn(
-            "h-10 w-full rounded-md px-5 text-[13px] font-semibold shadow-none sm:w-auto sm:min-w-[11rem]",
-            onDark
-              ? "bg-white text-zinc-950 hover:bg-zinc-100"
-              : "bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200",
-          )}
-        >
-          {LANDING_CTA.primary}
-          <ArrowRight className="size-3.5 opacity-50" data-icon="inline-end" />
-        </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          nativeButton={false}
-          render={<Link href={`/scan?from=${scanFrom}`} />}
-          className={cn(
-            "h-10 w-full rounded-md px-5 text-[13px] font-medium shadow-none sm:w-auto sm:min-w-[11rem]",
-            onDark
-              ? "border-white/14 bg-transparent text-zinc-300 hover:border-white/22 hover:bg-white/[0.04] hover:text-zinc-100"
-              : "border-zinc-300 bg-transparent text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900/60",
-          )}
-        >
-          {LANDING_CTA.secondary}
-        </Button>
+        {scanFirst ? [scanButton, founderButton] : [founderButton, scanButton]}
       </div>
 
       {showScanSubline ? (

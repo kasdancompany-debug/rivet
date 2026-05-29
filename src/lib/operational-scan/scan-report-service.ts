@@ -14,6 +14,7 @@ import {
   type OperationalScanResult,
 } from "@/lib/operational-scan/score"
 import { answersToScanLeadRow, validateScanAnswersForLead } from "@/lib/operational-scan/scan-lead-payload"
+import { scanReportResendBlockedReason } from "@/lib/operational-scan/scan-report-resend-limits"
 import type { TablesInsert } from "@/types/database"
 
 export type PersistAndSendScanReportResult =
@@ -213,12 +214,22 @@ export async function resendScanReportByPublicId(
 
   const { data: report, error } = await admin
     .from("scan_reports")
-    .select("id, public_id, delivery_log, retry_count, report_payload, recipient_email, first_name")
+    .select(
+      "id, public_id, delivery_log, retry_count, last_send_attempt_at, report_payload, recipient_email, first_name"
+    )
     .eq("public_id", publicId)
     .maybeSingle()
 
   if (error || !report) {
     return { ok: false, error: "Report not found.", code: "database" }
+  }
+
+  const blocked = scanReportResendBlockedReason({
+    retryCount: report.retry_count,
+    lastSendAttemptAt: report.last_send_attempt_at,
+  })
+  if (blocked) {
+    return { ok: false, error: blocked, code: "validation" }
   }
 
   const row: ScanReportRow = {

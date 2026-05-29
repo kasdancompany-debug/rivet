@@ -1,50 +1,16 @@
 "use server"
 
-import { saveSop, type SaveSopPayload } from "@/app/actions/sops"
+import { revalidatePath } from "next/cache"
+
+import { saveSop } from "@/app/actions/sops"
 import { convertQuickCaptureText } from "@/lib/sops/quick-capture/convert"
+import {
+  buildPlaySystemPreview,
+  type PlaySystemPreview,
+} from "@/lib/sops/quick-capture/build-play-system-preview"
+import { savePayloadFromDraft } from "@/lib/sops/quick-capture/payload-from-draft"
 import type { QuickCaptureDraft, QuickCaptureSource } from "@/lib/sops/quick-capture/types"
-import { STANDARDS_CAPTURE_VERSION } from "@/lib/standards-capture/types"
 import { createClient } from "@/lib/supabase/server"
-import type { Json } from "@/types/database"
-
-function buildCaptureFromDraft(draft: QuickCaptureDraft): Json {
-  return {
-    version: STANDARDS_CAPTURE_VERSION,
-    photoUrls: [],
-    videoUrl: null,
-    walkthroughMediaId: null,
-    qualityStandards: [],
-    acceptableExamples: [],
-    unacceptableExamples: [],
-    assignedRoles: draft.assignedRoles,
-    competencyMarkers: draft.trainingCheckpoints,
-  } satisfies Json
-}
-
-function savePayloadFromDraft(
-  businessId: string,
-  draft: QuickCaptureDraft,
-  sopId?: string
-): SaveSopPayload {
-  return {
-    sopId,
-    businessId,
-    title: draft.title,
-    description: draft.purpose,
-    category: draft.category,
-    importance_level: draft.importanceLevel,
-    owner_dependency_level: draft.ownerDependencyLevel,
-    estimated_time_minutes: draft.estimatedTimeMinutes,
-    status: "draft",
-    steps: draft.steps.map((step) => ({
-      title: step.title,
-      instructions: step.instructions,
-      media_url: null,
-      requires_photo_confirmation: false,
-    })),
-    standards_capture: buildCaptureFromDraft(draft),
-  }
-}
 
 export async function convertQuickCapture(
   text: string
@@ -57,6 +23,22 @@ export async function convertQuickCapture(
 
 /** @deprecated Use convertQuickCapture — kept for clarity at call sites. */
 export const generatePlayFromDescription = convertQuickCapture
+
+export async function previewPlaySystemFromText(
+  text: string
+): Promise<
+  | { ok: true; preview: PlaySystemPreview; source: QuickCaptureSource }
+  | { ok: false; message: string }
+> {
+  const converted = await convertQuickCaptureTextAction(text)
+  if (!converted.ok) return converted
+
+  return {
+    ok: true,
+    preview: buildPlaySystemPreview(converted.draft, text.trim()),
+    source: converted.source,
+  }
+}
 
 async function convertQuickCaptureTextAction(
   text: string
@@ -112,10 +94,37 @@ export async function quickCaptureAndSaveDraft(payload: {
       return { ok: false, message: "Could not convert that description." }
     }
 
-    const saveResult = await saveSop(savePayloadFromDraft(payload.businessId, result.draft, payload.sopId))
+    const preview = buildPlaySystemPreview(result.draft, trimmed)
+    const saveResult = await saveSop(
+      savePayloadFromDraft(
+        payload.businessId,
+        result.draft,
+        payload.sopId,
+        {
+          successLooksLike: result.draft.successCriteria || result.draft.purpose,
+          failureLooksLike:
+            result.draft.rootCauses.find((c) =>
+              c.title.toLowerCase().includes("visual")
+            )?.description ?? result.draft.operationalProblem,
+          newHireMistakes: preview.commonMistakes.slice(0, 5),
+          ifNobodyAsks: preview.askRivet.escalation,
+          faqs: [
+            {
+              question: preview.askRivet.sampleQuestion,
+              answer: preview.askRivet.quickAnswer,
+            },
+          ],
+          goodExampleMediaId: null,
+          badExampleMediaId: null,
+        }
+      )
+    )
     if (!saveResult.ok) {
       return { ok: false, message: saveResult.message }
     }
+
+    revalidatePath("/sops")
+    revalidatePath("/sops/capture")
 
     return {
       ok: true,

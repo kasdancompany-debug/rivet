@@ -78,9 +78,9 @@ export function IndustryTemplateOnboarding({ businessName }: { businessName: str
         </div>
 
         <ul className="space-y-3 rounded-xl border border-emerald-600/20 bg-emerald-500/[0.06] px-5 py-5 dark:bg-emerald-950/20">
-          <InstallLine label="SOPs added" />
+          <InstallLine label="Plays added" />
           <InstallLine label="training modules added" />
-          <InstallLine label="interruption workflows added" />
+          <InstallLine label="Owner pull logging ready" />
         </ul>
 
         <div className="flex flex-col gap-3 sm:flex-row">

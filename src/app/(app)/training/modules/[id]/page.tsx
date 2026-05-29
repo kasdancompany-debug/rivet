@@ -4,16 +4,17 @@ import { notFound, redirect } from "next/navigation"
 
 import {
   fetchBusinessForCurrentUser,
-  fetchCurrentProfile,
   fetchProfilesForCurrentBusiness,
   fetchTrainingModuleDeep,
   listEmployeeTrainingProgress,
   listSopsForBusiness,
 } from "@/lib/db/queries"
 import { formatTrainingRole } from "@/lib/training/roles"
+import { signStandardMediaRows } from "@/lib/standards/standard-media-server"
+import { TrainingModuleMediaPanel } from "@/components/media/training-module-media-panel"
 import { lineForWorkspaceLinked } from "@/lib/route-reliability/diagnostic-builders"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
-import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
+import { loadWorkspaceAccess } from "@/lib/ops/load-workspace-access"
 import { getServerAuthUser, requireAuthUser } from "@/lib/auth/server-auth"
 import { createClient } from "@/lib/supabase/server"
 import { AppPageHeader } from "@/components/app-page-header"
@@ -51,17 +52,37 @@ export default async function TrainingModuleDetailPage({
   const user = requireAuthUser(await getServerAuthUser())
   const supabase = await createClient()
   const business = await fetchBusinessForCurrentUser(supabase)
-  const profile = await fetchCurrentProfile(supabase)
   if (!business) redirect("/setup")
 
   const mod = await fetchTrainingModuleDeep(id, supabase)
   if (!mod || mod.business_id !== business.id) notFound()
 
-  const owner = isWorkspaceOwner(user.id, business, profile)
+  const access = await loadWorkspaceAccess(supabase, user.id)
+  const canManageTraining = access?.can("manage_team_training") ?? false
+  const canManageModules = access?.can("manage_training_modules") ?? false
+  const canSignOff = access?.can("sign_off_training") ?? false
   const sops = await listSopsForBusiness(business.id, undefined, supabase)
   const progress = await listEmployeeTrainingProgress({ moduleId: id }, supabase)
   const profiles = await fetchProfilesForCurrentBusiness(supabase)
   const nameById = Object.fromEntries(profiles.map((p) => [p.id, p.full_name]))
+
+  const standardIds = [...new Set((mod.training_items ?? []).map((i) => i.standard_id))]
+  let trainingMediaGroups: { standardId: string; standardTitle: string; media: Awaited<ReturnType<typeof signStandardMediaRows>> }[] = []
+  if (standardIds.length > 0) {
+    const { data: mediaRows } = await supabase
+      .from("standard_media")
+      .select("*")
+      .in("standard_id", standardIds)
+    const signed = await signStandardMediaRows(mediaRows ?? [])
+    trainingMediaGroups = standardIds.map((standardId) => {
+      const item = (mod.training_items ?? []).find((i) => i.standard_id === standardId)
+      return {
+        standardId,
+        standardTitle: item?.standards?.title ?? "Play",
+        media: signed.filter((m) => m.standard_id === standardId),
+      }
+    })
+  }
 
   const fetchLines: RouteFetchLine[] = [
     lineForWorkspaceLinked(true),
@@ -79,7 +100,7 @@ export default async function TrainingModuleDetailPage({
         <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/training" />}>
           ← Training
         </Button>
-        {owner ? (
+        {canManageModules ? (
           <>
             <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/training/modules/${id}/edit`} />}>
               Edit details
@@ -93,7 +114,7 @@ export default async function TrainingModuleDetailPage({
         title={mod.title}
         description={
           mod.description?.trim() ||
-          "Standards in this module count toward anyone it is assigned to. Add every play they must know cold."
+          "Plays in this module count toward anyone it is assigned to. Add every play they must know cold."
         }
         className="mb-0 max-w-2xl"
       />
@@ -101,7 +122,11 @@ export default async function TrainingModuleDetailPage({
         <Badge variant="outline">{formatTrainingRole(mod.assigned_role)}</Badge>
       </div>
 
-      {owner ? (
+      <div className="mt-8">
+        <TrainingModuleMediaPanel groups={trainingMediaGroups} />
+      </div>
+
+      {canManageTraining ? (
         <div className="mt-8">
           <TrainingPortalInvitePanel
             businessId={business.id}
@@ -122,11 +147,11 @@ export default async function TrainingModuleDetailPage({
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Standards in this module</CardTitle>
+            <CardTitle className="text-base">Plays in this module</CardTitle>
             <CardDescription>Link plays from Standards. Required items drive completion %.</CardDescription>
           </CardHeader>
           <CardContent>
-            {owner ? (
+            {canManageModules ? (
               <TrainingModuleSopsEditor moduleId={mod.id} items={mod.training_items ?? []} availableSops={sops} />
             ) : (
               <ul className="space-y-2 text-sm">
@@ -157,9 +182,27 @@ export default async function TrainingModuleDetailPage({
             ) : (
               <ul className="space-y-2 text-sm">
                 {progress.map((row) => (
-                  <li key={row.id} className="flex justify-between gap-2 rounded-lg border border-border/40 px-3 py-2">
+                  <li
+                    key={row.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/40 px-3 py-2"
+                  >
                     <span className="font-medium">{nameById[row.employee_id] ?? "Team member"}</span>
-                    <span className="text-muted-foreground">{row.status.replace(/_/g, " ")}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">{row.status.replace(/_/g, " ")}</span>
+                      {canSignOff ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          nativeButton={false}
+                          render={
+                            <Link href={`/training/modules/${id}/review/${row.employee_id}`} />
+                          }
+                        >
+                          Sign off steps
+                        </Button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>

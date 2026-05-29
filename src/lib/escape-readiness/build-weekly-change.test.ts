@@ -38,7 +38,7 @@ describe("buildWeeklyChange", () => {
         { date: "2026-05-07", score: 65 },
         { date: "2026-05-16", score: 73 },
       ],
-      factors: [{ id: "sop_coverage", label: "SOP coverage", percent: 52, hint: "" }],
+      factors: [{ id: "sop_coverage", label: "Play coverage", percent: 52, hint: "" }],
     })
 
     expect(view.weeklyChange).not.toBeNull()

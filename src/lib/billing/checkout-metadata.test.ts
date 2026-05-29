@@ -19,8 +19,20 @@ describe("buildRivetCheckoutMetadata", () => {
       user_id: "user-123",
       workspace_id: "ws-456",
       email: "owner@example.com",
-      rivet_product: "rivet_lifetime_v1",
+      rivet_product: "rivet_founder_lifetime_v1",
+      rivet_billing_plan: "founder_lifetime",
+      rivet_payment_option: "once",
     })
+  })
+
+  it("records installment payment option", () => {
+    expect(
+      buildRivetCheckoutMetadata({
+        userId: "user-123",
+        workspaceId: "ws-456",
+        paymentOption: "installment_3",
+      }).rivet_payment_option
+    ).toBe("installment_3")
   })
 
   it("omits email when unavailable", () => {
@@ -32,7 +44,9 @@ describe("buildRivetCheckoutMetadata", () => {
     ).toEqual({
       user_id: "user-123",
       workspace_id: "ws-456",
-      rivet_product: "rivet_lifetime_v1",
+      rivet_product: "rivet_founder_lifetime_v1",
+      rivet_billing_plan: "founder_lifetime",
+      rivet_payment_option: "once",
     })
   })
 })
@@ -86,7 +100,7 @@ describe("parseRivetCheckoutMetadata", () => {
 describe("checkout return URLs", () => {
   it("uses NEXT_PUBLIC_SITE_URL origin without trailing slash", () => {
     expect(rivetCheckoutSuccessUrl("https://rivet-tan.vercel.app/")).toBe(
-      "https://rivet-tan.vercel.app/dashboard?billing=success"
+      "https://rivet-tan.vercel.app/subscribe?billing=success&session_id={CHECKOUT_SESSION_ID}"
     )
     expect(rivetCheckoutCancelUrl("https://rivet-tan.vercel.app/")).toBe(
       "https://rivet-tan.vercel.app/subscribe?billing=canceled"

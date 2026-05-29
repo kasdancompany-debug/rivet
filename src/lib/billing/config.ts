@@ -35,6 +35,8 @@ export function isBillingExemptPath(pathname: string): boolean {
   if (pathname === "/setup") return true
   if (pathname === "/onboarding") return true
   if (pathname === "/settings" || pathname.startsWith("/settings/")) return true
+  if (pathname.startsWith("/learn")) return true
+  if (pathname.startsWith("/join")) return true
   return false
 }
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check } from "lucide-react";
 
 import { LandingCtaCluster } from "@/components/marketing/landing-inline-ctas";
 import {
@@ -9,8 +10,18 @@ import {
 const container = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8";
 
 export function LandingPricingSection() {
-  const { eyebrow, title, hook, ownerTimeAtRisk, rivetCost, microcopy } =
-    LANDING_VALUE;
+  const {
+    eyebrow,
+    title,
+    hook,
+    limitedFounderRelease,
+    productName,
+    priceOnce,
+    priceInstallment,
+    included,
+    ownerTimeAtRisk,
+    microcopy,
+  } = LANDING_VALUE;
 
   return (
     <section
@@ -27,11 +38,42 @@ export function LandingPricingSection() {
         >
           {title}
         </h2>
-        <p className="mt-2 max-w-[44ch] text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="mt-2 max-w-[48ch] text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           {hook}
         </p>
 
-        <div className="mt-6 grid max-w-3xl gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid max-w-4xl gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <article className="rounded-lg border border-zinc-300 bg-white p-5 ring-1 ring-zinc-950/[0.04] dark:border-zinc-700 dark:bg-zinc-950 dark:ring-white/[0.06]">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                {productName}
+              </p>
+              <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-100">
+                {limitedFounderRelease}
+              </span>
+            </div>
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950 dark:text-white">
+              {priceOnce}
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {priceInstallment}
+            </p>
+            <ul className="mt-5 grid gap-2 sm:grid-cols-2">
+              {included.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 text-[13px] text-zinc-700 dark:text-zinc-300"
+                >
+                  <Check
+                    className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden
+                  />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </article>
+
           <article className="rounded-lg border border-rose-500/20 bg-white p-5 dark:border-rose-500/15 dark:bg-zinc-950">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
               {ownerTimeAtRisk.label}
@@ -43,17 +85,6 @@ export function LandingPricingSection() {
               {ownerTimeAtRisk.note}
             </p>
           </article>
-          <article className="rounded-lg border border-zinc-300 bg-white p-5 ring-1 ring-zinc-950/[0.04] dark:border-zinc-700 dark:bg-zinc-950 dark:ring-white/[0.06]">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              {rivetCost.label}
-            </p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-zinc-950 dark:text-white">
-              {rivetCost.value}
-            </p>
-            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-              {rivetCost.note}
-            </p>
-          </article>
         </div>
 
         <p className="mt-4 max-w-3xl text-sm text-zinc-700 dark:text-zinc-300">
@@ -62,6 +93,7 @@ export function LandingPricingSection() {
 
         <LandingCtaCluster
           surface="onLight"
+          primary="founder"
           scanFrom="landing-pricing"
           showScanSubline={false}
           className="mt-6"

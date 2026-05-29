@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { ArrowRight, Sparkles } from "lucide-react"
+import { ArrowRight, Sparkles, TrendingDown } from "lucide-react"
 
+import { StartInterruptionFixPlanButton } from "@/components/owner-interruptions/start-interruption-fix-plan-button"
 import type { InterruptionFixSuggestion } from "@/lib/owner-interruptions/fix-suggestions/types"
 import { COPY } from "@/lib/interface-copy"
 import { Badge } from "@/components/ui/badge"
@@ -8,13 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
-function fixTypeLabel(fixType: InterruptionFixSuggestion["fixType"]): string {
-  return fixType === "training_module"
-    ? COPY.interruptions.fixSuggestionTrainingModule
-    : COPY.interruptions.fixSuggestionSop
-}
-
-function FixSuggestionCard({ suggestion }: { suggestion: InterruptionFixSuggestion }) {
+function FixSuggestionCard({
+  suggestion,
+  businessId,
+}: {
+  suggestion: InterruptionFixSuggestion
+  businessId: string
+}) {
   const hoursRecovered = Math.round((suggestion.estimatedOwnerMinutesRecovered / 60) * 10) / 10
 
   return (
@@ -38,15 +39,40 @@ function FixSuggestionCard({ suggestion }: { suggestion: InterruptionFixSuggesti
           </dt>
           <dd className="mt-1 leading-relaxed text-foreground">{suggestion.rootCause}</dd>
         </div>
-        <div>
-          <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {COPY.interruptions.fixSuggestionSuggestedFix}
-          </dt>
-          <dd className="mt-1 leading-relaxed text-foreground">
-            <span className="font-medium">{fixTypeLabel(suggestion.fixType)}:</span> {suggestion.suggestedTitle}
-          </dd>
-        </div>
       </dl>
+
+      {suggestion.actions.length > 0 ? (
+        <div className="mt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {COPY.interruptions.fixSuggestionOperationalActions}
+          </p>
+          <ul className="mt-2 space-y-2">
+            {suggestion.actions.map((action) => (
+              <li key={action.kind}>
+                <Link
+                  href={action.href}
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-lg border border-border/50 bg-background/80 px-3 py-2.5",
+                    "transition-colors hover:border-primary/30 hover:bg-background"
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">{action.label}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{action.detail}</span>
+                  </span>
+                  <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {suggestion.askMatchCount > 0 ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {COPY.interruptions.fixSuggestionAskOverlap(suggestion.askMatchCount)}
+        </p>
+      ) : null}
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
         <li className="rounded-lg border border-border/50 bg-background/80 px-3 py-2.5">
@@ -67,24 +93,36 @@ function FixSuggestionCard({ suggestion }: { suggestion: InterruptionFixSuggesti
         </li>
       </ul>
 
-      <Button
-        className={cn("mt-4 h-10")}
-        nativeButton={false}
-        render={<Link href={suggestion.createHref} />}
-      >
-        {suggestion.fixType === "training_module"
-          ? COPY.interruptions.fixSuggestionCreateModule
-          : COPY.interruptions.fixSuggestionCreatePlay}
-        <ArrowRight className="size-3.5 opacity-80" data-icon="inline-end" />
-      </Button>
+      <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+        <TrendingDown className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+        {COPY.interruptions.fixSuggestionImpactTracking}
+      </p>
+
+      {suggestion.sampleInterruptionId ? (
+        <StartInterruptionFixPlanButton
+          businessId={businessId}
+          interruptionId={suggestion.sampleInterruptionId}
+        />
+      ) : (
+        <Button
+          className={cn("mt-4 h-10")}
+          nativeButton={false}
+          render={<Link href={suggestion.createHref} />}
+        >
+          {suggestion.actions[0]?.label ?? COPY.interruptions.fixSuggestionCreatePlay}
+          <ArrowRight className="size-3.5 opacity-80" data-icon="inline-end" />
+        </Button>
+      )}
     </article>
   )
 }
 
 export function InterruptionFixSuggestionsPanel({
   suggestions,
+  businessId,
 }: {
   suggestions: InterruptionFixSuggestion[]
+  businessId: string
 }) {
   if (suggestions.length === 0) return null
 
@@ -101,7 +139,7 @@ export function InterruptionFixSuggestionsPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {suggestions.map((s) => (
-          <FixSuggestionCard key={s.patternKey} suggestion={s} />
+          <FixSuggestionCard key={s.patternKey} suggestion={s} businessId={businessId} />
         ))}
       </CardContent>
     </Card>

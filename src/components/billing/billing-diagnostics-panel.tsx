@@ -175,7 +175,7 @@ export function BillingDiagnosticsPanel({ model }: { model: BillingDiagnosticsVi
           </li>
           <li>
             {model.siteUrl
-              ? `Checkout return URLs use ${model.siteUrl}/dashboard?billing=success`
+              ? `Checkout return URLs use ${model.siteUrl}/subscribe?billing=success&session_id={CHECKOUT_SESSION_ID}`
               : "Set NEXT_PUBLIC_SITE_URL to your production origin."}
           </li>
           <li>
@@ -190,6 +190,12 @@ export function BillingDiagnosticsPanel({ model }: { model: BillingDiagnosticsVi
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/subscribe" />}>
           Open /subscribe
+        </Button>
+        <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/internal/pilot" />}>
+          Kasdan pilot
+        </Button>
+        <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/internal/metrics" />}>
+          Case study metrics
         </Button>
         <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>
           Open /dashboard

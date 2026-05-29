@@ -29,7 +29,7 @@ export function SopStandardsCaptureSection({ capture }: { capture: StandardsCapt
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="capture-heading" className="text-xl font-semibold tracking-tight">
-            Standards Capture
+            Capture a play
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             What you committed when you moved this out of your head—media, quality bar, examples, and who it applies
@@ -72,12 +72,26 @@ export function SopStandardsCaptureSection({ capture }: { capture: StandardsCapt
         </Card>
       ) : null}
 
-      {capture.videoUrl ? (
+      {capture.walkthroughMediaId ? (
         <Card className="border-border/60 bg-card/70 shadow-sm">
           <CardHeader className="border-b border-border/40 pb-3">
             <CardTitle className="text-base font-semibold">Video walkthrough</CardTitle>
           </CardHeader>
           <CardContent className="pt-5">
+            <p className="text-sm text-muted-foreground">
+              Uploaded to Rivet storage. Open the play detail page to watch with signed access.
+            </p>
+          </CardContent>
+        </Card>
+      ) : capture.videoUrl ? (
+        <Card className="border-amber-500/25 bg-amber-500/[0.04] shadow-sm">
+          <CardHeader className="border-b border-amber-500/15 pb-3">
+            <CardTitle className="text-base font-semibold">Legacy external video</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-5">
+            <p className="text-sm text-muted-foreground">
+              Re-upload this walkthrough on the play capture screen so it lives in Rivet private storage.
+            </p>
             {isProbablyDirectMedia(capture.videoUrl) ? (
               <video
                 src={capture.videoUrl}
@@ -102,15 +116,18 @@ export function SopStandardsCaptureSection({ capture }: { capture: StandardsCapt
       ) : null}
 
       {capture.photoUrls.length > 0 ? (
-        <Card className="border-border/60 bg-card/70 shadow-sm">
-          <CardHeader className="border-b border-border/40 pb-3">
-            <CardTitle className="text-base font-semibold">Reference photos</CardTitle>
+        <Card className="border-amber-500/25 bg-amber-500/[0.04] shadow-sm">
+          <CardHeader className="border-b border-amber-500/15 pb-3">
+            <CardTitle className="text-base font-semibold">Legacy external photos</CardTitle>
           </CardHeader>
-          <CardContent className="pt-5">
+          <CardContent className="space-y-3 pt-5">
+            <p className="text-sm text-muted-foreground">
+              Upload reference photos on the play capture screen to replace these external links.
+            </p>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {capture.photoUrls.map((url) => (
                 <li key={url} className="overflow-hidden rounded-xl border border-border/60 bg-muted/20">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- remote owner media URLs */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- legacy remote URLs */}
                   <img
                     src={url}
                     alt=""

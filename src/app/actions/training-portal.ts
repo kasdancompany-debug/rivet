@@ -15,9 +15,17 @@ import {
   listTrainingSopProgressForEmployee,
   syncEmployeeTrainingModuleProgress,
 } from "@/lib/db/queries"
-import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
+import {
+  canManageEmployeeTraining,
+  requireWorkspacePermission,
+} from "@/lib/ops/workspace-auth"
 import { buildPortalModuleView } from "@/lib/training/portal/build-portal-module"
 import { canCompletePortalItem } from "@/lib/training/portal/completion-rules"
+import {
+  loadPortalStepProofState,
+  mergeStepProofUpdate,
+  stepProofRecordsToDbPayload,
+} from "@/lib/training/portal/persist-step-proofs"
 import { gradeStandardQuiz } from "@/lib/sops/generate-standard-quiz"
 import { syncEmployeeModuleCertification } from "@/lib/training/certifications/sync"
 import { trainingPortalInviteUrl } from "@/lib/training/portal/invite-links"
@@ -38,16 +46,10 @@ async function requireSignedIn(supabase: TypedSupabaseClient) {
   return { ok: true as const, user }
 }
 
-async function requireWorkspaceOwner(supabase: TypedSupabaseClient) {
-  const auth = await requireSignedIn(supabase)
-  if (!auth.ok) return auth
-  const business = await fetchBusinessForCurrentUser(supabase)
-  const profile = await fetchCurrentProfile(supabase)
-  if (!business) return { ok: false as const, message: "No business linked." }
-  if (!isWorkspaceOwner(auth.user.id, business, profile)) {
-    return { ok: false as const, message: "Only the business owner can do that." }
-  }
-  return { ok: true as const, user: auth.user, business }
+async function requireTrainingManagement(supabase: TypedSupabaseClient) {
+  const gate = await requireWorkspacePermission(supabase, "manage_team_training")
+  if (!gate.ok) return gate
+  return { ok: true as const, user: gate.user, business: gate.business }
 }
 
 async function requireAssignedEmployee(
@@ -58,9 +60,8 @@ async function requireAssignedEmployee(
   const auth = await requireSignedIn(supabase)
   if (!auth.ok) return auth
   if (auth.user.id !== employeeId) {
-    const business = await fetchBusinessForCurrentUser(supabase)
-    const profile = await fetchCurrentProfile(supabase)
-    if (!business || !isWorkspaceOwner(auth.user.id, business, profile)) {
+    const allowed = await canManageEmployeeTraining(supabase, employeeId)
+    if (!allowed) {
       return { ok: false as const, message: "You can only update your own training." }
     }
   }
@@ -132,7 +133,7 @@ export async function createTrainingPortalInvite(payload: {
 > {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireTrainingManagement(supabase)
     if (!gate.ok) return gate
 
     const mod = await fetchTrainingModuleWithItems(payload.moduleId, supabase)
@@ -351,6 +352,27 @@ export async function savePortalStepPhoto(payload: {
   mediaId: string
   signedUrl?: string | null
 }): Promise<{ ok: true } | { ok: false; message: string }> {
+  return savePortalStepMediaProof({ ...payload, kind: "photo" })
+}
+
+export async function savePortalStepVideo(payload: {
+  moduleId: string
+  trainingItemId: string
+  stepId: string
+  mediaId: string
+  signedUrl?: string | null
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  return savePortalStepMediaProof({ ...payload, kind: "video" })
+}
+
+async function savePortalStepMediaProof(payload: {
+  moduleId: string
+  trainingItemId: string
+  stepId: string
+  mediaId: string
+  signedUrl?: string | null
+  kind: "photo" | "video"
+}): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
     const auth = await requireSignedIn(supabase)
@@ -359,35 +381,93 @@ export async function savePortalStepPhoto(payload: {
     const gate = await requireAssignedEmployee(supabase, payload.moduleId, auth.user.id)
     if (!gate.ok) return gate
 
-    const { data: row } = await supabase
-      .from("training_sop_progress")
-      .select("photo_proofs")
-      .eq("employee_id", auth.user.id)
-      .eq("training_item_id", payload.trainingItemId)
-      .maybeSingle()
+    const loaded = await loadPortalStepProofState(supabase, {
+      employeeId: auth.user.id,
+      trainingItemId: payload.trainingItemId,
+    })
 
-    const existing = Array.isArray(row?.photo_proofs) ? row.photo_proofs : []
-    const filtered = existing.filter(
-      (p) => !(typeof p === "object" && p && (p as { stepId?: string }).stepId === payload.stepId)
-    )
-    const next = [
-      ...filtered,
-      {
-        stepId: payload.stepId,
-        mediaId: payload.mediaId,
-        signedUrl: payload.signedUrl ?? null,
-      },
-    ]
+    const media = { mediaId: payload.mediaId, signedUrl: payload.signedUrl ?? null }
+    const next = mergeStepProofUpdate(loaded.stepProofByStepId, payload.stepId, {
+      photo: payload.kind === "photo" ? media : loaded.stepProofByStepId[payload.stepId]?.photo ?? null,
+      video: payload.kind === "video" ? media : loaded.stepProofByStepId[payload.stepId]?.video ?? null,
+    })
 
+    const proofPayload = stepProofRecordsToDbPayload(next)
     const res = await upsertSopProgress(supabase, {
       businessId: gate.businessId,
       employeeId: auth.user.id,
       trainingItemId: payload.trainingItemId,
-      update: { photo_proofs: next },
+      update: proofPayload,
     })
     if (!res.ok) return res
 
+    await syncEmployeeModuleCertification(supabase, {
+      businessId: gate.businessId,
+      employeeId: auth.user.id,
+      moduleId: payload.moduleId,
+    })
+
     revalidatePortal(payload.moduleId)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Something went wrong." }
+  }
+}
+
+export async function managerSignoffPortalStep(payload: {
+  moduleId: string
+  trainingItemId: string
+  stepId: string
+  employeeId: string
+  managerName?: string | null
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const supabase = await createClient()
+    const owner = await requireWorkspacePermission(supabase, "sign_off_training")
+    if (!owner.ok) return owner
+
+    const { data: assignment } = await supabase
+      .from("training_progress")
+      .select("id")
+      .eq("employee_id", payload.employeeId)
+      .eq("training_module_id", payload.moduleId)
+      .eq("business_id", owner.business.id)
+      .maybeSingle()
+
+    if (!assignment) {
+      return { ok: false, message: "That employee is not assigned to this module." }
+    }
+
+    const loaded = await loadPortalStepProofState(supabase, {
+      employeeId: payload.employeeId,
+      trainingItemId: payload.trainingItemId,
+    })
+
+    const now = new Date().toISOString()
+    const next = mergeStepProofUpdate(loaded.stepProofByStepId, payload.stepId, {
+      managerSignoff: {
+        signedOffBy: owner.user.id,
+        signedOffAt: now,
+        signedOffName: payload.managerName?.trim() || null,
+      },
+    })
+
+    const res = await upsertSopProgress(supabase, {
+      businessId: owner.business.id,
+      employeeId: payload.employeeId,
+      trainingItemId: payload.trainingItemId,
+      update: stepProofRecordsToDbPayload(next),
+    })
+    if (!res.ok) return res
+
+    await syncEmployeeModuleCertification(supabase, {
+      businessId: owner.business.id,
+      employeeId: payload.employeeId,
+      moduleId: payload.moduleId,
+    })
+
+    revalidatePortal(payload.moduleId)
+    revalidatePath("/training")
     return { ok: true }
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Something went wrong." }

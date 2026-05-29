@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 
 import { GuidedSetupForm } from "@/components/onboarding/guided-setup-form"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
-import { businessHasPaidRivetPurchase } from "@/lib/billing/rivet-access"
+import { businessHasRivetAppAccess } from "@/lib/billing/rivet-access"
 import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
 import {
   fetchBusinessForCurrentUser,
@@ -26,8 +26,8 @@ export default async function SetupPage() {
   const business = await fetchBusinessForCurrentUser(supabase)
   if (business) {
     if (shouldEnforceBillingGate()) {
-      const paid = await businessHasPaidRivetPurchase(supabase, business.id)
-      if (!paid) {
+      const hasAccess = await businessHasRivetAppAccess(supabase, business.id, business.owner_id)
+      if (!hasAccess) {
         redirect("/subscribe")
       }
     }

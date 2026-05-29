@@ -96,7 +96,7 @@ export function buildFirstDayChecklist(input: {
     {
       id: "team",
       label: "Invite or add one team member",
-      detail: "Optional when you have teammates—link profiles in Settings.",
+      detail: "Send a secure email invite from Settings—they join your workspace automatically.",
       href: "/settings",
       done: teamLinked,
       optional: true,

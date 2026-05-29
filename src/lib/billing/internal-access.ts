@@ -13,7 +13,8 @@ function parseAdminEmails(): string[] {
     .filter(Boolean)
 }
 
-export function canAccessInternalBillingDiagnostics(
+/** Internal QA: billing diagnostics, case-study metrics, etc. */
+export function canAccessInternalDiagnostics(
   email: string | null | undefined
 ): boolean {
   if (process.env.NODE_ENV !== "production") {
@@ -24,6 +25,8 @@ export function canAccessInternalBillingDiagnostics(
   if (!email?.trim()) return false
   return admins.includes(email.trim().toLowerCase())
 }
+
+export const canAccessInternalBillingDiagnostics = canAccessInternalDiagnostics
 
 export function internalDiagnosticsAccessHint(): string {
   if (process.env.NODE_ENV !== "production") {

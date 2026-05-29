@@ -18,7 +18,7 @@ describe("buildFactorDetail", () => {
 
   it("enriches all factors during finalization", () => {
     const enriched = enrichFactorsWithDetails([
-      { id: "sop_coverage", label: "SOP coverage", percent: 52, hint: "" },
+      { id: "sop_coverage", label: "Play coverage", percent: 52, hint: "" },
     ])
     expect(enriched[0]!.detail.fixCta.href).toBe("/sops/new")
   })

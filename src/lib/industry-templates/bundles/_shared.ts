@@ -50,14 +50,14 @@ export function interruptionSet(
     {
       title: `${vertical} — “what do I do?” ping`,
       kind: "staff_ping",
-      summary: "Staff asks a question the SOP already answers",
-      detail: "Point to the linked standard first; log the ping if the SOP needs a rewrite.",
+      summary: "Staff asks a question a play already answers",
+      detail: "Point to the linked play first; log the ping if the play needs a rewrite.",
     },
     {
       title: `${vertical} — judgment call`,
       kind: "judgment_call",
       summary: "Gray area not covered by a standard",
-      detail: "Document the call, outcome, and add a draft SOP update if this repeats within 7 days.",
+      detail: "Document the call, outcome, and add a draft play update if this repeats within 7 days.",
     },
     {
       title: `${vertical} — guest/client escalation`,

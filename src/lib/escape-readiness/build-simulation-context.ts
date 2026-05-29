@@ -39,6 +39,9 @@ export function buildSimulationContextFromCompute(
     interruptSummaries: options?.interruptSummaries ?? [],
     teamSize: ctx.teamProfileCount,
     staffWithIncompleteTraining: Math.max(0, ctx.trainingIncompleteCount),
+    unverifiedAskCount: 0,
+    unverifiedAskQuestions: [],
+    teamReadinessPercent: ctx.staffReadinessPercent ?? ctx.trainingProgressPercent,
   }
 }
 
@@ -72,6 +75,9 @@ export function buildSimulationContextFromView(
     interruptSummaries: interruptSummariesFromHealth(interruptFactor?.percent ?? null),
     teamSize: estimateTeamSize(score),
     staffWithIncompleteTraining: estimateIncompleteTraining(trainingFactor?.percent ?? null),
+    unverifiedAskCount: 0,
+    unverifiedAskQuestions: [],
+    teamReadinessPercent: trainingFactor?.percent ?? null,
   }
 }
 
@@ -147,6 +153,34 @@ export function mergeSimulationContext(
       primary.interruptSummaries.length > 0
         ? primary.interruptSummaries
         : fallback.interruptSummaries,
+    unverifiedAskQuestions:
+      primary.unverifiedAskQuestions.length > 0
+        ? primary.unverifiedAskQuestions
+        : fallback.unverifiedAskQuestions,
+  }
+}
+
+export function enrichSimulationContext(
+  ctx: EscapeAbsenceSimulationContext,
+  options?: {
+    unverifiedAskQuestions?: { question: string; count: number }[]
+    teamReadinessPercent?: number | null
+  }
+): EscapeAbsenceSimulationContext {
+  const askRows = options?.unverifiedAskQuestions ?? []
+  const teamReadiness =
+    options?.teamReadinessPercent !== undefined
+      ? options.teamReadinessPercent
+      : ctx.teamReadinessPercent
+
+  return {
+    ...ctx,
+    unverifiedAskCount: askRows.length > 0 ? askRows.length : ctx.unverifiedAskCount,
+    unverifiedAskQuestions:
+      askRows.length > 0
+        ? askRows.map((row) => row.question).slice(0, 5)
+        : ctx.unverifiedAskQuestions,
+    teamReadinessPercent: teamReadiness,
   }
 }
 

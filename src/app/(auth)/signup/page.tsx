@@ -19,10 +19,11 @@ import {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; signin?: string }>
+  searchParams: Promise<{ next?: string; signin?: string; email?: string }>
 }) {
-  const { next: nextRaw, signin } = await searchParams
-  const safeNext = getSafeInternalNextPath(nextRaw, "/dashboard")
+  const { next: nextRaw, signin, email: emailRaw } = await searchParams
+  const safeNext = getSafeInternalNextPath(nextRaw, "/setup")
+  const initialEmail = emailRaw?.trim() ?? ""
 
   const bypass = isDevAuthBypassEnabled()
   const supabaseConfigured = isSupabaseConfigured()
@@ -52,7 +53,11 @@ export default async function SignupPage({
         {bypass ? (
           <DevBypassAuthNotice next={safeNext} supabaseConfigured={supabaseConfigured} />
         ) : null}
-        <SignupForm supabaseConfigured={supabaseConfigured} />
+        <SignupForm
+          supabaseConfigured={supabaseConfigured}
+          safeNext={safeNext}
+          initialEmail={initialEmail}
+        />
         <p className="text-center text-xs text-muted-foreground">
           Already have an account?{" "}
           <Button

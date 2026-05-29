@@ -8,6 +8,7 @@ import type {
   EscapeReadinessFactorId,
   EscapeReadinessView,
 } from "@/lib/escape-readiness/types"
+import { buildAbsenceSimulationFixes } from "@/lib/escape-readiness/build-absence-simulation-fixes"
 import { buildSimulationContextFromView } from "@/lib/escape-readiness/build-simulation-context"
 
 const DAY_PHASES = ["Morning open", "Mid-shift", "Afternoon", "Close"] as const
@@ -84,7 +85,7 @@ function sopEvents(
         `${thinTitle} runs from memory`,
         health < 55
           ? "No written opener on file—staff improvise the first hour."
-          : "SOP exists but depth is thin—backup steps are not obvious."
+          : "Play exists but depth is thin—backup steps are not obvious."
       ),
     ]
   }
@@ -96,7 +97,7 @@ function sopEvents(
         "Undocumented exception mid-rush",
         ctx.thinSopTitles[1]
           ? `${ctx.thinSopTitles[1]} has no runnable steps on the floor.`
-          : "Procedure gap surfaces when volume spikes."
+          : "Play gap surfaces when volume spikes."
       ),
     ]
   }
@@ -178,6 +179,99 @@ function staffingEvents(
   ]
 }
 
+function askRivetEvents(
+  ctx: EscapeAbsenceSimulationContext,
+  day: number
+): EscapeAbsenceSimulationEvent[] {
+  if (ctx.unverifiedAskCount === 0) return []
+  const sample = ctx.unverifiedAskQuestions[0] ?? "Floor question with no verified answer"
+  if (day === 1) {
+    return [
+      event(
+        "ask_rivet",
+        "Mid-shift",
+        "Ask Rivet has no verified answer",
+        `${ctx.unverifiedAskCount} recurring question(s) still lack a play-backed answer—staff may hunt you down.`
+      ),
+    ]
+  }
+  if (day >= 3) {
+    return [
+      event(
+        "ask_rivet",
+        "Afternoon",
+        "Unanswered question resurfaces",
+        `"${sample}" was asked before without a verified answer—same pull routes to you.`
+      ),
+    ]
+  }
+  return []
+}
+
+function teamReadinessEvents(
+  ctx: EscapeAbsenceSimulationContext,
+  day: number
+): EscapeAbsenceSimulationEvent[] {
+  const readiness = ctx.teamReadinessPercent
+  if (readiness == null || readiness >= 75 || day < 2) return []
+  return [
+    event(
+      "team_readiness",
+      day === 2 ? "Morning open" : "Close",
+      "Team readiness gap on the floor",
+      readiness < 55
+        ? `Team readiness is ${readiness}%—not enough cross-trained coverage to absorb surprises.`
+        : `Team readiness at ${readiness}%—backup roles are thin when you are not on site.`
+    ),
+  ]
+}
+
+function closingProcessLabel(
+  ctx: EscapeAbsenceSimulationContext,
+  view: EscapeReadinessView
+): string {
+  const closingSop = ctx.thinSopTitles.find((title) => /clos/i.test(title))
+  if (closingSop) {
+    return /process|risk|procedure|play/i.test(closingSop)
+      ? closingSop.toLowerCase()
+      : `${closingSop.toLowerCase()} process risk`
+  }
+  const failure = view.absenceCapacity?.likelyFailurePoint
+  if (failure && /clos/i.test(failure)) return "closing process risk"
+  return "closing process risk"
+}
+
+function dayHeadline(
+  day: number,
+  status: EscapeAbsenceSimulationDay["status"],
+  view: EscapeReadinessView,
+  ctx: EscapeAbsenceSimulationContext,
+  failureDay: number
+): string {
+  if (day >= Math.max(4, Math.ceil(failureDay)) || status === "breakdown") {
+    return "Owner likely contacted"
+  }
+  if (day === 1) {
+    return status === "stable" ? "Likely stable" : "Early strain"
+  }
+  if (day === 2) {
+    const trainingHealth = factorHealth(view.factors, "training_coverage")
+    if (trainingHealth < 70 || ctx.staffWithIncompleteTraining > 0) {
+      return "Minor training gaps"
+    }
+    return status === "strained" ? "Minor gaps surfacing" : "Likely stable"
+  }
+  if (day === 3) {
+    return closingProcessLabel(ctx, view)
+  }
+  if (day === 4) {
+    return status === "stable" ? "Holding with questions" : "Owner likely contacted"
+  }
+  if (status === "stable") return "Likely stable"
+  if (status === "strained") return "Strain building"
+  return "Owner likely contacted"
+}
+
 function breakdownForFactor(
   factorId: EscapeReadinessFactorId,
   ctx: EscapeAbsenceSimulationContext,
@@ -211,7 +305,7 @@ function breakdownForFactor(
     case "undocumented_procedures":
       return {
         source: "sops",
-        title: "Procedure only you know",
+        title: "Play only you know",
         detail: "Mid-shift gap forces improvisation—no written path for the exception.",
       }
   }
@@ -242,6 +336,8 @@ function buildDay(
       capacityDays
     ),
     ...staffingEvents(ctx, day),
+    ...askRivetEvents(ctx, day),
+    ...teamReadinessEvents(ctx, day),
   ]
 
   const breakdownFactor = weakest[Math.min(day - 1, weakest.length - 1)] ?? weakest[0]!
@@ -260,10 +356,11 @@ function buildDay(
   return {
     day,
     label: `Day ${day} · ${phase}`,
+    headline: dayHeadline(day, status, view, ctx, failureDay),
     status,
     stressPercent: stress,
     summary,
-    events: events.slice(0, 4),
+    events: events.slice(0, 5),
     breakdownMoment: breakdown,
   }
 }
@@ -290,6 +387,7 @@ export function buildAbsenceSimulation(
 
   const firstBreakdown = days.find((d) => d.breakdownMoment)?.breakdownMoment ?? null
   const breakdownDays = days.filter((d) => d.status === "breakdown").map((d) => d.day)
+  const { fixes, projectedDaysGain } = buildAbsenceSimulationFixes(view)
 
   return {
     capacityDays,
@@ -300,20 +398,26 @@ export function buildAbsenceSimulation(
       : `Scenario runs ${totalDays} days at current readiness.`,
     days,
     breakdownDays,
+    fixes,
+    projectedDaysGain,
   }
 }
 
 export function simulationSourceLabel(source: EscapeAbsenceSimulationEventSource): string {
   switch (source) {
     case "sops":
-      return "SOPs"
+      return "Plays"
     case "training":
       return "Training"
     case "issues":
       return "Issues"
     case "interruptions":
-      return "Interruptions"
+      return "Owner pulls"
     case "staffing":
       return "Staffing"
+    case "ask_rivet":
+      return "Ask Rivet"
+    case "team_readiness":
+      return "Team readiness"
   }
 }

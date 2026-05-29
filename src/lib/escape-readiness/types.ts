@@ -107,6 +107,8 @@ export type EscapeAbsenceSimulationEventSource =
   | "issues"
   | "interruptions"
   | "staffing"
+  | "ask_rivet"
+  | "team_readiness"
 
 export type EscapeAbsenceSimulationContext = {
   activeSopCount: number
@@ -121,6 +123,11 @@ export type EscapeAbsenceSimulationContext = {
   interruptSummaries: string[]
   teamSize: number
   staffWithIncompleteTraining: number
+  /** Unanswered Ask Rivet questions without verified play coverage. */
+  unverifiedAskCount: number
+  unverifiedAskQuestions: string[]
+  /** Floor readiness across teaching (0–100). */
+  teamReadinessPercent: number | null
 }
 
 export type EscapeAbsenceSimulationEvent = {
@@ -133,6 +140,8 @@ export type EscapeAbsenceSimulationEvent = {
 export type EscapeAbsenceSimulationDay = {
   day: number
   label: string
+  /** Short owner-friendly forecast (e.g. "Likely stable"). */
+  headline: string
   status: "stable" | "strained" | "breakdown"
   stressPercent: number
   summary: string
@@ -144,6 +153,13 @@ export type EscapeAbsenceSimulationDay = {
   }
 }
 
+export type EscapeAbsenceSimulationFix = {
+  title: string
+  action: string
+  href: string
+  estimatedScoreGain: number
+}
+
 export type EscapeAbsenceSimulation = {
   capacityDays: number
   totalDays: number
@@ -151,6 +167,8 @@ export type EscapeAbsenceSimulation = {
   headline: string
   days: EscapeAbsenceSimulationDay[]
   breakdownDays: number[]
+  fixes: EscapeAbsenceSimulationFix[]
+  projectedDaysGain: number
 }
 
 export type EscapeProgressionStageId =

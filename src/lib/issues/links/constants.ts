@@ -1,7 +1,7 @@
 import type { IssueLinkKind } from "@/types/database"
 
 export const ISSUE_LINK_KINDS = [
-  { value: "standard" as const, label: "SOP" },
+  { value: "standard" as const, label: "Play" },
   { value: "training_module" as const, label: "Training module" },
   { value: "owner_interruption" as const, label: "Owner pull" },
   { value: "staff_member" as const, label: "Staff member" },

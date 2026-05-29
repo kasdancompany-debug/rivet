@@ -19,11 +19,15 @@ function baseItem(overrides: Partial<PortalTrainingItem> = {}): PortalTrainingIt
         step_order: 1,
         standard_id: "sop-1",
         media_url: null,
-        requires_photo_confirmation: false,
+        requires_photo_confirmation: true,
+        requires_video_proof: false,
+        requires_manager_signoff: false,
+        requires_checklist_completion: true,
         estimated_time_minutes: null,
         is_critical: false,
         verification: null,
         notes: null,
+        play_metadata: {},
         created_at: "",
         updated_at: "",
       },
@@ -32,13 +36,13 @@ function baseItem(overrides: Partial<PortalTrainingItem> = {}): PortalTrainingIt
     videoUrl: null,
     walkthroughMedia: null,
     quiz: [],
-    photoRequiredStepIds: [],
     progress: {
       stepChecklist: [],
       videoWatched: false,
       quizPassed: false,
       quizAnswers: {},
       photoProofs: [],
+      stepProofByStepId: {},
       completed: false,
     },
     ...overrides,
@@ -53,8 +57,9 @@ describe("getPortalCompletionBlockers", () => {
     expect(blockers.some((b) => b.code === "video")).toBe(true)
   })
 
-  it("requires all steps checked", () => {
+  it("requires checklist and photo proof on steps", () => {
     const blockers = getPortalCompletionBlockers(baseItem())
-    expect(blockers.some((b) => b.code === "steps")).toBe(true)
+    expect(blockers.some((b) => b.code === "proof" && b.message.includes("Check off"))).toBe(true)
+    expect(blockers.some((b) => b.code === "proof" && b.message.includes("photo"))).toBe(true)
   })
 })

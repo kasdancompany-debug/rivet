@@ -129,9 +129,18 @@ export default async function SopPrintPage({ params }: Props) {
                   {step.is_critical ? (
                     <span className="ml-2 normal-case">· Critical</span>
                   ) : null}
-                  {step.requires_photo_confirmation ? (
-                    <span className="ml-2 normal-case">· Photo confirmation required</span>
-                  ) : null}
+                  {[
+                    step.requires_checklist_completion !== false ? "Checklist" : null,
+                    step.requires_photo_confirmation ? "Photo" : null,
+                    step.requires_video_proof ? "Video" : null,
+                    step.requires_manager_signoff ? "Manager sign-off" : null,
+                  ]
+                    .filter(Boolean)
+                    .map((label) => (
+                      <span key={label} className="ml-2 normal-case">
+                        · {label} proof
+                      </span>
+                    ))}
                   {step.estimated_time_minutes != null ? (
                     <span className="ml-2 normal-case">· ~{step.estimated_time_minutes} min</span>
                   ) : null}

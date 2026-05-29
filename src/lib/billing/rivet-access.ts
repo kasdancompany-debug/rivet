@@ -1,18 +1,42 @@
 import type { TypedSupabaseClient } from "@/types/database"
 
-/** True when this business has a completed one-time Rivet purchase. */
-export async function businessHasPaidRivetPurchase(
+import { isFounderPurchaseComplete } from "@/lib/billing/founder-purchase-complete"
+import { workspaceHasRivetAppAccess } from "@/lib/billing/workspace-access"
+
+/** True when this workspace completed the founder offer (once or all installments). */
+export async function businessHasCompletedFounderPurchase(
   supabase: TypedSupabaseClient,
   businessId: string
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from("rivet_purchases")
-    .select("id")
+    .select("payment_option, amount, status")
     .eq("business_id", businessId)
     .eq("status", "paid")
-    .limit(1)
-    .maybeSingle()
 
-  if (error) return false
-  return Boolean(data?.id)
+  if (error || !data?.length) return false
+  return isFounderPurchaseComplete(
+    data.map((row) => ({
+      payment_option: row.payment_option as string | null,
+      amount: row.amount as number,
+      status: row.status as string,
+    }))
+  )
+}
+
+/** @deprecated Use businessHasCompletedFounderPurchase — any paid row is not sufficient for installments. */
+export async function businessHasPaidRivetPurchase(
+  supabase: TypedSupabaseClient,
+  businessId: string
+): Promise<boolean> {
+  return businessHasCompletedFounderPurchase(supabase, businessId)
+}
+
+/** Founder-grandfathered or active subscription — used for app gates. */
+export async function businessHasRivetAppAccess(
+  supabase: TypedSupabaseClient,
+  businessId: string,
+  ownerUserId?: string | null
+): Promise<boolean> {
+  return workspaceHasRivetAppAccess(supabase, businessId, ownerUserId)
 }

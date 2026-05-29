@@ -5,13 +5,14 @@ import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
 import { lineForWorkspaceLinked } from "@/lib/route-reliability/diagnostic-builders"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
 import { createClient } from "@/lib/supabase/server"
-import { CaptureStandardForm } from "@/components/sops/capture-standard-form"
+import { CapturePlayExperience } from "@/components/sops/capture-play-experience"
 import { BusinessLinkRequiredPanel } from "@/components/route-reliability/business-link-required-panel"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
+import { COPY } from "@/lib/interface-copy"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
-  title: "Standards Capture",
+  title: COPY.nav.standardsCapture,
 }
 
 export default async function StandardsCapturePage({
@@ -23,7 +24,6 @@ export default async function StandardsCapturePage({
   const business = await fetchBusinessForCurrentUser(supabase)
   const sp = await searchParams
   const initialPlayPrompt = sp.prompt?.trim() ?? ""
-  const initialTitle = sp.title?.trim() ?? ""
 
   if (!business) {
     const fetchLines: RouteFetchLine[] = [lineForWorkspaceLinked(false)]
@@ -36,7 +36,7 @@ export default async function StandardsCapturePage({
             className="border-border/60 bg-card/70 shadow-sm"
           />
           <Button variant="outline" nativeButton={false} render={<Link href="/sops" />}>
-            Back to Standards
+            {COPY.sops.backToPlays}
           </Button>
         </div>
       </DashboardRouteShell>
@@ -45,15 +45,14 @@ export default async function StandardsCapturePage({
 
   const fetchLines: RouteFetchLine[] = [
     lineForWorkspaceLinked(true),
-    { label: "Capture form", status: "ok", detail: "Workspace linked; form writes to SOP pipeline." },
+    { label: "Capture", status: "ok", detail: "Describe a problem—Rivet builds the full system." },
   ]
 
   return (
     <DashboardRouteShell routePath="/sops/capture" fetchLines={fetchLines}>
-      <CaptureStandardForm
+      <CapturePlayExperience
         businessId={business.id}
         initialPlayPrompt={initialPlayPrompt}
-        initialTitle={initialTitle}
       />
     </DashboardRouteShell>
   )

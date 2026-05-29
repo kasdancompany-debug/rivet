@@ -3,15 +3,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Camera, Check, Loader2, Plus, RefreshCw, Trash2, Video } from "lucide-react"
+import { Check, Plus } from "lucide-react"
 
-import {
-  abandonStandardMediaUpload,
-  deleteStandardMedia,
-  finalizeStandardMediaUpload,
-  prepareStandardMediaUpload,
-} from "@/app/actions/standard-media"
+import { deleteStandardMedia } from "@/app/actions/standard-media"
 import { saveSop, type SopStepPayload } from "@/app/actions/sops"
+import { convertWorkflowDemonstration } from "@/app/actions/workflow-capture"
+import { generatePlayFromMedia } from "@/app/actions/media-capture"
 import { convertQuickCapture } from "@/app/actions/quick-capture"
 import { transcribeVoiceCapture } from "@/app/actions/voice-capture"
 import type { StandardWithSteps } from "@/lib/db/queries"
@@ -20,23 +17,35 @@ import { parseStandardsCapture } from "@/lib/standards-capture/parse"
 import type { StandardsCaptureV1 } from "@/lib/standards-capture/types"
 import { STANDARDS_CAPTURE_VERSION } from "@/lib/standards-capture/types"
 import type { StandardMediaRowSigned } from "@/lib/standards/standard-media-types"
-import { validateStandardMediaUpload } from "@/lib/standards/standard-media-validation"
-import { uploadStandardMediaToSignedUrl } from "@/lib/standards/upload-standard-media-client"
+import { useOperationalMediaUpload } from "@/lib/media/use-operational-media-upload"
+import { validatorForMediaSlot, type MediaUploadSlot } from "@/lib/media/slot-validators"
 import { TRAINING_ROLE_PRESETS } from "@/lib/training/roles"
-import type { QuickCaptureDraft } from "@/lib/sops/quick-capture/types"
+import type { QuickCaptureDraft, QuickCaptureSource } from "@/lib/sops/quick-capture/types"
 import { CaptureFormActionBar } from "@/components/sops/capture-form-action-bar"
 import { CaptureFloorTestCard, type FloorTestAnswer } from "@/components/sops/capture-floor-test-card"
 import { CapturePlayGenerator } from "@/components/sops/capture-play-generator"
+import { CapturePlayInsights } from "@/components/sops/capture-play-insights"
+import {
+  CaptureOperationalMemory,
+  emptyOperationalMemoryState,
+  operationalMemoryFromState,
+  type OperationalMemoryState,
+} from "@/components/sops/capture-operational-memory"
+import { CaptureMediaInference } from "@/components/sops/capture-media-inference"
+import { CapturePlayMediaSection } from "@/components/sops/capture-play-media-section"
+import { mergeOperationalMemoryIntoCapture } from "@/lib/standards-capture/operational-memory-publish"
+import { isAudioMedia } from "@/lib/standards/standard-media-display"
 import { CaptureStepEditor, type CaptureStepRow } from "@/components/sops/capture-step-editor"
 import { SopTitleSuggestions } from "@/components/sops/sop-title-suggestions"
+import { useWorkflowVideoCapture } from "@/hooks/use-workflow-video-capture"
 import { useVoiceCapture } from "@/hooks/use-voice-capture"
 import { suggestSopTitles } from "@/lib/sops/title-suggestions/suggest-sop-titles"
 import { shouldShowPublishImpact } from "@/lib/sops/publish-impact"
-import { emptyCaptureStepFields, stepPayloadExtras, walkthroughStepPayload } from "@/lib/sops/step-fields"
+import { emptyCaptureStepFields, playMetadataToCaptureFields, stepPayloadExtras, walkthroughStepPayload } from "@/lib/sops/step-fields"
+import { parseStepPlayMetadata } from "@/lib/sops/play-metadata"
 import type { Json } from "@/types/database"
 import type { StandardStatus } from "@/types/database"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -53,13 +62,57 @@ function newStep(): LocalStep {
     ...emptyCaptureStepFields(),
   }
 }
-type MediaUploadJob = {
-  id: string
-  fileName: string
-  progress: number
-  phase: "preparing" | "uploading" | "finalizing" | "error"
-  errorMessage?: string
-  retry?: () => void
+type UploadStandardFileOptions = {
+  replaceMediaId?: string | null
+  stepKey?: string
+}
+
+function resolveStoredMediaFields(
+  cap: StandardsCaptureV1 | null,
+  signedMedia: StandardMediaRowSigned[]
+): {
+  photoMediaIds: string[]
+  audioExplanationMediaId: string | null
+  supportingDocumentMediaIds: string[]
+} {
+  const mediaById = new Map(signedMedia.map((m) => [m.id, m]))
+  let photoMediaIds = cap?.photoMediaIds?.length ? [...cap.photoMediaIds] : []
+  let audioExplanationMediaId = cap?.audioExplanationMediaId ?? null
+  let supportingDocumentMediaIds = cap?.supportingDocumentMediaIds?.length
+    ? [...cap.supportingDocumentMediaIds]
+    : []
+
+  if (
+    !audioExplanationMediaId &&
+    supportingDocumentMediaIds.length === 0 &&
+    (cap?.attachmentMediaIds?.length ?? 0) > 0
+  ) {
+    for (const id of cap!.attachmentMediaIds!) {
+      const row = mediaById.get(id)
+      if (isAudioMedia(row) && !audioExplanationMediaId) {
+        audioExplanationMediaId = id
+      } else {
+        supportingDocumentMediaIds.push(id)
+      }
+    }
+  }
+
+  const reserved = new Set([
+    cap?.walkthroughMediaId,
+    cap?.operationalMemory?.goodExampleMediaId,
+    cap?.operationalMemory?.badExampleMediaId,
+    audioExplanationMediaId,
+    ...supportingDocumentMediaIds,
+    ...photoMediaIds,
+  ].filter(Boolean) as string[])
+
+  if (photoMediaIds.length === 0) {
+    photoMediaIds = signedMedia
+      .filter((m) => m.kind === "image" && !reserved.has(m.id))
+      .map((m) => m.id)
+  }
+
+  return { photoMediaIds, audioExplanationMediaId, supportingDocumentMediaIds }
 }
 
 function hydrateFromStandard(
@@ -72,12 +125,17 @@ function hydrateFromStandard(
   videoUrl: string
   walkthroughMediaId: string | null
   photoUrls: string[]
+  photoMediaIds: string[]
+  audioExplanationMediaId: string | null
+  supportingDocumentMediaIds: string[]
+  attachmentMediaIds: string[]
   assignedRoles: string[]
   competencyMarkers: string[]
   importanceLevel: number
   ownerDependencyLevel: number
   estimatedTimeMinutes: number | null
   steps: LocalStep[]
+  operationalMemory: OperationalMemoryState
 } {
   const cap = parseStandardsCapture(s.standards_capture)
   const ordered = [...s.standard_steps].sort((a, b) => a.step_order - b.step_order)
@@ -85,9 +143,14 @@ function hydrateFromStandard(
   let walkthroughMediaId = cap?.walkthroughMediaId?.trim() ?? null
   let stepRows = ordered.map((st) => ({
     key: st.id,
+    ...emptyCaptureStepFields(),
+    ...playMetadataToCaptureFields(parseStepPlayMetadata(st.play_metadata)),
     title: st.title,
     instructions: st.instructions,
     requiresPhoto: st.requires_photo_confirmation,
+    requiresVideo: st.requires_video_proof ?? false,
+    requiresManagerSignoff: st.requires_manager_signoff ?? false,
+    requiresChecklist: st.requires_checklist_completion !== false,
     media_url: st.media_url ?? "",
     estimatedMinutes:
       st.estimated_time_minutes != null ? String(st.estimated_time_minutes) : "",
@@ -115,6 +178,18 @@ function hydrateFromStandard(
   if (stepRows.length === 0) {
     stepRows = [newStep()]
   }
+  const om = cap?.operationalMemory
+  const operationalMemory: OperationalMemoryState = {
+    ...emptyOperationalMemoryState(),
+    successLooksLike: om?.successLooksLike ?? "",
+    failureLooksLike: om?.failureLooksLike ?? "",
+    newHireMistakesText: (om?.newHireMistakes ?? []).join("\n"),
+    ifNobodyAsks: om?.ifNobodyAsks ?? "",
+    ownerNote: om?.ownerNote ?? "",
+    goodExampleMediaId: om?.goodExampleMediaId ?? null,
+    badExampleMediaId: om?.badExampleMediaId ?? null,
+  }
+  const storedMedia = resolveStoredMediaFields(cap, signedMedia)
   return {
     title: s.title,
     purpose: s.description ?? "",
@@ -122,31 +197,29 @@ function hydrateFromStandard(
     videoUrl,
     walkthroughMediaId,
     photoUrls: cap?.photoUrls?.length ? [...cap.photoUrls] : [],
+    photoMediaIds: storedMedia.photoMediaIds,
+    audioExplanationMediaId: storedMedia.audioExplanationMediaId,
+    supportingDocumentMediaIds: storedMedia.supportingDocumentMediaIds,
+    attachmentMediaIds: cap?.attachmentMediaIds?.length ? [...cap.attachmentMediaIds] : [],
     assignedRoles: cap?.assignedRoles?.length ? [...cap.assignedRoles] : [],
     competencyMarkers: cap?.competencyMarkers?.length ? [...cap.competencyMarkers] : [],
     importanceLevel: s.importance_level,
     ownerDependencyLevel: s.owner_dependency_level,
     estimatedTimeMinutes: s.estimated_time_minutes,
     steps: stepRows,
+    operationalMemory,
   }
 }
 
 function composeSteps(params: {
-  videoUrl: string
   walkthroughMediaId: string | null
   rows: LocalStep[]
 }): SopStepPayload[] {
   const steps: SopStepPayload[] = []
-  const v = params.videoUrl.trim()
   if (params.walkthroughMediaId) {
     steps.push({
       ...walkthroughStepPayload(),
       media_url: `/api/standard-media/${params.walkthroughMediaId}`,
-    })
-  } else if (v) {
-    steps.push({
-      ...walkthroughStepPayload(),
-      media_url: v,
     })
   }
   for (const r of params.rows) {
@@ -159,6 +232,9 @@ function composeSteps(params: {
       instructions,
       media_url: media === "" ? null : media,
       requires_photo_confirmation: r.requiresPhoto,
+      requires_video_proof: r.requiresVideo,
+      requires_manager_signoff: r.requiresManagerSignoff,
+      requires_checklist_completion: r.requiresChecklist,
       ...stepPayloadExtras(r),
     })
   }
@@ -166,23 +242,53 @@ function composeSteps(params: {
 }
 
 function buildCaptureJson(params: {
-  videoUrl: string
   walkthroughMediaId: string | null
-  photoUrls: string[]
+  photoMediaIds: string[]
+  audioExplanationMediaId: string | null
+  supportingDocumentMediaIds: string[]
   assignedRoles: string[]
   competencyMarkers: string[]
+  playDraft: QuickCaptureDraft | null
+  operationalMemory: OperationalMemoryState
 }): Json {
-  const capture: StandardsCaptureV1 = {
+  const memory = operationalMemoryFromState(params.operationalMemory)
+  const attachmentMediaIds = [
+    ...params.supportingDocumentMediaIds,
+    ...(params.audioExplanationMediaId ? [params.audioExplanationMediaId] : []),
+  ]
+  const capture: StandardsCaptureV1 = mergeOperationalMemoryIntoCapture(
+    {
     version: STANDARDS_CAPTURE_VERSION,
-    photoUrls: [...params.photoUrls],
-    videoUrl: params.videoUrl.trim() || null,
+    photoUrls: [],
+    photoMediaIds: [...params.photoMediaIds],
+    videoUrl: null,
     walkthroughMediaId: params.walkthroughMediaId,
+    audioExplanationMediaId: params.audioExplanationMediaId,
+    supportingDocumentMediaIds: [...params.supportingDocumentMediaIds],
+    attachmentMediaIds,
+    playInference: params.playDraft
+      ? {
+          operationalProblem: params.playDraft.operationalProblem,
+          priority: params.playDraft.priority,
+          successCriteria: params.playDraft.successCriteria,
+          rootCauses: params.playDraft.rootCauses,
+          estimatedRisk: params.playDraft.estimatedRisk,
+          verificationMethods: params.playDraft.verificationMethods,
+          trainingRecommendations: params.playDraft.trainingRecommendations,
+          hiddenDependencies: params.playDraft.hiddenDependencies,
+          trainingGaps: params.playDraft.trainingGaps,
+          supplies: params.playDraft.supplies,
+          timingNotes: params.playDraft.timingNotes,
+        }
+      : undefined,
     qualityStandards: [],
     acceptableExamples: [],
     unacceptableExamples: [],
     assignedRoles: [...params.assignedRoles],
     competencyMarkers: [...params.competencyMarkers],
-  }
+    },
+    memory
+  )
   return JSON.parse(JSON.stringify(capture)) as Json
 }
 
@@ -218,19 +324,35 @@ export function CaptureStandardForm({
   const [title, setTitle] = useState(hydrated?.title ?? initialTitle)
   const [purpose, setPurpose] = useState(hydrated?.purpose ?? "")
   const [category, setCategory] = useState(hydrated?.category ?? SOP_CATEGORIES[0]!.value)
-  const [videoUrl, setVideoUrl] = useState(hydrated?.videoUrl ?? "")
   const [walkthroughMediaId, setWalkthroughMediaId] = useState<string | null>(
     hydrated?.walkthroughMediaId ?? null
   )
-  const [photoUrls, setPhotoUrls] = useState<string[]>(hydrated?.photoUrls ?? [])
+  const [photoMediaIds, setPhotoMediaIds] = useState<string[]>(hydrated?.photoMediaIds ?? [])
+  const [audioExplanationMediaId, setAudioExplanationMediaId] = useState<string | null>(
+    hydrated?.audioExplanationMediaId ?? null
+  )
+  const [supportingDocumentMediaIds, setSupportingDocumentMediaIds] = useState<string[]>(
+    hydrated?.supportingDocumentMediaIds ?? []
+  )
   const [mediaPatch, setMediaPatch] = useState<StandardMediaRowSigned[]>([])
   const [removedMediaIds, setRemovedMediaIds] = useState<string[]>([])
-  const [uploadJobs, setUploadJobs] = useState<MediaUploadJob[]>([])
-  const uploadInFlight = uploadJobs.some(
-    (j) => j.phase === "preparing" || j.phase === "uploading" || j.phase === "finalizing"
-  )
+  const {
+    jobs: uploadJobs,
+    uploadInFlight,
+    upload: uploadOperationalFile,
+    dismissJob,
+  } = useOperationalMediaUpload({
+    businessId,
+    standardId: sopId,
+    onError: setError,
+    onRequireDraft: () =>
+      setError("Add a title and save a draft first. Once this draft has an ID, you can attach media."),
+  })
   const [assignedRoles, setAssignedRoles] = useState<string[]>(hydrated?.assignedRoles ?? [])
   const [competencyMarkers, setCompetencyMarkers] = useState<string[]>(hydrated?.competencyMarkers ?? [])
+  const [operationalMemory, setOperationalMemory] = useState<OperationalMemoryState>(
+    hydrated?.operationalMemory ?? emptyOperationalMemoryState()
+  )
   const [importanceLevel, setImportanceLevel] = useState(hydrated?.importanceLevel ?? 3)
   const [ownerDependencyLevel, setOwnerDependencyLevel] = useState(hydrated?.ownerDependencyLevel ?? 3)
   const [estimatedMinutes, setEstimatedMinutes] = useState(
@@ -245,13 +367,17 @@ export function CaptureStandardForm({
   const [playGenerating, setPlayGenerating] = useState(false)
   const [playGenerated, setPlayGenerated] = useState(false)
   const [playGeneratedFromVoice, setPlayGeneratedFromVoice] = useState(false)
-  const [playSource, setPlaySource] = useState<"openai" | "heuristic" | null>(null)
+  const [playGeneratedFromWorkflow, setPlayGeneratedFromWorkflow] = useState(false)
+  const [playGeneratedFromMedia, setPlayGeneratedFromMedia] = useState(false)
+  const [mediaGenerating, setMediaGenerating] = useState(false)
+  const [mediaContextSummary, setMediaContextSummary] = useState<string | null>(null)
+  const [playSource, setPlaySource] = useState<QuickCaptureSource | null>(null)
+  const [playDraft, setPlayDraft] = useState<QuickCaptureDraft | null>(null)
+  const [workflowProcessing, setWorkflowProcessing] = useState(false)
   const [voiceTranscribing, setVoiceTranscribing] = useState(false)
   const [floorTestAnswer, setFloorTestAnswer] = useState<FloorTestAnswer | null>(null)
   const manualFormRef = useRef<HTMLDivElement>(null)
 
-  const photoInputRef = useRef<HTMLInputElement>(null)
-  const videoFileRef = useRef<HTMLInputElement>(null)
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipNextAutosave = useRef(false)
 
@@ -270,6 +396,28 @@ export function CaptureStandardForm({
     )
   }, [initialSignedMedia, mediaPatch, removedMediaIds])
 
+  const mediaById = useMemo(
+    () => new Map(mergedStandardMedia.map((m) => [m.id, m])),
+    [mergedStandardMedia]
+  )
+
+  const walkthroughMedia = walkthroughMediaId ? mediaById.get(walkthroughMediaId) ?? null : null
+  const audioExplanationMedia = audioExplanationMediaId
+    ? mediaById.get(audioExplanationMediaId) ?? null
+    : null
+  const referencePhotoRows = photoMediaIds
+    .map((id) => mediaById.get(id))
+    .filter((m): m is StandardMediaRowSigned => m != null)
+  const supportingDocumentRows = supportingDocumentMediaIds
+    .map((id) => mediaById.get(id))
+    .filter((m): m is StandardMediaRowSigned => m != null)
+  const goodExampleMedia = operationalMemory.goodExampleMediaId
+    ? mediaById.get(operationalMemory.goodExampleMediaId) ?? null
+    : null
+  const badExampleMedia = operationalMemory.badExampleMediaId
+    ? mediaById.get(operationalMemory.badExampleMediaId) ?? null
+    : null
+
   const parsedEstimatedMinutes = useMemo(() => {
     const n = Number(estimatedMinutes)
     if (estimatedMinutes.trim() === "" || Number.isNaN(n)) return null
@@ -277,25 +425,64 @@ export function CaptureStandardForm({
   }, [estimatedMinutes])
 
   const applyQuickCaptureDraft = useCallback((draft: QuickCaptureDraft) => {
+    setPlayDraft(draft)
     setTitle(draft.title)
-    setPurpose(draft.purpose)
+    setPurpose(draft.successCriteria || draft.purpose)
+    const stepMistakes = [
+      ...new Set(draft.steps.flatMap((s) => s.commonMistakes ?? []).filter(Boolean)),
+    ]
+    setOperationalMemory((prev) => ({
+      ...prev,
+      successLooksLike: draft.successCriteria || draft.purpose || prev.successLooksLike,
+      failureLooksLike:
+        draft.rootCauses.find((c) => c.title.toLowerCase().includes("visual"))?.description ??
+        draft.operationalProblem ??
+        prev.failureLooksLike,
+      newHireMistakesText:
+        stepMistakes.length > 0 ? stepMistakes.join("\n") : prev.newHireMistakesText,
+    }))
     setCategory(draft.category)
-    setImportanceLevel(draft.importanceLevel)
+    setImportanceLevel(
+      Math.max(
+        draft.importanceLevel,
+        draft.priority === "critical" ? 5 : draft.priority === "high" ? 4 : draft.priority === "medium" ? 3 : 2
+      )
+    )
     setOwnerDependencyLevel(draft.ownerDependencyLevel)
     setEstimatedMinutes(String(draft.estimatedTimeMinutes))
     setAssignedRoles(draft.assignedRoles)
-    setCompetencyMarkers(draft.trainingCheckpoints)
+    setCompetencyMarkers([
+      ...draft.trainingQuestions.slice(0, 4),
+      ...draft.trainingCheckpoints,
+      ...draft.trainingRecommendations.slice(0, 2),
+    ])
     setSteps(
       draft.steps.map((step) => ({
+        ...emptyCaptureStepFields(),
         key: crypto.randomUUID(),
         title: step.title,
         instructions: step.instructions,
         media_url: "",
-        estimatedMinutes: "",
-        isCritical: false,
-        verification: "",
-        requiresPhoto: false,
-        notes: "",
+        estimatedMinutes: step.estimatedMinutes != null ? String(step.estimatedMinutes) : "",
+        isCritical: step.isCritical ?? false,
+        verification: step.verification ?? "",
+        requiresPhoto:
+          step.proofRequirements?.photo ??
+          Boolean(step.verification?.toLowerCase().includes("photo")),
+        requiresVideo:
+          step.proofRequirements?.video ??
+          Boolean(step.verification?.toLowerCase().includes("video")),
+        requiresManagerSignoff:
+          step.proofRequirements?.managerSignoff ??
+          Boolean(
+            step.verification?.toLowerCase().includes("manager") ||
+              step.verification?.toLowerCase().includes("lead") ||
+              step.verification?.toLowerCase().includes("sign-off")
+          ),
+        requiresChecklist: step.proofRequirements?.checklist !== false,
+        notes: step.supplies?.length ? `Supplies: ${step.supplies.join(", ")}` : "",
+        visualTarget: step.visualTarget ?? "",
+        commonMistakes: (step.commonMistakes ?? []).join("\n"),
       }))
     )
   }, [])
@@ -309,13 +496,16 @@ export function CaptureStandardForm({
       }
       if (opts?.silent) setAutosaveSaving(true)
       try {
-        const stepsPayload = composeSteps({ videoUrl, walkthroughMediaId, rows: steps })
+        const stepsPayload = composeSteps({ walkthroughMediaId, rows: steps })
         const capture = buildCaptureJson({
-          videoUrl,
           walkthroughMediaId,
-          photoUrls,
+          photoMediaIds,
+          audioExplanationMediaId,
+          supportingDocumentMediaIds,
           assignedRoles,
           competencyMarkers,
+          playDraft,
+          operationalMemory,
         })
 
         const res = await saveSop({
@@ -355,16 +545,19 @@ export function CaptureStandardForm({
       businessId,
       category,
       competencyMarkers,
+      photoMediaIds,
+      audioExplanationMediaId,
+      supportingDocumentMediaIds,
+      playDraft,
+      operationalMemory,
       importanceLevel,
       ownerDependencyLevel,
       parsedEstimatedMinutes,
-      photoUrls,
       purpose,
       router,
       sopId,
       steps,
       title,
-      videoUrl,
       walkthroughMediaId,
     ]
   )
@@ -391,7 +584,7 @@ export function CaptureStandardForm({
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     }
-  }, [assignedRoles, category, competencyMarkers, estimatedMinutes, importanceLevel, ownerDependencyLevel, photoUrls, purpose, sopId, steps, title, videoUrl, walkthroughMediaId])
+  }, [assignedRoles, category, competencyMarkers, estimatedMinutes, importanceLevel, ownerDependencyLevel, operationalMemory, photoMediaIds, audioExplanationMediaId, supportingDocumentMediaIds, playDraft, purpose, sopId, steps, title, walkthroughMediaId])
 
   useEffect(() => {
     if (!lastSavedAt) return
@@ -434,13 +627,16 @@ export function CaptureStandardForm({
         setError("Add a title before publishing.")
         return
       }
-      const stepsPayload = composeSteps({ videoUrl, walkthroughMediaId, rows: steps })
+      const stepsPayload = composeSteps({ walkthroughMediaId, rows: steps })
       const capture = buildCaptureJson({
-        videoUrl,
         walkthroughMediaId,
-        photoUrls,
+        photoMediaIds,
+        audioExplanationMediaId,
+        supportingDocumentMediaIds,
         assignedRoles,
         competencyMarkers,
+        playDraft,
+        operationalMemory,
       })
       const res = await saveSop({
         sopId: sopId ?? undefined,
@@ -467,10 +663,12 @@ export function CaptureStandardForm({
   }
 
   const runGeneratePlay = useCallback(
-    (text: string, fromVoice = false) => {
+    (text: string, opts?: { fromVoice?: boolean; fromWorkflow?: boolean }) => {
       setError(null)
       setPlayGenerating(true)
-      if (!fromVoice) setPlayGeneratedFromVoice(false)
+      setPlayGeneratedFromVoice(Boolean(opts?.fromVoice))
+      setPlayGeneratedFromWorkflow(Boolean(opts?.fromWorkflow))
+      setPlayGeneratedFromMedia(false)
       startTransition(() => {
         void (async () => {
           const res = await convertQuickCapture(text)
@@ -482,7 +680,6 @@ export function CaptureStandardForm({
           applyQuickCaptureDraft(res.draft)
           setPlaySource(res.source)
           setPlayGenerated(true)
-          setPlayGeneratedFromVoice(fromVoice)
           setError(null)
           requestAnimationFrame(() => {
             manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -494,8 +691,116 @@ export function CaptureStandardForm({
   )
 
   const onGeneratePlay = () => {
-    runGeneratePlay(playPrompt, false)
+    setPlayGeneratedFromMedia(false)
+    runGeneratePlay(playPrompt)
   }
+
+  const mediaInferenceSummary = useMemo(() => {
+    const parts: string[] = []
+    if (walkthroughMediaId) parts.push("demonstration video")
+    if (audioExplanationMediaId) parts.push("audio explanation")
+    if (photoMediaIds.length) parts.push(`${photoMediaIds.length} photo(s)`)
+    if (operationalMemory.goodExampleMediaId) parts.push("good example")
+    if (operationalMemory.badExampleMediaId) parts.push("bad example")
+    if (playPrompt.trim().length >= 8) parts.push("description")
+    return parts.join(", ")
+  }, [
+    audioExplanationMediaId,
+    operationalMemory.badExampleMediaId,
+    operationalMemory.goodExampleMediaId,
+    photoMediaIds.length,
+    playPrompt,
+    walkthroughMediaId,
+  ])
+
+  const canGenerateFromMedia = Boolean(sopId) && mediaInferenceSummary.length > 0
+
+  const onGenerateFromMedia = useCallback(() => {
+    if (!sopId) {
+      setError("Add a title and save a draft once before generating from media.")
+      return
+    }
+    setError(null)
+    setMediaGenerating(true)
+    setPlayGeneratedFromMedia(false)
+    startTransition(() => {
+      void (async () => {
+        const res = await generatePlayFromMedia({
+          businessId,
+          standardId: sopId,
+          textPrompt: playPrompt.trim() || undefined,
+          walkthroughMediaId,
+          audioExplanationMediaId,
+          photoMediaIds,
+          goodExampleMediaId: operationalMemory.goodExampleMediaId,
+          badExampleMediaId: operationalMemory.badExampleMediaId,
+        })
+        setMediaGenerating(false)
+        if (!res.ok) {
+          setError(res.message)
+          return
+        }
+        applyQuickCaptureDraft(res.draft)
+        setPlaySource(res.source)
+        setPlayGenerated(true)
+        setPlayGeneratedFromMedia(true)
+        setPlayGeneratedFromVoice(false)
+        setPlayGeneratedFromWorkflow(false)
+        setMediaContextSummary(res.contextSummary)
+        setError(null)
+        requestAnimationFrame(() => {
+          manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+        })
+      })()
+    })
+  }, [
+    applyQuickCaptureDraft,
+    audioExplanationMediaId,
+    businessId,
+    operationalMemory.badExampleMediaId,
+    operationalMemory.goodExampleMediaId,
+    photoMediaIds,
+    playPrompt,
+    sopId,
+    walkthroughMediaId,
+  ])
+
+  const onWorkflowRecordingComplete = useCallback(
+    (blob: Blob) => {
+      setError(null)
+      setWorkflowProcessing(true)
+      startTransition(() => {
+        void (async () => {
+          const formData = new FormData()
+          formData.append("video", blob, "workflow.webm")
+          const result = await convertWorkflowDemonstration(formData)
+          setWorkflowProcessing(false)
+          if (!result.ok) {
+            setError(result.message)
+            return
+          }
+          setPlayPrompt(result.transcript)
+          applyQuickCaptureDraft(result.draft)
+          setPlaySource(result.source)
+          setPlayGenerated(true)
+          setPlayGeneratedFromWorkflow(true)
+          setPlayGeneratedFromVoice(false)
+          setError(null)
+          requestAnimationFrame(() => {
+            manualFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+          })
+        })()
+      })
+    },
+    [applyQuickCaptureDraft]
+  )
+
+  const {
+    isRecording: workflowRecording,
+    error: workflowError,
+    bindPreview: bindWorkflowPreview,
+    toggleRecording: toggleWorkflowRecording,
+  } = useWorkflowVideoCapture(onWorkflowRecordingComplete)
 
   const onVoiceRecordingComplete = useCallback(
     (blob: Blob) => {
@@ -512,7 +817,7 @@ export function CaptureStandardForm({
             return
           }
           setPlayPrompt(transcribed.transcript)
-          runGeneratePlay(transcribed.transcript, true)
+          runGeneratePlay(transcribed.transcript, { fromVoice: true })
         })()
       })
     },
@@ -528,6 +833,10 @@ export function CaptureStandardForm({
   useEffect(() => {
     if (voiceError) setError(voiceError)
   }, [voiceError])
+
+  useEffect(() => {
+    if (workflowError) setError(workflowError)
+  }, [workflowError])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -556,189 +865,150 @@ export function CaptureStandardForm({
   }
 
   const uploadStandardFile = useCallback(
-    (file: File, role: "image" | "walkthrough") => {
-      const run = async () => {
-        const stdId = sopId
-        if (!stdId) {
-          setError(
-            "Add a title and save a draft first. Once this draft has an ID, you can attach photos and video."
-          )
-          return
-        }
+    (
+      file: File,
+      slot: MediaUploadSlot,
+      onUploaded?: (mediaId: string) => void,
+      options?: UploadStandardFileOptions
+    ) => {
+      const replaceId =
+        options?.replaceMediaId !== undefined
+          ? options.replaceMediaId
+          : slot === "walkthrough"
+            ? walkthroughMediaId
+            : slot === "audio-explanation"
+              ? audioExplanationMediaId
+              : slot === "good-example"
+                ? operationalMemory.goodExampleMediaId
+                : slot === "bad-example"
+                  ? operationalMemory.badExampleMediaId
+                  : null
 
-        const validated = validateStandardMediaUpload({
-          contentType: file.type || "application/octet-stream",
-          byteSize: file.size,
-        })
-        if (!validated.ok) {
-          setError(validated.message)
-          return
-        }
-        if (role === "walkthrough" && validated.kind !== "video") {
-          setError("Walkthrough uploads must be MP4, MOV, or WebM.")
-          return
-        }
-        if (role === "image" && validated.kind !== "image") {
-          setError("Photo uploads must be JPG, PNG, or WebP.")
-          return
-        }
+      const progressSlot =
+        slot === "step-good-example" || slot === "step-bad-example"
+          ? `${slot}:${options?.stepKey ?? "unknown"}`
+          : slot
 
-        const jobId = crypto.randomUUID()
-        setUploadJobs((j) => [
-          ...j,
-          { id: jobId, fileName: file.name, progress: 0, phase: "preparing" },
-        ])
-        setError(null)
-        let pathUsed: string | null = null
-        const previousWalkId = walkthroughMediaId
-
-        try {
-          if (role === "walkthrough" && previousWalkId) {
-            const del = await deleteStandardMedia({
-              businessId,
-              standardId: stdId,
-              mediaId: previousWalkId,
-            })
-            if (!del.ok) throw new Error(del.message)
-            setWalkthroughMediaId(null)
-            setRemovedMediaIds((p) => [...p, previousWalkId])
-            setMediaPatch((prev) => prev.filter((r) => r.id !== previousWalkId))
+      return uploadOperationalFile(file, {
+        slot: progressSlot,
+        validateSlot: validatorForMediaSlot(slot),
+        replaceMediaId: replaceId,
+        onSuccess: ({ row }) => {
+          if (replaceId) {
+            setRemovedMediaIds((p) => [...p, replaceId])
           }
-
-          const prep = await prepareStandardMediaUpload({
-            businessId,
-            standardId: stdId,
-            fileName: file.name,
-            contentType: file.type || "application/octet-stream",
-            byteSize: file.size,
-          })
-          if (!prep.ok) throw new Error(prep.message)
-          pathUsed = prep.path
-
-          setUploadJobs((j) =>
-            j.map((x) => (x.id === jobId ? { ...x, phase: "uploading" as const } : x))
-          )
-
-          await uploadStandardMediaToSignedUrl(prep.signedUrl, file, (pct) => {
-            setUploadJobs((j) =>
-              j.map((x) => (x.id === jobId ? { ...x, progress: pct } : x))
-            )
-          })
-
-          setUploadJobs((j) =>
-            j.map((x) => (x.id === jobId ? { ...x, phase: "finalizing" as const } : x))
-          )
-
-          const fin = await finalizeStandardMediaUpload({
-            businessId,
-            standardId: stdId,
-            storagePath: prep.path,
-            contentType: file.type || "application/octet-stream",
-            byteSize: file.size,
-          })
-          if (!fin.ok) {
-            await abandonStandardMediaUpload({
-              businessId,
-              standardId: stdId,
-              storagePath: prep.path,
-            })
-            throw new Error(fin.message)
+          if (slot === "walkthrough") {
+            setWalkthroughMediaId(row.id)
+          } else if (slot === "reference-photo") {
+            setPhotoMediaIds((prev) => [...prev.filter((id) => id !== row.id), row.id])
+          } else if (slot === "audio-explanation") {
+            setAudioExplanationMediaId(row.id)
+          } else if (slot === "supporting-document") {
+            setSupportingDocumentMediaIds((prev) => [...prev.filter((id) => id !== row.id), row.id])
+          } else if (slot === "good-example") {
+            setOperationalMemory((prev) => ({ ...prev, goodExampleMediaId: row.id }))
+          } else if (slot === "bad-example") {
+            setOperationalMemory((prev) => ({ ...prev, badExampleMediaId: row.id }))
           }
-
-          if (role === "walkthrough") {
-            setWalkthroughMediaId(fin.row.id)
-            setVideoUrl("")
-            setMediaPatch((prev) => [...prev.filter((r) => r.id !== fin.row.id), fin.row])
-          } else {
-            setMediaPatch((prev) => [...prev.filter((r) => r.id !== fin.row.id), fin.row])
-          }
-
-          setUploadJobs((j) => j.filter((x) => x.id !== jobId))
+          setMediaPatch((prev) => [...prev.filter((r) => r.id !== row.id), row])
+          onUploaded?.(row.id)
           router.refresh()
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : "Upload failed."
-          setError(msg)
-          if (pathUsed) {
-            await abandonStandardMediaUpload({
-              businessId,
-              standardId: stdId,
-              storagePath: pathUsed,
-            })
-          }
-          setUploadJobs((j) =>
-            j.map((x) =>
-              x.id === jobId
-                ? {
-                    ...x,
-                    phase: "error" as const,
-                    errorMessage: msg,
-                    retry: () => {
-                      setUploadJobs((inner) => inner.filter((z) => z.id !== jobId))
-                      void run()
-                    },
-                  }
-                : x
-            )
-          )
-        }
-      }
-
-      void run()
+        },
+      })
     },
-    [businessId, router, sopId, walkthroughMediaId]
+    [
+      audioExplanationMediaId,
+      operationalMemory.badExampleMediaId,
+      operationalMemory.goodExampleMediaId,
+      router,
+      uploadOperationalFile,
+      walkthroughMediaId,
+    ]
   )
 
-  async function onPickPhotos(files: FileList | null) {
-    if (!files?.length) return
-    setError(null)
-    for (const file of Array.from(files)) {
-      uploadStandardFile(file, "image")
-    }
-    if (photoInputRef.current) photoInputRef.current.value = ""
-  }
+  const uploadExampleMedia = useCallback(
+    async (kind: "good" | "bad", file: File) => {
+      await uploadStandardFile(file, kind === "good" ? "good-example" : "bad-example")
+    },
+    [uploadStandardFile]
+  )
 
-  function onPickVideoFile(file: File | null) {
-    if (!file) return
-    setError(null)
-    uploadStandardFile(file, "walkthrough")
-    if (videoFileRef.current) videoFileRef.current.value = ""
-  }
+  const uploadStepExampleMedia = useCallback(
+    async (stepKey: string, kind: "good" | "bad", file: File) => {
+      const row = steps.find((s) => s.key === stepKey)
+      const replaceMediaId =
+        kind === "good" ? (row?.goodExampleMediaId ?? null) : (row?.badExampleMediaId ?? null)
 
-  async function removeUploadedImage(row: StandardMediaRowSigned) {
+      await uploadStandardFile(
+        file,
+        kind === "good" ? "step-good-example" : "step-bad-example",
+        (mediaId) => {
+          setSteps((prev) =>
+            prev.map((s) => {
+              if (s.key !== stepKey) return s
+              const mediaIds = new Set(s.mediaIds)
+              if (replaceMediaId) mediaIds.delete(replaceMediaId)
+              mediaIds.add(mediaId)
+              return kind === "good"
+                ? {
+                    ...s,
+                    goodExampleMediaId: mediaId,
+                    mediaIds: [...mediaIds],
+                  }
+                : {
+                    ...s,
+                    badExampleMediaId: mediaId,
+                    mediaIds: [...mediaIds],
+                  }
+            })
+          )
+        },
+        { replaceMediaId, stepKey }
+      )
+    },
+    [steps, uploadStandardFile]
+  )
+
+  async function removeMediaById(mediaId: string, onRemoved?: () => void) {
     if (!sopId) return
     const res = await deleteStandardMedia({
       businessId,
       standardId: sopId,
-      mediaId: row.id,
+      mediaId,
     })
     if (!res.ok) {
       setError(res.message)
       return
     }
-    setRemovedMediaIds((p) => [...p, row.id])
-    setMediaPatch((prev) => prev.filter((r) => r.id !== row.id))
+    setRemovedMediaIds((p) => [...p, mediaId])
+    setMediaPatch((prev) => prev.filter((r) => r.id !== mediaId))
+    onRemoved?.()
     router.refresh()
   }
 
-  async function removeWalkthroughClip() {
-    const id = walkthroughMediaId
-    if (!sopId || !id) return
-    const res = await deleteStandardMedia({
-      businessId,
-      standardId: sopId,
-      mediaId: id,
-    })
-    if (!res.ok) {
-      setError(res.message)
-      return
-    }
-    setWalkthroughMediaId(null)
-    setRemovedMediaIds((p) => [...p, id])
-    setMediaPatch((prev) => prev.filter((r) => r.id !== id))
-    router.refresh()
-  }
+  const removeStepExampleMedia = useCallback(
+    async (stepKey: string, kind: "good" | "bad") => {
+      const row = steps.find((s) => s.key === stepKey)
+      const mediaId = kind === "good" ? row?.goodExampleMediaId : row?.badExampleMediaId
+      if (!mediaId) return
+      await removeMediaById(mediaId, () => {
+        setSteps((prev) =>
+          prev.map((s) => {
+            if (s.key !== stepKey) return s
+            const mediaIds = s.mediaIds.filter((id) => id !== mediaId)
+            return kind === "good"
+              ? { ...s, goodExampleMediaId: null, mediaIds }
+              : { ...s, badExampleMediaId: null, mediaIds }
+          })
+        )
+      })
+    },
+    [steps]
+  )
 
-  const imageRows = mergedStandardMedia.filter((m) => m.kind === "image")
+  const mediaUploadPending = uploadJobs.some(
+    (j) => j.phase === "preparing" || j.phase === "uploading" || j.phase === "finalizing"
+  )
 
   const statusLabel =
     savedStatus === "active" ? "Published" : savedStatus === "archived" ? "Archived" : "Draft"
@@ -763,7 +1033,7 @@ export function CaptureStandardForm({
             </span>
           </div>
           <Button variant="link" className="h-auto px-0 text-muted-foreground" nativeButton={false} render={<Link href="/sops" />}>
-            ← Standards
+            ← Plays
           </Button>
         </header>
 
@@ -780,20 +1050,54 @@ export function CaptureStandardForm({
           generated={playGenerated}
           source={playSource}
           generatedFromVoice={playGeneratedFromVoice}
+          generatedFromWorkflow={playGeneratedFromWorkflow}
           onGenerate={onGeneratePlay}
           voiceRecording={voiceRecording}
           voiceTranscribing={voiceTranscribing}
           onVoiceToggle={toggleVoiceRecording}
+          workflowRecording={workflowRecording}
+          workflowProcessing={workflowProcessing}
+          onWorkflowToggle={toggleWorkflowRecording}
+          workflowPreviewRef={bindWorkflowPreview}
           disabled={uploadInFlight}
         />
+
+        {playDraft && playGenerated ? <CapturePlayInsights draft={playDraft} /> : null}
 
         <div ref={manualFormRef} className="space-y-8 border-t border-border/50 pt-8">
           <div className="space-y-1">
             <h2 className="text-base font-semibold text-foreground">Review and edit your play</h2>
             <p className="text-sm text-muted-foreground">
-              Everything below is editable—tune the title, steps, roles, and training requirements before you publish.
+              Everything below is editable—tune the title, steps, roles, and operational memory before you publish.
             </p>
           </div>
+
+        <CaptureOperationalMemory
+          state={operationalMemory}
+          onChange={(patch) => setOperationalMemory((prev) => ({ ...prev, ...patch }))}
+          canUpload={Boolean(sopId)}
+          uploadPending={uploadInFlight}
+          goodExampleMedia={goodExampleMedia}
+          badExampleMedia={badExampleMedia}
+          onUploadGood={(file) => uploadExampleMedia("good", file)}
+          onUploadBad={(file) => uploadExampleMedia("bad", file)}
+          onRemoveGood={
+            operationalMemory.goodExampleMediaId
+              ? () =>
+                  void removeMediaById(operationalMemory.goodExampleMediaId!, () =>
+                    setOperationalMemory((prev) => ({ ...prev, goodExampleMediaId: null }))
+                  )
+              : undefined
+          }
+          onRemoveBad={
+            operationalMemory.badExampleMediaId
+              ? () =>
+                  void removeMediaById(operationalMemory.badExampleMediaId!, () =>
+                    setOperationalMemory((prev) => ({ ...prev, badExampleMediaId: null }))
+                  )
+              : undefined
+          }
+        />
 
         <section className="space-y-2">
           <Label htmlFor="cap-title" className="text-base">
@@ -872,12 +1176,32 @@ export function CaptureStandardForm({
                 step={row}
                 index={index}
                 canRemove={steps.length > 1}
+                canUpload={Boolean(sopId)}
+                uploadPending={mediaUploadPending}
+                goodExampleMedia={
+                  row.goodExampleMediaId ? mediaById.get(row.goodExampleMediaId) ?? null : null
+                }
+                badExampleMedia={
+                  row.badExampleMediaId ? mediaById.get(row.badExampleMediaId) ?? null : null
+                }
                 onChange={(patch) =>
                   setSteps((prev) =>
                     prev.map((r) => (r.key === row.key ? { ...r, ...patch } : r))
                   )
                 }
                 onRemove={() => setSteps((prev) => prev.filter((r) => r.key !== row.key))}
+                onUploadGoodExample={(file) => uploadStepExampleMedia(row.key, "good", file)}
+                onUploadBadExample={(file) => uploadStepExampleMedia(row.key, "bad", file)}
+                onRemoveGoodExample={
+                  row.goodExampleMediaId
+                    ? () => void removeStepExampleMedia(row.key, "good")
+                    : undefined
+                }
+                onRemoveBadExample={
+                  row.badExampleMediaId
+                    ? () => void removeStepExampleMedia(row.key, "bad")
+                    : undefined
+                }
               />
             ))}
           </ul>
@@ -1049,215 +1373,66 @@ export function CaptureStandardForm({
           </div>
         </section>
         <section className="space-y-4" aria-labelledby="media-heading">
-          <h2 id="media-heading" className="text-base font-semibold text-foreground">
-            Photos & video
-          </h2>
           <p className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs leading-relaxed text-amber-950 dark:text-amber-100/90">
             Do not upload confidential staff/customer information unless your policies allow it.
           </p>
 
-          {uploadJobs.length > 0 ? (
-            <ul className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3 text-sm">
-              {uploadJobs.map((job) => (
-                <li key={job.id} className="space-y-1.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="min-w-0 truncate font-medium text-foreground">{job.fileName}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {job.phase === "preparing"
-                        ? "Preparing…"
-                        : job.phase === "uploading"
-                          ? `${job.progress}%`
-                          : job.phase === "finalizing"
-                            ? "Saving…"
-                            : "Failed"}
-                    </span>
-                  </div>
-                  {job.phase !== "error" ? (
-                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full bg-primary transition-[width] duration-150"
-                        style={{
-                          width:
-                            job.phase === "preparing"
-                              ? "8%"
-                              : job.phase === "finalizing"
-                                ? "100%"
-                                : `${job.progress}%`,
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xs text-destructive">{job.errorMessage ?? "Upload failed."}</p>
-                      {job.retry ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1 text-xs"
-                          onClick={() => job.retry?.()}
-                        >
-                          <RefreshCw className="size-3" aria-hidden />
-                          Retry
-                        </Button>
-                      ) : null}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <CaptureMediaInference
+            canGenerate={canGenerateFromMedia}
+            generating={mediaGenerating}
+            mediaSummary={mediaInferenceSummary}
+            onGenerate={onGenerateFromMedia}
+            disabled={uploadInFlight || pending}
+            generated={playGeneratedFromMedia}
+            contextSummary={mediaContextSummary}
+          />
 
-          <Card className="border-border/60 bg-muted/10">
-            <CardContent className="space-y-3 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Video className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                Video
-              </div>
-              <Input
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="Paste link (Loom, Drive, …)"
-                className="h-11 font-mono text-sm"
-                disabled={Boolean(walkthroughMediaId)}
-              />
-              {walkthroughMediaId ? (
-                <p className="text-xs text-muted-foreground">
-                  Remove the uploaded clip below to use a pasted link instead.
-                </p>
-              ) : null}
-              {walkthroughMediaId ? (
-                <div className="relative overflow-hidden rounded-lg border border-border/60 bg-black/5">
-                  <video
-                    src={`/api/standard-media/${walkthroughMediaId}`}
-                    controls
-                    className="max-h-56 w-full"
-                    preload="metadata"
-                  >
-                    <track kind="captions" />
-                  </video>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="absolute right-2 top-2 h-8 shadow-md"
-                    onClick={() => void removeWalkthroughClip()}
-                  >
-                    <Trash2 className="mr-1 size-3.5" aria-hidden />
-                    Remove clip
-                  </Button>
-                </div>
-              ) : null}
-              <input
-                ref={videoFileRef}
-                type="file"
-                accept="video/mp4,video/quicktime,video/webm"
-                className="hidden"
-                onChange={(e) => onPickVideoFile(e.target.files?.[0] ?? null)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-10"
-                disabled={uploadInFlight || !sopId}
-                onClick={() => videoFileRef.current?.click()}
-              >
-                {uploadInFlight ? <Loader2 className="size-4 animate-spin" /> : null}
-                Upload video file
-              </Button>
-              {!sopId ? (
-                <p className="text-xs text-muted-foreground">
-                  Add a title and save a draft once so uploads can attach to this standard.
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
+          <CapturePlayMediaSection
+            canUpload={Boolean(sopId)}
+            uploadJobs={uploadJobs}
+            onDismissUploadJob={dismissJob}
+            walkthroughMedia={walkthroughMedia}
+            audioExplanationMedia={audioExplanationMedia}
+            referencePhotos={referencePhotoRows}
+            supportingDocuments={supportingDocumentRows}
+            onUploadWalkthrough={(file) => {
+              void uploadStandardFile(file, "walkthrough")
+            }}
+            onUploadAudio={(file) => {
+              void uploadStandardFile(file, "audio-explanation")
+            }}
+            onUploadReferencePhotos={async (files) => {
+              for (const file of files) {
+                await uploadStandardFile(file, "reference-photo")
+              }
+            }}
+            onUploadDocument={(file) => {
+              void uploadStandardFile(file, "supporting-document")
+            }}
+            onRemoveWalkthrough={
+              walkthroughMediaId
+                ? () =>
+                    void removeMediaById(walkthroughMediaId, () => setWalkthroughMediaId(null))
+                : undefined
+            }
+            onRemoveAudio={
+              audioExplanationMediaId
+                ? () =>
+                    void removeMediaById(audioExplanationMediaId, () => setAudioExplanationMediaId(null))
+                : undefined
+            }
+            onRemoveReferencePhoto={(mediaId) =>
+              void removeMediaById(mediaId, () =>
+                setPhotoMediaIds((prev) => prev.filter((id) => id !== mediaId))
+              )
+            }
+            onRemoveDocument={(mediaId) =>
+              void removeMediaById(mediaId, () =>
+                setSupportingDocumentMediaIds((prev) => prev.filter((id) => id !== mediaId))
+              )
+            }
+          />
 
-          <Card className="border-border/60 bg-muted/10">
-            <CardContent className="space-y-3 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Camera className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                Photos
-              </div>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                className="hidden"
-                onChange={(e) => void onPickPhotos(e.target.files)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-10"
-                disabled={uploadInFlight || !sopId}
-                onClick={() => photoInputRef.current?.click()}
-              >
-                {uploadInFlight ? <Loader2 className="size-4 animate-spin" /> : null}
-                Upload photos
-              </Button>
-              {!sopId ? (
-                <p className="text-xs text-muted-foreground">
-                  Add a title and save a draft once so uploads can attach to this standard.
-                </p>
-              ) : null}
-              {photoUrls.length > 0 || imageRows.length > 0 ? (
-                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {photoUrls.map((url) => (
-                    <li key={url} className="group relative overflow-hidden rounded-lg border border-border/60">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt=""
-                        className="aspect-square w-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.opacity = "0.2"
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-1 top-1 rounded-md bg-background/95 p-1.5 shadow"
-                        onClick={() => setPhotoUrls((prev) => prev.filter((u) => u !== url))}
-                        aria-label="Remove photo"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                  {imageRows.map((row) => (
-                    <li key={row.id} className="group relative overflow-hidden rounded-lg border border-border/60">
-                      {row.signedUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={row.signedUrl}
-                          alt=""
-                          className="aspect-square w-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.opacity = "0.2"
-                          }}
-                        />
-                      ) : (
-                        <div className="flex aspect-square items-center justify-center bg-muted text-xs text-muted-foreground">
-                          Preview unavailable
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        className="absolute right-1 top-1 rounded-md bg-background/95 p-1.5 shadow"
-                        onClick={() => void removeUploadedImage(row)}
-                        aria-label="Remove photo"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </CardContent>
-          </Card>
         </section>
 
         <CaptureFloorTestCard value={floorTestAnswer} onChange={setFloorTestAnswer} />

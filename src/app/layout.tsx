@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google"
 
+import { RIVET_PRICING } from "@/lib/pricing-copy"
+import { EMOTIONAL_PROMISE, PRODUCT_ONE_LINER } from "@/lib/product-voice"
+
 import "./globals.css"
 
 const fontSans = Plus_Jakarta_Sans({
@@ -18,8 +21,7 @@ export const metadata: Metadata = {
     default: "Rivet",
     template: "%s · Rivet",
   },
-  description:
-    "Get your business out of your head. Document procedures, track training, log what still routes back to you, and see if your team could run a week without you—$799 CAD once.",
+  description: `${EMOTIONAL_PROMISE} ${PRODUCT_ONE_LINER} ${RIVET_PRICING.metaLine}`,
 }
 
 export default function RootLayout({

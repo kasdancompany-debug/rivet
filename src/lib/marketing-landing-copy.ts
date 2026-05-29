@@ -1,66 +1,75 @@
 import { COPY } from "@/lib/interface-copy"
+import { RIVET_PRICING } from "@/lib/pricing-copy"
 import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
 import type { EscapeReadinessView } from "@/lib/escape-readiness/types"
-import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
+import {
+  EMOTIONAL_PROMISE,
+  PLAY_COVERAGE_LABEL,
+  PRODUCT_ARC,
+  PRODUCT_LOOP,
+  PRODUCT_POSITIONING,
+  UNDOCUMENTED_MEMORY_LABEL,
+} from "@/lib/product-voice"
 
 /** Long-form marketing landing — Rivet positioning. */
-export { EMOTIONAL_PROMISE }
+export { EMOTIONAL_PROMISE, PRODUCT_POSITIONING, PRODUCT_LOOP, PRODUCT_ARC }
 
 export const LANDING_POSITIONING_LINE =
-  "For dealerships, gyms, contractors, retail, and owner-led teams who are done carrying the operation in their head."
+  "The operating memory of owner-led teams—dealerships, gyms, contractors, retail, and anyone done carrying the operation in their head."
 
-export const LANDING_OG_TITLE = `Rivet — ${EMOTIONAL_PROMISE}`
+export const LANDING_OG_TITLE = `Rivet — ${PRODUCT_POSITIONING}`
 
 export const LANDING_META_DESCRIPTION =
-  "$799 CAD once. Document procedures, train the team, log what routes back to you, and see if the business can run without you."
+  `${RIVET_PRICING.metaLine} Capture how work runs, standardize it into plays, train the team, and see what still depends on you.`
 
 export const LANDING_HEADER_SIGN_IN = "Sign in" as const
 
 export const LANDING_CTA = {
-  primary: "Get Rivet",
-  secondary: "Take Free Scan",
-  tertiary: "How it works",
+  primary: RIVET_PRICING.cta,
+  secondary: "Take the free Rivet Scan",
+  tertiary: "See how it works",
 } as const
 
 export const LANDING_SCAN_CTA = {
   label: LANDING_CTA.secondary,
-  subline: "Owner Dependency Score · ~2 min · no account",
+  subline: "~2 minutes · no account · see what still depends on you",
 } as const
 
 /** 1 · Hero */
 export const LANDING_HERO = {
-  eyebrow: "For owner-operators",
+  eyebrow: "Owner-led teams",
   headline: "Get your business\nout of your head.",
-  subheadline: "Document how work runs, train against it, and see whether the team could hold a week without you.",
+  subheadline:
+    "Rivet is operating memory—so the team runs the work while you stop being the default answer.",
   ctaPrimary: LANDING_CTA.primary,
   ctaSecondary: LANDING_CTA.secondary,
   ctaTertiary: LANDING_CTA.tertiary,
 } as const
 
 export const LANDING_EXISTING_WORKSPACE_CHECKOUT = {
-  lead: "Already have a workspace?",
+  lead: "Already have a business in Rivet?",
   linkLabel: "Sign in to complete checkout",
   href: "/login?next=/subscribe",
 } as const
 
 /** 2 · Pain */
 export const LANDING_PAIN = {
-  eyebrow: "The problem",
+  eyebrow: "The pain",
   title: "Your phone is still the operations manual.",
-  hook: "Same questions. Same fires. Every week.",
+  hook: "Texts, walk-ups, and “quick questions” that never stop.",
   events: [
-    { time: "7:14 AM", text: "Where is the onboarding checklist?" },
-    { time: "8:42 AM", text: "Did the estimate get sent?" },
-    { time: "10:13 AM", text: "Who owns this task?" },
-    { time: "11:52 AM", text: "Client follow-up overdue" },
+    { time: "7:14", text: "How do I process refunds?" },
+    { time: "8:42", text: "Who can approve this comp?" },
+    { time: "10:13", text: "Where’s the opening checklist?" },
+    { time: "11:52", text: "Can you look at this before I send it?" },
   ] as const,
 } as const
 
 /** 3 · Diagnosis */
 export const LANDING_DIAGNOSIS = {
   eyebrow: "Diagnosis",
-  title: "See how owner-dependent you really are.",
-  hook: "Rivet turns gut feel into numbers you can act on.",
+  title: "Your business still depends on you here.",
+  hook: "The Rivet Scan shows owner pulls, load, and escape readiness—in one read.",
   metrics: [
     { label: "Owner pulls / week", value: "17" },
     { label: "Owner load index", value: "68" },
@@ -68,43 +77,59 @@ export const LANDING_DIAGNOSIS = {
   ] as const,
 } as const
 
-/** 4 · Mechanism */
+/** 4 · Mechanism — five moves */
 export const LANDING_MECHANISM = {
   eyebrow: "The mechanism",
-  title: "How Rivet works",
-  hook: "Four moves—from memory to a business the team can run.",
+  title: "Five moves out of your head",
+  hook: "Each one reduces how much the business routes back to you.",
   steps: [
-    { title: "Capture procedures", detail: "Write how work actually runs." },
-    { title: "Train people", detail: "Link modules to real tasks." },
-    { title: "Track interruptions", detail: "Log what still routes to you." },
-    { title: "Measure escape readiness", detail: "One score for five days away." },
+    {
+      title: "Capture procedures",
+      detail: "Record how work actually runs—on the line, not in a template graveyard.",
+    },
+    {
+      title: "Train people",
+      detail: "Training Center modules tied to real tasks so “trained” means something on the floor.",
+    },
+    {
+      title: "Answer questions",
+      detail: "Ask Rivet pulls answers from operating memory before staff ping you.",
+    },
+    {
+      title: "Reduce interruptions",
+      detail: "Log owner pulls until repeats stop—and Rivet suggests the play or training that fixes them.",
+    },
+    {
+      title: "Increase owner-free capacity",
+      detail: "Escape readiness tracks whether the business holds when you step back.",
+    },
   ] as const,
 } as const
 
 /** 5 · Transformation */
 export const LANDING_TRANSFORMATION = {
   eyebrow: "Transformation",
-  title: "Before Rivet vs After Rivet",
-  hook: "Less routing through you—not less ambition.",
+  title: "Before Rivet vs after Rivet",
+  hook: "Same business. Less of you in the middle.",
   comparison: {
-    before: { label: "Before", value: 17, unit: "interruptions/week" },
-    after: { label: "After", value: 7, unit: "interruptions/week" },
+    before: { label: "Before Rivet", value: 17, unit: "owner pulls / week" },
+    after: { label: "After Rivet", value: 7, unit: "owner pulls / week" },
     maxValue: 17,
   },
   estimated: {
-    label: "Estimated",
+    label: "Illustrative recovery",
     value: 260,
-    unit: "owner hours recovered annually",
+    unit: "owner hours / year",
   },
   beforeBullets: [
-    "Judgment lives in your head",
-    "Training is “watch me”",
-    "Same texts every week",
+    "Procedures live in your head—and your phone",
+    "Training is shadowing you on a busy day",
+    "Every exception waits on your OK",
   ] as const,
   afterBullets: [
-    "Procedures staff can read",
-    "Training tied to real work",
-    "Interruptions logged and owned",
+    "Plays the crew runs without calling you",
+    "Training assigned before the first shift alone",
+    "Pulls drop because the system got fixed",
   ] as const,
   disclaimer: "Illustrative example · not a customer case study",
 } as const
@@ -130,9 +155,9 @@ export const LANDING_ESCAPE_READINESS_DEMO: EscapeReadinessView = finalizeEscape
   factors: [
     {
       id: "sop_coverage",
-      label: "SOP coverage",
+      label: PLAY_COVERAGE_LABEL,
       percent: 52,
-      hint: "Roughly half of critical tasks have clear written steps—not enough to step away calmly.",
+      hint: "Roughly half of critical tasks have clear plays—not enough to step away calmly.",
     },
     {
       id: "training_coverage",
@@ -154,9 +179,9 @@ export const LANDING_ESCAPE_READINESS_DEMO: EscapeReadinessView = finalizeEscape
     },
     {
       id: "undocumented_procedures",
-      label: "Undocumented procedures",
+      label: UNDOCUMENTED_MEMORY_LABEL,
       percent: 44,
-      hint: "Several plays still live only in your head—not written down in Rivet.",
+      hint: "Several plays still live only in your head—not in Rivet's operating memory.",
     },
   ],
 })
@@ -164,32 +189,44 @@ export const LANDING_ESCAPE_READINESS_DEMO: EscapeReadinessView = finalizeEscape
 /** 6 · Escape readiness payoff */
 export const LANDING_ESCAPE_PAYOFF = {
   eyebrow: "Escape readiness",
-  title: "Could you step away for five days?",
-  hook: "One score that tells you if the business holds without you on the phone.",
+  title: "Can your business survive without you?",
+  hook: "One score for whether operating memory is strong enough to hold when you step away.",
 } as const
 
-/** 7 · Price / value */
+/** 7 · Founder pricing */
 export const LANDING_VALUE = {
-  eyebrow: "Price / value",
-  title: "Owner time is the expensive line item.",
-  hook: "One payment vs a year of interruptions.",
+  eyebrow: "Founder pricing",
+  title: "Founder Lifetime Access",
+  hook: "Pay once. Build operating memory. No subscription on your workspace.",
+  limitedFounderRelease: RIVET_PRICING.limitedFounderRelease,
+  productName: RIVET_PRICING.productName,
+  priceOnce: RIVET_PRICING.priceOnce,
+  priceInstallment: RIVET_PRICING.priceInstallment,
+  included: RIVET_PRICING.included,
   ownerTimeAtRisk: {
     label: "Illustrative owner time at risk",
     value: "260 hrs",
     note: "recovered annually in the example outcome",
   },
   rivetCost: {
-    label: "Rivet license",
-    value: "$799",
-    note: "CAD · one-time · no monthly subscription",
+    label: RIVET_PRICING.productName,
+    value: RIVET_PRICING.priceDisplay,
+    note: RIVET_PRICING.priceOnce,
+    installment: RIVET_PRICING.priceInstallment,
   },
-  microcopy: "If Rivet pulls even a fraction of that time off your plate, the license is not the expensive line item.",
+  microcopy:
+    "Owner time is the expensive line item. This buys the system that gives it back.",
 } as const
 
 export const LANDING_PRICING = {
-  priceDisplay: "$799",
-  currencyLabel: "CAD · one-time",
-  ctaPrimary: LANDING_CTA.primary,
+  productName: RIVET_PRICING.productName,
+  priceDisplay: RIVET_PRICING.priceDisplay,
+  priceOnce: RIVET_PRICING.priceOnce,
+  priceInstallment: RIVET_PRICING.priceInstallment,
+  currencyLabel: RIVET_PRICING.currencyOnce,
+  positioningLines: RIVET_PRICING.positioningLines,
+  included: RIVET_PRICING.included,
+  ctaPrimary: RIVET_PRICING.cta,
 } as const
 
 export const LANDING_FAQ_TITLE = "Questions" as const
@@ -197,31 +234,22 @@ export const LANDING_FAQ_TITLE = "Questions" as const
 export const LANDING_FOOTER_TRUST =
   "Built with owner-operators who were tired of being the default answer."
 
-export const LANDING_FOOTER_TAGLINE =
-  "Rivet — get your business out of your head."
+export const LANDING_FOOTER_TAGLINE = `Rivet — ${EMOTIONAL_PROMISE}`
 
 /** 8 · Final CTA */
 export const LANDING_FINAL_CTA = {
-  title: "Get your business out of your head.",
-  body: "Document it once. See if the team can run without you.",
+  title: "Take the free Rivet Scan",
+  body: "See what still depends on you—before you buy anything.",
 } as const
 
 export const LANDING_FAQ = [
   {
     q: "Is this a subscription?",
-    a: "No. One payment in CAD. Lifetime access, with one year of product updates included.",
+    a: `No. ${RIVET_PRICING.productName} is ${RIVET_PRICING.priceOnce} ${RIVET_PRICING.priceInstallment}. ${RIVET_PRICING.included.join(" · ")}—grandfathered permanently on your workspace.`,
   },
   {
-    q: "What is Rivet—not payroll or POS?",
-    a: "How you document work, train the team, log owner pulls, and track bottlenecks. Your other tools stay where they are.",
-  },
-  {
-    q: "Is there a staff mobile app?",
-    a: "v1 is a web workspace for the owner and team leads you invite.",
-  },
-  {
-    q: "Why $799?",
-    a: "Staying the default answer is expensive. This buys a durable workspace—not another tab you cancel.",
+    q: "What is Rivet?",
+    a: "Operating memory: procedures, training, Ask Rivet, owner pulls, and escape readiness—not payroll or POS.",
   },
 ] as const
 
@@ -235,13 +263,13 @@ export const LANDING_OWNER_SPINE = {
   statDelta: "Same themes repeat when nothing is written down",
   traceTitle: "Usually because",
   traces: [
-    "Procedures not written (or not findable)",
+    "How work runs is still in your head",
     "Training not tied to real tasks",
     "No named owner on recurring decisions",
   ] as const,
   diagnosisEyebrow: "Examples",
   diagnosis: [
-    { id: "SOP", line: "Opening steps still live in memory—not in Rivet" },
+    { id: "PLAY", line: "Opening steps still live in memory—not in Rivet" },
     { id: "TRN", line: "New hire shadowing you instead of a module" },
     { id: "OWN", line: "Key decisions still wait on your OK" },
   ] as const,

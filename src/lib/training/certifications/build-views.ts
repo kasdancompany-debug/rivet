@@ -7,6 +7,7 @@ export type ModuleCertificationView = {
   moduleTitle: string
   moduleCompleted: boolean
   quizzesPassed: boolean
+  proofUploaded: boolean
   managerSignedOff: boolean
   certified: boolean
   certifiedAt: string | null
@@ -35,6 +36,7 @@ export function buildCertificationViews(
       moduleTitle: title,
       moduleCompleted: Boolean(row.module_completed_at),
       quizzesPassed: Boolean(row.quizzes_passed_at),
+      proofUploaded: Boolean(row.proof_uploaded_at),
       managerSignedOff: Boolean(row.manager_signed_off_at),
       certified: Boolean(row.certified_at),
       certifiedAt: row.certified_at,

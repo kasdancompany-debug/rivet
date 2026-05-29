@@ -3,16 +3,25 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
 import {
+  countCompletedExecutionRecordsByEmployee,
+  ensureEmployeeReadinessRows,
   fetchBusinessForCurrentUser,
+  fetchCurrentProfile,
   fetchProfilesForCurrentBusiness,
   listEmployeeModuleCertificationsForEmployeeIds,
+  listEmployeeReadinessForBusiness,
+  listEmployeeStandardQuizCompletionsForEmployeeIds,
+  listManagerObservationsForEmployeeIds,
   listTrainingModulesDeepForBusiness,
   listTrainingProgressForBusinessModules,
+  listTrainingSopCompletionsForEmployeeIds,
 } from "@/lib/db/queries"
+import { buildEmployeeTrainingViewModel } from "@/lib/training/build-views"
 import { COPY } from "@/lib/interface-copy"
 import { buildTeamReadinessMatrix } from "@/lib/training/readiness-matrix/build-matrix"
 import { lineForWorkspaceLinked } from "@/lib/route-reliability/diagnostic-builders"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
+import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
 import { getServerAuthUser, requireAuthUser } from "@/lib/auth/server-auth"
 import { createClient } from "@/lib/supabase/server"
 import { AppPageHeader } from "@/components/app-page-header"
@@ -26,7 +35,7 @@ export const metadata: Metadata = {
 }
 
 export default async function TeamReadinessMatrixPage() {
-  requireAuthUser(await getServerAuthUser())
+  const user = requireAuthUser(await getServerAuthUser())
   const supabase = await createClient()
   const business = await fetchBusinessForCurrentUser(supabase)
   if (!business) {
@@ -45,6 +54,11 @@ export default async function TeamReadinessMatrixPage() {
     )
   }
 
+  const profile = await fetchCurrentProfile(supabase)
+  if (isWorkspaceOwner(user.id, business, profile)) {
+    await ensureEmployeeReadinessRows(business.id, supabase)
+  }
+
   const modules = await listTrainingModulesDeepForBusiness(business.id, supabase)
   const moduleIds = modules.map((m) => m.id)
   const progress = await listTrainingProgressForBusinessModules(moduleIds, supabase)
@@ -56,13 +70,38 @@ export default async function TeamReadinessMatrixPage() {
     a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" })
   )
   const employeeIds = team.map((p) => p.id)
-  const certificationRows = await listEmployeeModuleCertificationsForEmployeeIds(employeeIds, supabase)
+  const [completions, readinessRows, executionCounts, quizCompletions, certificationRows, observationRows] =
+    await Promise.all([
+      listTrainingSopCompletionsForEmployeeIds(employeeIds, supabase),
+      listEmployeeReadinessForBusiness(business.id, supabase),
+      countCompletedExecutionRecordsByEmployee(business.id, supabase),
+      listEmployeeStandardQuizCompletionsForEmployeeIds(employeeIds, supabase),
+      listEmployeeModuleCertificationsForEmployeeIds(employeeIds, supabase),
+      listManagerObservationsForEmployeeIds(employeeIds, supabase),
+    ])
+
+  const modulesById = new Map(modules.map((m) => [m.id, m]))
+  const profileNameById = new Map(team.map((p) => [p.id, p.full_name]))
+  const viewModels = team.map((p) =>
+    buildEmployeeTrainingViewModel(
+      p,
+      progress,
+      modulesById,
+      completions,
+      readinessRows.find((r) => r.employee_id === p.id),
+      executionCounts.get(p.id) ?? 0,
+      quizCompletions,
+      certificationRows,
+      observationRows,
+      profileNameById
+    )
+  )
 
   const matrix = buildTeamReadinessMatrix({
+    businessName: business.name,
     employees: team,
     modules,
-    progress,
-    certificationRows,
+    viewModels,
   })
 
   const fetchLines: RouteFetchLine[] = [
@@ -70,7 +109,7 @@ export default async function TeamReadinessMatrixPage() {
     {
       label: "Readiness matrix",
       status: modules.length === 0 || team.length === 0 ? "empty" : "ok",
-      detail: `${modules.length} module(s) · ${team.length} team member(s).`,
+      detail: `${matrix.rows.length} row(s) · ${team.length} team member(s).`,
     },
   ]
 
@@ -95,6 +134,12 @@ export default async function TeamReadinessMatrixPage() {
           title={COPY.readinessMatrix.title}
           description={COPY.readinessMatrix.description}
         />
+
+        <div className="mt-4">
+          <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/training/succession" />}>
+            {COPY.successionMap.successionLink}
+          </Button>
+        </div>
 
         <div className="mt-8">
           <TeamReadinessMatrixView matrix={matrix} />

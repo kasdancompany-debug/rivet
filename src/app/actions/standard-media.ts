@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { assertStandardMediaWorkspaceAccess } from "@/lib/standards/standard-media-access"
 import { STANDARD_MEDIA_BUCKET } from "@/lib/standards/standard-media-constants"
 import {
   assertStandardInBusiness,
@@ -28,6 +29,12 @@ export async function prepareStandardMediaUpload(input: {
   byteSize: number
 }): Promise<PrepareStandardMediaUploadResult> {
   void input.fileName
+  const supabase = await createClient()
+  const access = await assertStandardMediaWorkspaceAccess(supabase, input.businessId, "upload")
+  if (!access.ok) {
+    return { ok: false, message: access.message }
+  }
+
   const prep = await prepareSignedUploadPath({
     businessId: input.businessId,
     standardId: input.standardId,
@@ -62,6 +69,12 @@ export async function finalizeStandardMediaUpload(input: {
     return { ok: false, message: validated.message }
   }
 
+  const supabase = await createClient()
+  const access = await assertStandardMediaWorkspaceAccess(supabase, input.businessId, "upload")
+  if (!access.ok) {
+    return { ok: false, message: access.message }
+  }
+
   const gate = await assertStandardInBusiness(input.standardId, input.businessId)
   if (!gate.ok) {
     return { ok: false, message: gate.message }
@@ -71,14 +84,12 @@ export async function finalizeStandardMediaUpload(input: {
     return { ok: false, message: "Invalid storage path for this standard." }
   }
 
-  const supabase = await createClient()
-
   const { data: inserted, error: insErr } = await supabase
     .from("standard_media")
     .insert({
       business_id: input.businessId,
       standard_id: input.standardId,
-      kind: validated.kind,
+      kind: validated.storageKind,
       storage_path: input.storagePath,
       public_url: null,
     })
@@ -151,6 +162,12 @@ export async function abandonStandardMediaUpload(input: {
   standardId: string
   storagePath: string
 }): Promise<{ ok: true } | { ok: false; message: string }> {
+  const supabase = await createClient()
+  const access = await assertStandardMediaWorkspaceAccess(supabase, input.businessId, "upload")
+  if (!access.ok) {
+    return { ok: false, message: access.message }
+  }
+
   const gate = await assertStandardInBusiness(input.standardId, input.businessId)
   if (!gate.ok) {
     return { ok: false, message: gate.message }
@@ -159,7 +176,6 @@ export async function abandonStandardMediaUpload(input: {
     return { ok: false, message: "Invalid storage path." }
   }
 
-  const supabase = await createClient()
   const { count, error: cntErr } = await supabase
     .from("standard_media")
     .select("id", { count: "exact", head: true })

@@ -1,13 +1,9 @@
 import type { Tables } from "@/types/database"
 
 import { generateInterruptionFixSuggestions } from "@/lib/owner-interruptions/fix-suggestions/generate-fix-suggestions"
-import type { InterruptionFixType } from "@/lib/owner-interruptions/fix-suggestions/types"
+import type { AskQueryRow } from "@/lib/owner-interruptions/outcomes/match-ask-rivet"
 import { normalizeSummaryKey } from "@/lib/owner-interruptions/normalize-summary"
 import type { OwnerInterruptionRepeatCategory, OwnerInterruptionTopLeak } from "@/lib/owner-interruptions/types"
-
-function fixTypeLabel(fixType: InterruptionFixType): string {
-  return fixType === "training_module" ? "Training module" : "SOP"
-}
 
 function fallbackCreateHref(label: string): string {
   const params = new URLSearchParams()
@@ -16,15 +12,29 @@ function fallbackCreateHref(label: string): string {
   return `/sops/capture?${params.toString()}`
 }
 
+function summarizeFixBundle(actions: { label: string }[]): string {
+  if (actions.length === 0) return "Write a play so the team can handle this without you."
+  if (actions.length === 1) return actions[0]!.label
+  return actions.map((a) => a.label).join(" · ")
+}
+
 export function buildTopLeaks(input: {
   repeatCategories: OwnerInterruptionRepeatCategory[]
   historyRows: Tables<"owner_interruptions">[]
+  standards?: Tables<"standards">[]
+  modules?: Tables<"training_modules">[]
+  standardIdsWithMedia?: Set<string>
+  askQueries?: AskQueryRow[]
   maxLeaks?: number
 }): OwnerInterruptionTopLeak[] {
   const max = input.maxLeaks ?? 8
   const fixSuggestions = generateInterruptionFixSuggestions({
     repeatCategories: input.repeatCategories,
     historyRows: input.historyRows,
+    standards: input.standards,
+    modules: input.modules,
+    standardIdsWithMedia: input.standardIdsWithMedia,
+    askQueries: input.askQueries,
     maxSuggestions: max,
   })
   const fixByKey = new Map(fixSuggestions.map((f) => [f.patternKey, f]))
@@ -40,7 +50,7 @@ export function buildTopLeaks(input: {
       name: cat.label,
       occurrences: cat.count,
       estimatedOwnerMinutes,
-      suggestedFix: fix ? `${fixTypeLabel(fixType)}: ${fix.suggestedTitle}` : "Write a play so the team can handle this without you.",
+      suggestedFix: fix ? summarizeFixBundle(fix.actions) : "Write a play so the team can handle this without you.",
       fixType,
       createHref: fix?.createHref ?? fallbackCreateHref(cat.label),
     }

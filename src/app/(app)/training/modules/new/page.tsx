@@ -80,7 +80,7 @@ export default async function NewTrainingModulePage({
       <>
         <AppPageHeader
           title="New training module"
-          description="Pick a role preset, then attach standards from your library on the next screen."
+          description="Pick a role preset, then attach plays from your library on the next screen."
         />
         <div className="mt-8">
           <TrainingModuleForm

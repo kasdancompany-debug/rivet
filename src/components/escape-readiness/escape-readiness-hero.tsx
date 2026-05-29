@@ -174,7 +174,7 @@ export function EscapeReadinessHero({
         </div>
       ) : (
         <p className={cn("mt-6 max-w-sm text-sm leading-relaxed", body)}>
-          Log standards, training, and owner pulls so Rivet can score your escape path.
+          Log plays, Training Center progress, and owner pulls so Rivet can score Escape readiness.
         </p>
       )}
 

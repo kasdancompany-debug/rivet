@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
-import { fetchBusinessForCurrentUser, fetchCurrentProfile } from "@/lib/db/queries"
-import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
+import { requireWorkspacePermission } from "@/lib/ops/workspace-auth"
 import { createClient } from "@/lib/supabase/server"
 
 export async function updateOwnerHourlyValue(payload: {
@@ -17,13 +16,10 @@ export async function updateOwnerHourlyValue(payload: {
     } = await supabase.auth.getUser()
     if (!user) return { ok: false, message: "You need to be signed in." }
 
-    const business = await fetchBusinessForCurrentUser(supabase)
-    const profile = await fetchCurrentProfile(supabase)
-    if (!business || business.id !== payload.businessId) {
+    const gate = await requireWorkspacePermission(supabase, "manage_workspace_settings")
+    if (!gate.ok) return gate
+    if (gate.business.id !== payload.businessId) {
       return { ok: false, message: "No business linked." }
-    }
-    if (!isWorkspaceOwner(user.id, business, profile)) {
-      return { ok: false, message: "Only the business owner can update this." }
     }
 
     const value = payload.hourlyValueCad

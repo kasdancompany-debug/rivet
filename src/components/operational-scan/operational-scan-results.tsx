@@ -1,37 +1,37 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import { ArrowRight, Printer } from "lucide-react"
 
-import { EscapeReadinessPanel } from "@/components/escape-readiness/escape-readiness-panel"
 import { OperationalScanPrintReport } from "@/components/operational-scan/operational-scan-print-report"
-import { ScanScoreReveal } from "@/components/operational-scan/scan-score-reveal"
+import { ScanDiagnosisReveal } from "@/components/operational-scan/scan-score-reveal"
+import {
+  ScanBiggestRisksSection,
+  ScanFailurePointsSection,
+  ScanFastestPathSection,
+  ScanHoursLeakageSection,
+  ScanOperationalSummary,
+  ScanRecommendationsSection,
+  ScanWhyRivetBelievesSection,
+} from "@/components/operational-scan/scan-diagnosis-sections"
+import { ScanScoringExplanationSection } from "@/components/operational-scan/scan-scoring-explanation-section"
 import {
   SaveScanReportCard,
   type SaveScanReportFields,
 } from "@/components/operational-scan/save-scan-report-card"
-import { estimatedDaysFromScore } from "@/lib/escape-readiness/absence-capacity"
-import { computeEscapeReadinessFromScan } from "@/lib/escape-readiness/compute-from-scan"
+import { buildScanDiagnosis } from "@/lib/operational-scan/build-scan-diagnosis"
+import { buildScanScoringExplanation } from "@/lib/operational-scan/build-scoring-explanation"
 import { SCAN_RESULTS } from "@/lib/operational-scan/scan-copy"
 import { recommendedFirstFixes } from "@/lib/operational-scan/recommended-next-steps"
 import { Button } from "@/components/ui/button"
 import {
   type OperationalScanAnswers,
   type OperationalScanResult,
-  formatCurrencyCad,
-  severityStyles,
 } from "@/lib/operational-scan/score"
 import { cn } from "@/lib/utils"
 
 const container = "mx-auto w-full max-w-2xl px-4 sm:px-6"
-
-function CostStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-lg border border-white/[0.08] bg-black/40 px-4 py-4">
-      <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-white">{value}</p>
-      {sub ? <p className="mt-1.5 text-[11px] leading-snug text-zinc-600">{sub}</p> : null}
-    </div>
-  )
-}
 
 function buildRefLine(answers: OperationalScanAnswers, reportDate: Date): string {
   return [
@@ -64,24 +64,34 @@ export function OperationalScanResults({
   onResendReport?: () => void | Promise<void>
   onRunAgain: () => void
 }) {
+  const diagnosis = buildScanDiagnosis(result, answers)
+  const scoringExplanation = buildScanScoringExplanation(result)
   const fixes = recommendedFirstFixes(result, answers)
-  const escapeReadiness = computeEscapeReadinessFromScan(answers)
-  const stepAwayDays = estimatedDaysFromScore(escapeReadiness.score ?? 0)
-  const styles = severityStyles(result.severity)
   const refLine = buildRefLine(answers, reportDate)
+  const [reportUnlocked, setReportUnlocked] = useState(false)
+
+  if (!reportUnlocked) {
+    return (
+      <>
+        <div className="print:hidden">
+          <ScanDiagnosisReveal
+            result={result}
+            diagnosis={diagnosis}
+            industry={refLine}
+            onContinue={() => setReportUnlocked(true)}
+          />
+        </div>
+        <OperationalScanPrintReport result={result} answers={answers} reportDate={reportDate} fixes={fixes} />
+      </>
+    )
+  }
 
   return (
     <>
       <div className="print:hidden">
-        <div
-          className={cn(
-            "pointer-events-none border-b border-white/[0.06] bg-gradient-to-b px-4 py-6 sm:px-6",
-            styles.glow,
-            "to-transparent"
-          )}
-        >
+        <div className="pointer-events-none border-b border-white/[0.06] bg-gradient-to-b from-rose-950/20 to-transparent px-4 py-5 sm:px-6">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-rose-400/80">
-            Your dependency report
+            {SCAN_RESULTS.fullReportEyebrow}
           </p>
           <p className="mt-2 font-mono text-[11px] text-zinc-600">{refLine}</p>
         </div>
@@ -89,33 +99,20 @@ export function OperationalScanResults({
         <div className={cn(container, "py-10 sm:py-12")}>
           <p className="text-center text-[15px] leading-relaxed text-zinc-400 sm:text-base">{SCAN_RESULTS.hook}</p>
 
-          <div className="mt-10 flex justify-center">
-            <ScanScoreReveal result={result} stepAwayDays={stepAwayDays} />
+          <div className="mt-10">
+            <ScanOperationalSummary result={result} diagnosis={diagnosis} />
           </div>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
-            <CostStat
-              label="Est. routed back to you / month"
-              value={`~${result.estimatedInterruptionsPerMonth}`}
-              sub="Texts, calls, walk-ups, repeats."
-            />
-            <CostStat
-              label="Est. owner hours lost / month"
-              value={`~${result.estimatedOwnerHoursLostPerMonth}h`}
-              sub="Reactive time + rework from tribal knowledge."
-            />
-            <CostStat
-              label={SCAN_RESULTS.annualCostLabel}
-              value={formatCurrencyCad(result.estimatedAnnualCost)}
-              sub="Owner-equivalent rate × hours × 12."
-            />
-          </div>
+          <ScanScoringExplanationSection explanation={scoringExplanation} />
 
-          <p className="mt-8 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-center text-[13px] font-medium leading-relaxed text-amber-100/95">
-            {SCAN_RESULTS.underestimate}
-          </p>
+          <ScanBiggestRisksSection risks={diagnosis.biggestRisks} />
+          <ScanWhyRivetBelievesSection lines={diagnosis.whyRivetBelieves} />
+          <ScanFastestPathSection path={diagnosis.fastestPath} />
+          <ScanFailurePointsSection cards={diagnosis.diagnosticCards} />
+          <ScanRecommendationsSection recommendations={diagnosis.recommendations} />
+          <ScanHoursLeakageSection leakage={diagnosis.hoursLeakage} />
 
-          <div id="save-scan-report" className="mt-10 scroll-mt-24">
+          <div id="save-scan-report" className="mt-14 scroll-mt-24 border-t border-white/[0.08] pt-10">
             <SaveScanReportCard
               initialBusinessName={answers.businessName}
               onSubmit={onSaveReport}
@@ -127,32 +124,15 @@ export function OperationalScanResults({
             />
           </div>
 
-          <div className="mt-12">
-            <EscapeReadinessPanel model={escapeReadiness} compact dark />
-          </div>
-
-          <div className="mt-12 border-t border-white/[0.08] pt-10">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              {SCAN_RESULTS.fixesHeading}
-            </p>
-            <ol className="mt-5 list-none space-y-4 p-0">
-              {fixes.map((line, i) => (
-                <li key={line} className="flex gap-3 text-[14px] leading-relaxed text-zinc-300">
-                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-rose-500/30 bg-rose-500/10 font-mono text-[11px] font-semibold text-rose-200/90">
-                    {i + 1}
-                  </span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
           <div className="mt-12 border-t border-white/[0.08] pt-10 text-center">
             <h2 className="text-balance text-2xl font-semibold tracking-tight text-white sm:text-[1.75rem]">
               {SCAN_RESULTS.bottomCtaHeadline}
             </h2>
-            <p className="mx-auto mt-3 max-w-md text-pretty text-[15px] leading-relaxed text-zinc-400">
+            <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-zinc-400">
               {SCAN_RESULTS.bottomCtaSubtext}
+            </p>
+            <p className="mx-auto mt-2 text-[13px] font-medium text-zinc-300">
+              {SCAN_RESULTS.bottomCtaPriceLine}
             </p>
 
             <div className="mx-auto mt-8 max-w-md space-y-3">

@@ -36,11 +36,9 @@ export function SaveScanReportCard({
   const firstNameId = useId()
   const emailId = useId()
   const businessId = useId()
-  const phoneId = useId()
   const [firstName, setFirstName] = useState("")
   const [email, setEmail] = useState("")
   const [businessName, setBusinessName] = useState(initialBusinessName)
-  const [phone, setPhone] = useState("")
   const [isPending, startTransition] = useTransition()
   const [isResending, startResendTransition] = useTransition()
 
@@ -106,7 +104,7 @@ export function SaveScanReportCard({
       <p className="mt-1.5 text-sm text-zinc-400">{SCAN_SAVE_REPORT.hook}</p>
 
       <div className="mt-5">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Get</p>
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Includes</p>
         <ul className="mt-2 grid gap-2 sm:grid-cols-2">
           {SCAN_SAVE_REPORT.benefits.map((item) => (
             <li key={item} className="flex items-center gap-2 text-sm text-zinc-300">
@@ -128,69 +126,52 @@ export function SaveScanReportCard({
               firstName: firstName.trim(),
               email: email.trim(),
               businessName: businessName.trim(),
-              phone: phone.trim(),
+              phone: "",
             })
           })
         }}
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor={firstNameId} className="text-zinc-300">
-              {SCAN_SAVE_REPORT.firstNameLabel}
-            </Label>
-            <Input
-              id={firstNameId}
-              className="mt-1.5 h-10 border-white/10 bg-zinc-950/80 text-white"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              autoComplete="given-name"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor={emailId} className="text-zinc-300">
-              {SCAN_SAVE_REPORT.emailLabel}
-            </Label>
-            <Input
-              id={emailId}
-              type="email"
-              className="mt-1.5 h-10 border-white/10 bg-zinc-950/80 text-white"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </div>
+        <div>
+          <Label htmlFor={firstNameId} className="text-zinc-300">
+            {SCAN_SAVE_REPORT.firstNameLabel}
+          </Label>
+          <Input
+            id={firstNameId}
+            className="mt-1.5 h-10 border-white/10 bg-zinc-950/80 text-white"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            autoComplete="given-name"
+            required
+          />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor={businessId} className="text-zinc-300">
-              {SCAN_SAVE_REPORT.businessNameLabel}{" "}
-              <span className="font-normal text-zinc-500">({SCAN_SAVE_REPORT.optional})</span>
-            </Label>
-            <Input
-              id={businessId}
-              className="mt-1.5 h-10 border-white/10 bg-zinc-950/80 text-white"
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              autoComplete="organization"
-            />
-          </div>
-          <div>
-            <Label htmlFor={phoneId} className="text-zinc-300">
-              {SCAN_SAVE_REPORT.phoneLabel}{" "}
-              <span className="font-normal text-zinc-500">({SCAN_SAVE_REPORT.optional})</span>
-            </Label>
-            <Input
-              id={phoneId}
-              type="tel"
-              className="mt-1.5 h-10 border-white/10 bg-zinc-950/80 text-white"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoComplete="tel"
-            />
-          </div>
+        <div>
+          <Label htmlFor={emailId} className="text-zinc-300">
+            {SCAN_SAVE_REPORT.emailLabel}
+          </Label>
+          <Input
+            id={emailId}
+            type="email"
+            className="mt-1.5 h-10 border-white/10 bg-zinc-950/80 text-white"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
+        </div>
+
+        <div>
+          <Label htmlFor={businessId} className="text-zinc-300">
+            {SCAN_SAVE_REPORT.businessNameLabel}{" "}
+            <span className="font-normal text-zinc-500">({SCAN_SAVE_REPORT.optional})</span>
+          </Label>
+          <Input
+            id={businessId}
+            className="mt-1.5 h-10 border-white/10 bg-zinc-950/80 text-white"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            autoComplete="organization"
+          />
         </div>
 
         {error ? (

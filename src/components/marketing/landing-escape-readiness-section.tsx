@@ -40,7 +40,7 @@ export function LandingEscapeReadinessSection() {
 
         <Link
           href="/scan?from=landing-escape"
-          className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+          className="mt-8 inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-white px-5 text-[13px] font-semibold text-zinc-950 transition-colors hover:bg-zinc-100"
         >
           {LANDING_CTA.secondary}
           <ArrowRight className="size-3.5 opacity-50" aria-hidden />

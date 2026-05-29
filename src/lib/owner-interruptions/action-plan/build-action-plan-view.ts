@@ -73,5 +73,15 @@ export function buildInterruptionActionPlanView(input: {
     canApprove,
     canPublish,
     canDismiss,
+    repeatCount: 1,
+    recommendations: {
+      suggestNewPlay: false,
+      suggestTraining: false,
+      suggestMedia: false,
+      suggestAskRivet: false,
+    },
+    outcomes: [],
+    impact: null,
+    askMatchCount: 0,
   }
 }

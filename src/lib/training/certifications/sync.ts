@@ -1,4 +1,5 @@
 import { evaluateCertificationProgress, standardRequiresQuiz } from "@/lib/training/certifications/evaluate"
+import { evaluateModuleProofUploaded } from "@/lib/training/certifications/proof-requirements"
 import { fetchTrainingModuleWithItems } from "@/lib/db/queries"
 import type { TypedSupabaseClient } from "@/types/database"
 
@@ -9,7 +10,7 @@ export async function syncEmployeeModuleCertification(
 ): Promise<void> {
   const now = new Date().toISOString()
 
-  const [{ data: progress }, trainingModule, { data: existing }] = await Promise.all([
+  const [{ data: progress }, trainingModule, { data: existing }, proofState] = await Promise.all([
     supabase
       .from("training_progress")
       .select("status, business_id")
@@ -23,6 +24,10 @@ export async function syncEmployeeModuleCertification(
       .eq("employee_id", params.employeeId)
       .eq("training_module_id", params.moduleId)
       .maybeSingle(),
+    evaluateModuleProofUploaded(supabase, {
+      employeeId: params.employeeId,
+      moduleId: params.moduleId,
+    }),
   ])
 
   if (!progress || !trainingModule) return
@@ -62,12 +67,17 @@ export async function syncEmployeeModuleCertification(
     moduleCompleted,
     quizRequiredStandardIds,
     passedQuizStandardIds,
+    proofRequired: proofState.proofRequired,
+    proofUploaded: proofState.proofUploaded,
     managerSignedOff,
   })
 
   const moduleCompletedAt =
     evaluation.moduleCompleted ? existing?.module_completed_at ?? now : null
   const quizzesPassedAt = evaluation.quizzesPassed ? existing?.quizzes_passed_at ?? now : null
+  const proofUploadedAt = evaluation.proofUploaded
+    ? existing?.proof_uploaded_at ?? now
+    : null
   const managerSignedOffAt = managerSignedOff
     ? existing?.manager_signed_off_at ?? now
     : null
@@ -76,7 +86,10 @@ export async function syncEmployeeModuleCertification(
     : null
   const certifiedAt = evaluation.certified
     ? existing?.certified_at ??
-      [moduleCompletedAt, quizzesPassedAt, managerSignedOffAt].filter(Boolean).sort().pop() ??
+      [moduleCompletedAt, quizzesPassedAt, proofUploadedAt, managerSignedOffAt]
+        .filter(Boolean)
+        .sort()
+        .pop() ??
       now
     : null
 
@@ -86,6 +99,7 @@ export async function syncEmployeeModuleCertification(
     training_module_id: params.moduleId,
     module_completed_at: moduleCompletedAt,
     quizzes_passed_at: quizzesPassedAt,
+    proof_uploaded_at: proofUploadedAt,
     manager_signed_off_at: managerSignedOffAt,
     manager_signed_off_by: managerSignedOffById,
     certified_at: certifiedAt,

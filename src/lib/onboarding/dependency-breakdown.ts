@@ -39,9 +39,9 @@ const CATEGORY_META: Record<
   { label: string; maxStress: number; leverageLabel: string; href: string }
 > = {
   standards_missing: {
-    label: "Standards missing",
+    label: "Plays missing",
     maxStress: 22,
-    leverageLabel: "Document the standards you still explain out loud",
+    leverageLabel: "Capture the plays you still explain out loud",
     href: "/sops/capture",
   },
   training_gaps: {
@@ -59,7 +59,7 @@ const CATEGORY_META: Record<
   opening_closing: {
     label: "Opening/closing dependency",
     maxStress: 56,
-    leverageLabel: "Capture opening procedures",
+    leverageLabel: "Capture opening plays",
     href: "/sops/capture",
   },
   team_redundancy: {

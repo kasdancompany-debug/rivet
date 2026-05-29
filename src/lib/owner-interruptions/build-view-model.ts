@@ -9,6 +9,12 @@ import {
 import { labelForOwnerInterruptionSeverity, severityRank } from "@/lib/owner-interruptions/severity/severities"
 import { labelForOwnerInterruptionSource, sourceRank } from "@/lib/owner-interruptions/sources"
 import { generateInterruptionFixSuggestions } from "@/lib/owner-interruptions/fix-suggestions/generate-fix-suggestions"
+import {
+  buildSystemImprovements,
+  improvementSummaryForOutcomes,
+} from "@/lib/owner-interruptions/outcomes/build-system-improvements"
+import { enrichInterruptionActionPlanView } from "@/lib/owner-interruptions/action-plan/enrich-action-plan-view"
+import type { AskQueryRow } from "@/lib/owner-interruptions/outcomes/match-ask-rivet"
 import { computeTrendDayIntensity } from "@/lib/owner-interruptions/trend/compute-trend-day-intensity"
 import { buildTopLeaks } from "@/lib/owner-interruptions/top-leaks/build-top-leaks"
 import { computeOwnerValueMetrics } from "@/lib/owner-interruptions/value-metrics/compute-value-metrics"
@@ -97,6 +103,12 @@ export function buildOwnerInterruptionsDashboardView(input: {
   ownerHourlyValueCad?: number | null
   businessId: string
   isOwner: boolean
+  actionPlans?: Tables<"interruption_action_plans">[]
+  standards?: Tables<"standards">[]
+  modules?: Tables<"training_modules">[]
+  trainingProgress?: Pick<Tables<"training_progress">, "training_module_id">[]
+  askQueries?: AskQueryRow[]
+  standardIdsWithMedia?: Set<string>
 }): OwnerInterruptionsDashboardView {
   const {
     weekStartIso,
@@ -264,12 +276,60 @@ export function buildOwnerInterruptionsDashboardView(input: {
     }))
     .sort((a, b) => b.count - a.count || sourceRank(a.source) - sourceRank(b.source))
 
+  const actionPlans = input.actionPlans ?? []
+  const standards = input.standards ?? []
+  const modules = input.modules ?? []
+  const trainingProgress = input.trainingProgress ?? []
+  const askQueries = input.askQueries ?? []
+  const standardIdsWithMedia = input.standardIdsWithMedia ?? new Set<string>()
+  const standardsForOutcomes = standards.map((s) => ({ id: s.id, title: s.title, status: s.status }))
+  const interruptionsById = new Map(historyRows.map((r) => [r.id, r]))
+  const planByInterruptionId = new Map(actionPlans.map((p) => [p.interruption_id, p]))
+
+  const fixSuggestions = generateInterruptionFixSuggestions({
+    repeatCategories,
+    historyRows,
+    standards,
+    modules,
+    standardIdsWithMedia,
+    askQueries,
+  })
+  const topLeaks = buildTopLeaks({ repeatCategories, historyRows, standards, modules, standardIdsWithMedia, askQueries })
+
+  const systemImprovements = buildSystemImprovements({
+    plans: actionPlans,
+    interruptionsById,
+    historyRows,
+    standards: standardsForOutcomes,
+    modules: modules.map((m) => ({ id: m.id, title: m.title })),
+    trainingProgress,
+    askQueries,
+    standardIdsWithMedia,
+    isOwner,
+  })
+
   const recent: OwnerInterruptionRecentRow[] = [...historyRows]
     .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
     .slice(0, 20)
     .map((r) => {
       const prof = profileById.get(r.logged_by)
       const severityResult = severityForRow(r, historyRows)
+      const plan = planByInterruptionId.get(r.id)
+      let improvementSummary: string | null = null
+      if (plan) {
+        const enriched = enrichInterruptionActionPlanView({
+          plan,
+          interruption: r,
+          historyRows,
+          standards: standardsForOutcomes,
+          modules: modules.map((m) => ({ id: m.id, title: m.title })),
+          trainingProgress,
+          askQueries,
+          standardIdsWithMedia,
+          isOwner,
+        })
+        improvementSummary = improvementSummaryForOutcomes(enriched.outcomes)
+      }
       return {
         id: r.id,
         kind: r.kind,
@@ -285,14 +345,9 @@ export function buildOwnerInterruptionsDashboardView(input: {
         occurredAt: r.occurred_at,
         loggerName: prof?.full_name?.trim() || "Team member",
         loggerRole: prof?.role?.trim() || "",
+        improvementSummary,
       }
     })
-
-  const fixSuggestions = generateInterruptionFixSuggestions({
-    repeatCategories,
-    historyRows,
-  })
-  const topLeaks = buildTopLeaks({ repeatCategories, historyRows })
 
   const parsedHourly =
     ownerHourlyValueCad != null && Number.isFinite(Number(ownerHourlyValueCad))
@@ -321,6 +376,8 @@ export function buildOwnerInterruptionsDashboardView(input: {
     bySeverity,
     bySource,
     valueMetrics,
+    fixSuggestions,
+    systemImprovements,
     recent,
   }
 }

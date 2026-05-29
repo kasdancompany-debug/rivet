@@ -8,8 +8,11 @@ import { LogOut, Menu } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { COPY } from "@/lib/interface-copy"
 import { Logo } from "@/components/logo"
+import { UniversalSearchBar } from "@/components/universal-search/universal-search-bar"
 import { RouteIntentStrip } from "@/components/route-intent-strip"
 import { SidebarNav } from "@/components/sidebar-nav"
+import type { NavItem } from "@/lib/nav"
+import { WORKSPACE_ROLE_LABELS, type WorkspaceRole } from "@/lib/ops/workspace-role-types"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -87,10 +90,14 @@ function AccountMenu({ user }: { user: User }) {
 export function DashboardShell({
   user,
   hasWorkspace,
+  navItems,
+  workspaceRole,
   children,
 }: {
   user: User
   hasWorkspace: boolean
+  navItems?: NavItem[]
+  workspaceRole?: WorkspaceRole
   children: React.ReactNode
 }) {
   const router = useRouter()
@@ -112,17 +119,23 @@ export function DashboardShell({
             {COPY.shell.tagline}
           </p>
         </div>
-        <SidebarNav />
+        <SidebarNav items={navItems} />
         <div className="mt-auto border-t border-sidebar-border pt-5">
           <p className="px-3 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
             {COPY.shell.signedIn}
           </p>
           <p className="mt-1.5 truncate px-3 text-xs leading-snug text-muted-foreground">{user.email}</p>
+          {workspaceRole ? (
+            <p className="mt-1 truncate px-3 text-[11px] text-muted-foreground">
+              {WORKSPACE_ROLE_LABELS[workspaceRole]}
+            </p>
+          ) : null}
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/50 bg-background/90 px-4 backdrop-blur-md print:hidden lg:hidden">
+        <header className="sticky top-0 z-40 border-b border-border/50 bg-background/90 backdrop-blur-md print:hidden">
+          <div className="flex h-14 items-center gap-3 px-4 lg:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
               className={cn(
@@ -143,6 +156,7 @@ export function DashboardShell({
               </SheetHeader>
               <div className="flex min-h-0 flex-1 flex-col px-3 py-4">
                 <SidebarNav
+                  items={navItems}
                   onNavigate={() => setMobileOpen(false)}
                   scrollAreaClassName="h-full max-h-full min-h-0 flex-1 pr-2"
                 />
@@ -183,6 +197,12 @@ export function DashboardShell({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          </div>
+          {hasWorkspace ? (
+            <div className="border-t border-border/40 px-4 py-2.5 lg:px-8">
+              <UniversalSearchBar variant="compact" className="mx-auto w-full max-w-xl lg:max-w-2xl" />
+            </div>
+          ) : null}
         </header>
 
         <main className="flex-1 px-5 pb-28 pt-10 sm:px-8 sm:pb-24 sm:pt-12 lg:px-12 lg:pb-20 lg:pt-14 print:px-4 print:pb-6 print:pt-4">

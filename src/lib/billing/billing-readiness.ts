@@ -85,11 +85,10 @@ export function isBillingFullyConfigured(): boolean {
   return getBillingReadiness().status === "ready"
 }
 
-/** Unpaid users should be sent to /subscribe when billing is on or partially configured. */
+/** Unpaid users are sent to /subscribe only when checkout and webhooks are fully configured. */
 export function shouldEnforceBillingGate(): boolean {
   if (isBillingDisabledByFlag()) return false
-  const { status } = getBillingReadiness()
-  return status === "ready" || status === "misconfigured"
+  return getBillingReadiness().status === "ready"
 }
 
 export function logBillingReadinessInDevelopment(): void {

@@ -3,21 +3,22 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import { NAV_SECTION_LABEL, mainNav } from "@/lib/nav"
+import { NAV_SECTION_LABEL, mainNav, type NavItem } from "@/lib/nav"
 import { resolveActiveNavHref } from "@/lib/route-reliability/active-nav"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 export function SidebarNav({
+  items = mainNav,
   onNavigate,
   scrollAreaClassName,
 }: {
+  items?: NavItem[]
   onNavigate?: () => void
   /** Override scroll viewport height (e.g. mobile drawer). */
   scrollAreaClassName?: string
 }) {
   const pathname = usePathname()
-  const items = mainNav
   const activeHref = resolveActiveNavHref(pathname, items)
 
   return (

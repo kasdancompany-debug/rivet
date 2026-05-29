@@ -4,7 +4,9 @@ import Stripe from "stripe"
 
 import { assertStripeSecretIsTestMode } from "@/lib/billing/stripe-test-mode"
 import { getBillingReadiness } from "@/lib/billing/billing-readiness"
-import { parseRivetCheckoutMetadata } from "@/lib/billing/checkout-metadata"
+import { parseRivetCheckoutMetadata, RIVET_CHECKOUT_METADATA_KEYS } from "@/lib/billing/checkout-metadata"
+import { reconcileFounderAccessAfterPurchaseChange } from "@/lib/billing/revoke-founder-access"
+import { syncRivetPurchaseFromCheckoutSession } from "@/lib/billing/sync-rivet-purchase"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export const runtime = "nodejs"
@@ -49,6 +51,21 @@ function mapStripeSubscriptionStatus(status: Stripe.Subscription.Status): string
     default:
       return "none"
   }
+}
+
+function resolveSubscriptionUserId(session: Stripe.Checkout.Session): string | null {
+  const meta = session.metadata ?? {}
+  return (
+    meta[RIVET_CHECKOUT_METADATA_KEYS.userId]?.trim() ||
+    meta.supabase_user_id?.trim() ||
+    session.client_reference_id?.trim() ||
+    null
+  )
+}
+
+function resolveSubscriptionUserIdFromSub(sub: Stripe.Subscription): string | null {
+  const meta = sub.metadata ?? {}
+  return meta[RIVET_CHECKOUT_METADATA_KEYS.userId]?.trim() || meta.supabase_user_id?.trim() || null
 }
 
 async function upsertSubscriptionForUser(
@@ -96,80 +113,30 @@ async function upsertSubscriptionForUser(
   }
 }
 
-type RivetPurchaseUpsertResult =
-  | { ok: true; status: "paid" | "pending"; checkoutSessionId: string; businessId: string }
-  | { ok: false; error: "missing_metadata"; missing: string[]; checkoutSessionId: string }
-
-async function upsertRivetPurchaseFromPaymentSession(
+async function recordWebhookEvent(
   admin: ReturnType<typeof createAdminClient>,
-  session: Stripe.Checkout.Session
-): Promise<RivetPurchaseUpsertResult> {
-  const parsed = parseRivetCheckoutMetadata(session)
-  const { userId, workspaceId, missing } = parsed
+  event: Stripe.Event
+): Promise<"new" | "duplicate"> {
+  const { error } = await admin.from("stripe_webhook_events").insert({
+    event_id: event.id,
+    event_type: event.type,
+  })
 
-  if (missing.length > 0 || !userId || !workspaceId) {
-    return {
-      ok: false,
-      error: "missing_metadata",
-      missing,
-      checkoutSessionId: session.id,
-    }
-  }
-
-  const { data: existing } = await admin
-    .from("rivet_purchases")
-    .select("status, purchased_at")
-    .eq("stripe_checkout_session_id", session.id)
-    .maybeSingle()
-
-  const sessionPaid = session.payment_status === "paid"
-  const alreadyPaid = existing?.status === "paid"
-  const status: "paid" | "pending" = sessionPaid || alreadyPaid ? "paid" : "pending"
-  const now = new Date().toISOString()
-
-  const customerId =
-    typeof session.customer === "string" ? session.customer : session.customer?.id ?? null
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id ?? null
-
-  const row = {
-    business_id: workspaceId,
-    purchaser_user_id: userId,
-    stripe_customer_id: customerId,
-    stripe_checkout_session_id: session.id,
-    stripe_payment_intent_id: paymentIntentId,
-    amount: session.amount_total ?? 0,
-    currency: (session.currency ?? "cad").toLowerCase(),
-    status,
-    purchased_at:
-      status === "paid"
-        ? ((existing?.purchased_at as string | null | undefined) ?? now)
-        : null,
-    updated_at: now,
-  }
-
-  const { error } = await admin
-    .from("rivet_purchases")
-    .upsert(row, { onConflict: "stripe_checkout_session_id" })
-
-  if (error) {
-    throw error
-  }
-
-  return { ok: true, status, checkoutSessionId: session.id, businessId: workspaceId }
+  if (error?.code === "23505") return "duplicate"
+  if (error) throw error
+  return "new"
 }
 
-function missingMetadataResponse(result: Extract<RivetPurchaseUpsertResult, { ok: false }>) {
-  return NextResponse.json(
-    {
-      error: "missing_checkout_metadata",
-      missing: result.missing,
-      checkout_session_id: result.checkoutSessionId,
-    },
-    { status: 400 }
-  )
+function skippedMetadataResponse(result: Extract<
+  Awaited<ReturnType<typeof syncRivetPurchaseFromCheckoutSession>>,
+  { ok: false }
+>) {
+  return NextResponse.json({
+    received: true,
+    skipped: "missing_checkout_metadata",
+    missing: result.missing,
+    checkout_session_id: result.checkoutSessionId,
+  })
 }
 
 async function handlePaymentCheckoutSession(
@@ -190,7 +157,7 @@ async function handlePaymentCheckoutSession(
     paymentStatus: session.payment_status,
   })
 
-  const result = await upsertRivetPurchaseFromPaymentSession(admin, session)
+  const result = await syncRivetPurchaseFromCheckoutSession(admin, session)
   if (!result.ok) {
     logStripeWebhookError("rivet purchase not saved — missing metadata", {
       eventId: event.id,
@@ -199,7 +166,7 @@ async function handlePaymentCheckoutSession(
       missingFields: result.missing.join(","),
       customerEmail: parsed.email,
     })
-    return missingMetadataResponse(result)
+    return skippedMetadataResponse(result)
   }
 
   logStripeWebhook("rivet purchase upserted", {
@@ -208,11 +175,38 @@ async function handlePaymentCheckoutSession(
     checkoutSessionId: result.checkoutSessionId,
     purchaseStatus: result.status,
     workspaceId: result.businessId,
+    founderGrandfathered: result.founderGrandfathered,
     userId: parsed.userId,
     customerEmail: parsed.email,
   })
 
   return null
+}
+
+async function handleChargeRefunded(
+  admin: ReturnType<typeof createAdminClient>,
+  charge: Stripe.Charge
+): Promise<void> {
+  const paymentIntentId =
+    typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id
+
+  if (!paymentIntentId) return
+
+  const { data: purchase, error } = await admin
+    .from("rivet_purchases")
+    .select("id, business_id, status")
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .maybeSingle()
+
+  if (error || !purchase?.id) return
+
+  const now = new Date().toISOString()
+  await admin
+    .from("rivet_purchases")
+    .update({ status: "refunded", updated_at: now })
+    .eq("id", purchase.id)
+
+  await reconcileFounderAccessAfterPurchaseChange(admin, purchase.business_id as string)
 }
 
 export async function POST(request: Request) {
@@ -255,6 +249,14 @@ export async function POST(request: Request) {
 
   try {
     const admin = createAdminClient()
+    const dedupe = await recordWebhookEvent(admin, event)
+    if (dedupe === "duplicate") {
+      logStripeWebhook("duplicate event skipped", {
+        eventId: event.id,
+        eventType: event.type,
+      })
+      return NextResponse.json({ received: true, duplicate: true, event_id: event.id })
+    }
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -274,22 +276,20 @@ export async function POST(request: Request) {
           ...checkoutSessionContext(session),
         })
 
-        const userId = session.metadata?.supabase_user_id ?? session.client_reference_id
-        if (!userId || typeof userId !== "string") {
-          logStripeWebhookError("subscription checkout missing supabase_user_id", {
+        const userId = resolveSubscriptionUserId(session)
+        if (!userId) {
+          logStripeWebhookError("subscription checkout missing user id", {
             eventId: event.id,
             eventType: event.type,
             checkoutSessionId: session.id,
             customerEmail: session.customer_details?.email ?? session.customer_email ?? null,
           })
-          return NextResponse.json(
-            {
-              error: "missing_checkout_metadata",
-              missing: ["supabase_user_id"],
-              checkout_session_id: session.id,
-            },
-            { status: 400 }
-          )
+          return NextResponse.json({
+            received: true,
+            skipped: "missing_checkout_metadata",
+            missing: [RIVET_CHECKOUT_METADATA_KEYS.userId],
+            checkout_session_id: session.id,
+          })
         }
 
         const customerId =
@@ -338,18 +338,35 @@ export async function POST(request: Request) {
         }
         break
       }
+      case "checkout.session.async_payment_failed": {
+        const session = event.data.object as Stripe.Checkout.Session
+        if (session.mode !== "payment") break
+        const parsed = parseRivetCheckoutMetadata(session)
+        if (!parsed.workspaceId) break
+        const now = new Date().toISOString()
+        await admin
+          .from("rivet_purchases")
+          .update({ status: "canceled", updated_at: now })
+          .eq("stripe_checkout_session_id", session.id)
+        break
+      }
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge
+        await handleChargeRefunded(admin, charge)
+        break
+      }
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription
         logStripeWebhook("processing subscription lifecycle event", {
           eventId: event.id,
           eventType: event.type,
-          supabaseUserId: sub.metadata?.supabase_user_id ?? null,
+          supabaseUserId: resolveSubscriptionUserIdFromSub(sub),
         })
 
-        const userId = sub.metadata?.supabase_user_id
+        const userId = resolveSubscriptionUserIdFromSub(sub)
         if (!userId) {
-          logStripeWebhookError("subscription event missing supabase_user_id", {
+          logStripeWebhookError("subscription event missing user id", {
             eventId: event.id,
             eventType: event.type,
           })

@@ -12,10 +12,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function SignupForm({ supabaseConfigured }: { supabaseConfigured?: boolean }) {
+export function SignupForm({
+  supabaseConfigured,
+  safeNext = "/setup",
+  initialEmail = "",
+}: {
+  supabaseConfigured?: boolean
+  safeNext?: string
+  initialEmail?: string
+}) {
   const configured = supabaseConfigured ?? isSupabaseConfiguredClient()
 
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(
     configured ? null : supabaseNotConfiguredMessage(true)
@@ -36,7 +44,7 @@ export function SignupForm({ supabaseConfigured }: { supabaseConfigured?: boolea
         email,
         password,
         options: {
-          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/setup")}`,
+          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}`,
         },
       })
       if (signError) {
@@ -44,7 +52,7 @@ export function SignupForm({ supabaseConfigured }: { supabaseConfigured?: boolea
         return
       }
       if (data.session) {
-        window.location.assign("/setup")
+        window.location.assign(safeNext)
         return
       }
       setInfo("Check your email to confirm your account, then sign in.")
@@ -68,7 +76,14 @@ export function SignupForm({ supabaseConfigured }: { supabaseConfigured?: boolea
       {info ? (
         <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
           {info}{" "}
-          <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          <Link
+            href={
+              safeNext === "/setup"
+                ? "/login"
+                : `/login?next=${encodeURIComponent(safeNext)}`
+            }
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
             Back to sign in
           </Link>
         </p>

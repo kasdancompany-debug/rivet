@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
 
+import { formatAbsenceDays } from "@/lib/escape-readiness/absence-capacity"
 import type { StoredScanReportPayload } from "@/lib/operational-scan/scan-report-types"
 import { formatCurrencyCad, formatSeverityLabel } from "@/lib/operational-scan/score"
 
@@ -53,8 +54,9 @@ export async function buildScanReportPdf(payload: StoredScanReportPayload): Prom
   draw(reportDate, 10)
   y -= 12
 
-  draw(`Owner Dependency Score: ${result.ownerDependencyScore}/100`, 14, true)
-  draw(`Severity: ${formatSeverityLabel(result.severity)}`, 12)
+  draw(`Owner Dependency Risk: ${result.ownerDependencyScore}/100`, 14, true)
+  draw(`Risk level: ${formatSeverityLabel(result.severity)}`, 12)
+  draw(`Owner-free capacity: ${formatAbsenceDays(result.estimatedOwnerFreeDays)}`, 11)
   y -= 8
   draw(`Est. interrupts / month: ~${result.estimatedInterruptionsPerMonth}`, 11)
   draw(`Est. owner hours lost / month: ~${result.estimatedOwnerHoursLostPerMonth}h`, 11)

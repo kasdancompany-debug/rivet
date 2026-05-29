@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
-import { fetchBusinessForCurrentUser, fetchCurrentProfile } from "@/lib/db/queries"
-import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
+import { requireWorkspacePermission } from "@/lib/ops/workspace-auth"
 import { createClient } from "@/lib/supabase/server"
 import type { ManagerObservationType } from "@/types/database"
 
@@ -27,13 +26,10 @@ export async function createManagerObservation(payload: {
     } = await supabase.auth.getUser()
     if (!user) return { ok: false, message: "You need to be signed in." }
 
-    const business = await fetchBusinessForCurrentUser(supabase)
-    const profile = await fetchCurrentProfile(supabase)
-    if (!business || business.id !== payload.businessId) {
+    const gate = await requireWorkspacePermission(supabase, "record_manager_observations")
+    if (!gate.ok) return gate
+    if (gate.business.id !== payload.businessId) {
       return { ok: false, message: "No business linked." }
-    }
-    if (!isWorkspaceOwner(user.id, business, profile)) {
-      return { ok: false, message: "Only the business owner can log observations." }
     }
 
     if (!OBSERVATION_TYPES.has(payload.observationType)) {
@@ -53,7 +49,8 @@ export async function createManagerObservation(payload: {
 
     if (
       !employeeProfile ||
-      (employeeProfile.business_id !== payload.businessId && employeeProfile.id !== business.owner_id)
+      (employeeProfile.business_id !== payload.businessId &&
+        employeeProfile.id !== gate.business.owner_id)
     ) {
       return { ok: false, message: "That person is not on this workspace." }
     }

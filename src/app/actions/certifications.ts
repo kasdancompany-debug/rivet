@@ -2,15 +2,21 @@
 
 import { revalidatePath } from "next/cache"
 
-import { fetchBusinessForCurrentUser, fetchCurrentProfile } from "@/lib/db/queries"
 import { syncEmployeeModuleCertification } from "@/lib/training/certifications/sync"
-import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
+import { requireWorkspacePermission } from "@/lib/ops/workspace-auth"
 import { createClient } from "@/lib/supabase/server"
 
-function revalidateCertifications(moduleId?: string) {
+function revalidateCertifications(moduleId?: string, employeeId?: string) {
   revalidatePath("/training")
   revalidatePath("/learn")
-  if (moduleId) revalidatePath(`/learn/${moduleId}`)
+  revalidatePath("/learn/certifications")
+  if (moduleId) {
+    revalidatePath(`/learn/${moduleId}`)
+    revalidatePath(`/learn/certifications/${moduleId}`)
+  }
+  if (employeeId && moduleId) {
+    revalidatePath(`/training/certificates/${employeeId}/${moduleId}`)
+  }
 }
 
 export async function signOffModuleCertification(payload: {
@@ -25,13 +31,10 @@ export async function signOffModuleCertification(payload: {
     } = await supabase.auth.getUser()
     if (!user) return { ok: false, message: "You need to be signed in." }
 
-    const business = await fetchBusinessForCurrentUser(supabase)
-    const profile = await fetchCurrentProfile(supabase)
-    if (!business || business.id !== payload.businessId) {
+    const gate = await requireWorkspacePermission(supabase, "sign_off_training")
+    if (!gate.ok) return gate
+    if (gate.business.id !== payload.businessId) {
       return { ok: false, message: "No business linked." }
-    }
-    if (!isWorkspaceOwner(user.id, business, profile)) {
-      return { ok: false, message: "Only the business owner can sign off certifications." }
     }
 
     const { data: assignment } = await supabase
@@ -55,7 +58,7 @@ export async function signOffModuleCertification(payload: {
       user.id
     )
 
-    revalidateCertifications(payload.moduleId)
+    revalidateCertifications(payload.moduleId, payload.employeeId)
     return { ok: true }
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Something went wrong." }

@@ -302,4 +302,17 @@
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
+
+  .certificate-page header,
+  .certificate-page nav,
+  .certificate-page .certificate-print-actions,
+  .certificate-print-actions {
+    display: none !important;
+  }
+
+  #training-certificate {
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

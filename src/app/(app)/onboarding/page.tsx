@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { IndustryTemplateOnboarding } from "@/components/onboarding/industry-template-onboarding"
 import { OwnerOnboardingWizard } from "@/components/onboarding/owner-onboarding-wizard"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
-import { businessHasPaidRivetPurchase } from "@/lib/billing/rivet-access"
+import { businessHasRivetAppAccess } from "@/lib/billing/rivet-access"
 import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
 import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
 import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
@@ -31,8 +31,8 @@ export default async function OnboardingPage({
   }
 
   if (shouldEnforceBillingGate()) {
-    const paid = await businessHasPaidRivetPurchase(supabase, business.id)
-    if (!paid) {
+    const hasAccess = await businessHasRivetAppAccess(supabase, business.id, business.owner_id)
+    if (!hasAccess) {
       redirect("/subscribe")
     }
   }

@@ -80,7 +80,7 @@ describe("buildTopLeaks", () => {
     expect(leaks[0]?.name).toBe("Approve comp for call-out")
     expect(leaks[0]?.estimatedOwnerMinutes).toBe(30)
     expect(leaks[0]?.occurrences).toBe(2)
-    expect(leaks[0]?.suggestedFix).toContain("SOP")
+    expect(leaks[0]?.suggestedFix).toContain("Create play")
     expect(leaks[0]?.createHref).toContain("/sops/capture")
   })
 })

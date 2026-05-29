@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Check, Circle } from "lucide-react"
 
 import { signOffModuleCertification } from "@/app/actions/certifications"
@@ -20,14 +21,14 @@ export function EmployeeCertificationTracker({
   certifications,
   businessId,
   employeeId,
-  isOwner,
+  canSignOff,
   pending,
   onAction,
 }: {
   certifications: ModuleCertificationView[]
   businessId: string
   employeeId: string
-  isOwner: boolean
+  canSignOff: boolean
   pending: boolean
   onAction: (fn: () => Promise<unknown>) => void
 }) {
@@ -68,30 +69,52 @@ export function EmployeeCertificationTracker({
                 {COPY.certifications.stepQuiz}
               </li>
               <li className="flex items-center gap-2">
+                <StepDot done={cert.proofUploaded} />
+                {COPY.certifications.stepProof}
+              </li>
+              <li className="flex items-center gap-2">
                 <StepDot done={cert.managerSignedOff} />
                 {COPY.certifications.stepSignOff}
               </li>
             </ul>
-            {isOwner && !cert.managerSignedOff ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="mt-3 h-8"
-                disabled={pending}
-                onClick={() =>
-                  onAction(() =>
-                    signOffModuleCertification({
-                      businessId,
-                      employeeId,
-                      moduleId: cert.moduleId,
-                    })
-                  )
-                }
-              >
-                {COPY.certifications.signOffButton}
-              </Button>
-            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {cert.certified ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  nativeButton={false}
+                  render={
+                    <Link
+                      href={`/training/certificates/${employeeId}/${cert.moduleId}`}
+                    />
+                  }
+                >
+                  {COPY.certifications.viewCertificate}
+                </Button>
+              ) : null}
+              {canSignOff && !cert.managerSignedOff ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-8"
+                  disabled={pending}
+                  onClick={() =>
+                    onAction(() =>
+                      signOffModuleCertification({
+                        businessId,
+                        employeeId,
+                        moduleId: cert.moduleId,
+                      })
+                    )
+                  }
+                >
+                  {COPY.certifications.signOffButton}
+                </Button>
+              ) : null}
+            </div>
           </li>
         ))}
       </ul>

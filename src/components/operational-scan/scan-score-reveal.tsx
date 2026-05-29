@@ -1,47 +1,38 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { ArrowRight } from "lucide-react"
 
-import { formatAbsenceDays } from "@/lib/escape-readiness/absence-capacity"
+import { Button } from "@/components/ui/button"
+import type { ScanDiagnosisView } from "@/lib/operational-scan/build-scan-diagnosis"
+import {
+  formatScanDiagnosisHeadline,
+  formatScanDiagnosisSummary,
+} from "@/lib/operational-scan/build-scan-diagnosis"
 import {
   type OperationalScanResult,
   formatSeverityLabel,
   severityStyles,
 } from "@/lib/operational-scan/score"
+import { SCAN_RESULTS } from "@/lib/operational-scan/scan-copy"
 import { cn } from "@/lib/utils"
 
-const REVEAL_MS = 1400
+const REVEAL_MS = 1100
 
-function revealGlowClass(severity: OperationalScanResult["severity"]): string {
-  switch (severity) {
-    case "LOW":
-      return "bg-emerald-400/25"
-    case "MODERATE":
-      return "bg-amber-400/25"
-    case "HIGH":
-      return "bg-orange-400/30"
-    case "CRITICAL":
-      return "bg-rose-400/35"
-    default:
-      return "bg-zinc-400/20"
-  }
-}
-
-export function ScanScoreReveal({
+export function ScanDiagnosisReveal({
   result,
-  stepAwayDays,
+  diagnosis,
+  industry,
+  onContinue,
 }: {
   result: OperationalScanResult
-  stepAwayDays: number
+  diagnosis: ScanDiagnosisView
+  industry?: string
+  onContinue: () => void
 }) {
-  const targetScore = result.ownerDependencyScore
   const styles = severityStyles(result.severity)
-  const daysLabel = formatAbsenceDays(stepAwayDays)
-
-  const [displayScore, setDisplayScore] = useState(0)
-  const [ringProgress, setRingProgress] = useState(0)
-  const [revealing, setRevealing] = useState(true)
-  const [showPayoff, setShowPayoff] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
 
   useEffect(() => {
     const reducedMotion =
@@ -49,118 +40,117 @@ export function ScanScoreReveal({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
     if (reducedMotion) {
-      setDisplayScore(targetScore)
-      setRingProgress(targetScore / 100)
-      setRevealing(false)
-      setShowPayoff(true)
+      setVisible(true)
+      setShowDetail(true)
       return
     }
 
-    setDisplayScore(0)
-    setRingProgress(0)
-    setRevealing(true)
-    setShowPayoff(false)
-
-    const start = performance.now()
-    let frame = 0
-    let payoffTimer: number | undefined
-
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / REVEAL_MS)
-      const eased = 1 - (1 - t) ** 3
-      setDisplayScore(Math.round(targetScore * eased))
-      setRingProgress((targetScore / 100) * eased)
-
-      if (t < 1) {
-        frame = requestAnimationFrame(tick)
-      } else {
-        setDisplayScore(targetScore)
-        setRingProgress(targetScore / 100)
-        setRevealing(false)
-        payoffTimer = window.setTimeout(() => setShowPayoff(true), 120)
-      }
-    }
-
-    frame = requestAnimationFrame(tick)
+    setVisible(false)
+    setShowDetail(false)
+    const t1 = window.setTimeout(() => setVisible(true), 80)
+    const t2 = window.setTimeout(() => setShowDetail(true), REVEAL_MS)
     return () => {
-      cancelAnimationFrame(frame)
-      if (payoffTimer) window.clearTimeout(payoffTimer)
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
     }
-  }, [targetScore])
-
-  const r = 52
-  const c = 2 * Math.PI * r
-  const dash = c * ringProgress
+  }, [result.severity])
 
   return (
-    <div className="relative flex flex-col items-center text-center">
-      <div
-        className="relative aspect-square w-[min(21rem,88vw)] max-w-[21rem]"
-        role="img"
-        aria-label={`Owner Dependency Score ${targetScore} out of 100`}
+    <div
+      className={cn(
+        "mx-auto w-full max-w-xl px-4 py-12 text-center transition-opacity duration-700 sm:px-6 sm:py-16",
+        visible ? "opacity-100" : "opacity-0"
+      )}
+    >
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-rose-400/80">
+        {SCAN_RESULTS.revealEyebrow}
+      </p>
+
+      <h2 className="mt-5 text-balance text-[clamp(1.5rem,5vw,2rem)] font-semibold leading-snug tracking-tight text-white">
+        {formatScanDiagnosisHeadline(result)}
+      </h2>
+
+      {industry ? (
+        <p className="mt-2 font-mono text-[11px] text-zinc-600">{industry}</p>
+      ) : null}
+
+      <p
+        className={cn(
+          "mx-auto mt-4 max-w-md text-pretty text-[15px] leading-relaxed text-zinc-400 transition-all duration-700",
+          showDetail ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+        )}
       >
-        <div
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute inset-[8%] rounded-full blur-3xl transition-opacity duration-700",
-            revealGlowClass(result.severity),
-            revealing ? "scan-score-reveal-glow opacity-70" : "opacity-0"
-          )}
-        />
+        {diagnosis.ownerDependencyNarrative}
+      </p>
 
-        <svg viewBox="0 0 120 120" className="relative size-full -rotate-90" aria-hidden>
-          <circle cx="60" cy="60" r={r} fill="none" stroke="rgb(255 255 255 / 0.06)" strokeWidth="4.5" />
-          <circle
-            cx="60"
-            cy="60"
-            r={r}
-            fill="none"
-            className={cn(styles.ring, revealing && "drop-shadow-[0_0_12px_rgba(255,255,255,0.15)]")}
-            strokeWidth="4.5"
-            strokeLinecap="round"
-            strokeDasharray={`${dash} ${c - dash + 0.001}`}
-          />
-        </svg>
+      <div
+        className={cn(
+          "mt-10 grid gap-3 text-left transition-all duration-700 sm:grid-cols-2",
+          showDetail ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
+        )}
+      >
+        <div className="rounded-xl border border-white/[0.1] bg-black/40 px-5 py-5 sm:col-span-2">
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Estimated owner-free capacity
+          </p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            {diagnosis.ownerFreeCapacityLabel}
+          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-zinc-500">
+            {formatScanDiagnosisSummary(result)}
+          </p>
+        </div>
 
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-            Owner Dependency Score
+        <div className="rounded-xl border border-white/[0.08] bg-black/35 px-4 py-4">
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Operational risk
           </p>
-          <p
-            className={cn(
-              "mt-2 text-[clamp(4.5rem,15vw,6rem)] font-semibold tabular-nums leading-none tracking-[-0.05em]",
-              styles.score,
-              revealing && "scan-score-reveal-pulse"
-            )}
-          >
-            {displayScore}
+          <p className={cn("mt-2 text-xl font-semibold tracking-tight", styles.score)}>
+            {formatSeverityLabel(result.severity)}
           </p>
-          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-600">
-            0–100 · higher = more depends on you
+        </div>
+
+        <div className="rounded-xl border border-white/[0.08] bg-black/35 px-4 py-4">
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            Owner hours trapped / year
+          </p>
+          <p className="mt-2 text-xl font-semibold tabular-nums tracking-tight text-white">
+            ~{diagnosis.impact.hoursTrappedAnnually}h
           </p>
         </div>
       </div>
 
-      <p
-        className={cn(
-          "mt-8 max-w-lg text-balance text-[clamp(1.125rem,4vw,1.625rem)] font-medium leading-snug tracking-tight text-zinc-300 transition-all duration-700",
-          showPayoff ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
-        )}
-      >
-        You could likely step away for{" "}
-        <span className={cn("font-semibold", styles.score)}>{daysLabel}</span> without major operational
-        breakdowns
-      </p>
+      {diagnosis.biggestRisks.length > 0 ? (
+        <div
+          className={cn(
+            "mt-8 rounded-xl border border-rose-500/20 bg-rose-500/[0.05] px-5 py-4 text-left transition-all duration-700",
+            showDetail ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-300/70">
+            Biggest risks Rivet flagged
+          </p>
+          <ul className="mt-3 space-y-2">
+            {diagnosis.biggestRisks.map((risk) => (
+              <li key={risk} className="text-[14px] font-medium leading-snug text-zinc-200">
+                {risk}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
-      <p
-        className={cn(
-          "mt-6 inline-flex rounded-md border px-4 py-1.5 text-[13px] font-semibold tracking-tight transition-all duration-500",
-          styles.badge,
-          showPayoff ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
-        )}
+      <Button
+        type="button"
+        size="lg"
+        className="mt-10 h-12 w-full max-w-sm rounded-md bg-white text-[14px] font-semibold text-zinc-950 hover:bg-zinc-100 sm:w-auto sm:min-w-[16rem]"
+        onClick={onContinue}
       >
-        Severity · {formatSeverityLabel(result.severity)}
-      </p>
+        {SCAN_RESULTS.revealCta}
+        <ArrowRight className="size-4 opacity-60" data-icon="inline-end" />
+      </Button>
+
+      <p className="mt-4 text-[12px] text-zinc-600">{SCAN_RESULTS.revealHint}</p>
     </div>
   )
 }

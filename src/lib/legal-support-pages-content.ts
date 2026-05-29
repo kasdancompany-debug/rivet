@@ -1,191 +1,343 @@
 /**
- * Plain-language placeholders for legal and support pages.
- * **Do not treat as legal advice.** Counsel should review before production use.
+ * Production legal and support copy for Rivet.
+ * Contact and operator name: `@/lib/site-legal-config` (env-overridable).
  */
 
-export const LEGAL_REVIEW_BANNER =
-  "Legal review: This page is placeholder copy for a small-business audience. Have qualified legal counsel review and replace it before you rely on it in disputes, filings, or customer commitments."
+import {
+  FOUNDER_LIFETIME_PRICING,
+  FOUNDER_LIFETIME_PROMISES,
+} from "@/lib/billing/founder-offer"
+import type { LegalSection } from "@/lib/legal-section"
+import { LEGAL_EFFECTIVE_DATE, LEGAL_OPERATOR_NAME, SUPPORT_EMAIL } from "@/lib/site-legal-config"
 
-export const SUPPORT_CONTENT_REVIEW_NOTE =
-  "Replace the contact email and adjust response-time language to match what your team can actually deliver. Legal review if this text is referenced in contracts or order forms."
-
-export const SUPPORT_CONTACT_EMAIL_PLACEHOLDER = "support@yourdomain.com"
+const founderOnce = FOUNDER_LIFETIME_PRICING.onceDisplay
+const founderInstallment = FOUNDER_LIFETIME_PRICING.installmentDisplay
+const founderTotalInstallment = `$${FOUNDER_LIFETIME_PRICING.installmentCount * (FOUNDER_LIFETIME_PRICING.installmentAmountCents / 100)} CAD total (${FOUNDER_LIFETIME_PRICING.installmentTotalDisplay})`
 
 export const termsPage = {
-  title: "Terms of service",
-  metaDescription: "Placeholder terms of service for Rivet. Legal review required before production.",
+  title: "Terms of Service",
+  metaDescription:
+    "Terms governing use of Rivet operational software, Founder Lifetime Access, workspaces, and customer content.",
+  effectiveDate: LEGAL_EFFECTIVE_DATE,
   sections: [
     {
-      heading: "About these terms",
+      heading: "Agreement",
       body: [
-        "These terms describe how we expect Rivet to be used while this site is in draft or early production. They are not tailored to your jurisdiction, industry, or data practices until a lawyer adapts them.",
-        "By using Rivet after we publish a dated version you agree to, you accept that version. Until then, consider access experimental.",
+        `These Terms of Service ("Terms") are a binding agreement between you and ${LEGAL_OPERATOR_NAME} ("Rivet," "we," "us") for access to the Rivet websites, applications, and related services (collectively, the "Service").`,
+        `By creating an account, completing checkout, or using the Service after ${LEGAL_EFFECTIVE_DATE}, you agree to these Terms. If you use the Service on behalf of a company, you represent that you have authority to bind that company.`,
       ],
     },
     {
-      heading: "The service",
+      heading: "The Service",
       body: [
-        "Rivet provides software and related content to help you document and run operational workflows (for example standards, checklists, and internal visibility). Features can change as we ship improvements.",
-        "We do not promise uninterrupted or error-free operation. We may suspend or limit access for maintenance, abuse prevention, or legal reasons.",
+        "Rivet is cloud software that helps businesses document and run operational workflows—including plays (standards), training, team visibility, Ask Rivet Q&A, owner-interruption tracking, and related features described on our site.",
+        "We may add, change, or remove features. We do not guarantee uninterrupted or error-free operation. We may suspend access for maintenance, security, abuse, or legal compliance.",
       ],
     },
     {
-      heading: "Your account and content",
+      heading: "Accounts and workspaces",
       body: [
-        "You are responsible for the accuracy of information you enter, for who you invite to your workspace, and for complying with laws that apply to you (including privacy and employment laws where relevant).",
-        "You keep ownership of your content. We need a limited license to host, process, and display it so the product works—exact scope should be confirmed with counsel in your final terms.",
+        "You must provide accurate registration information and keep credentials secure. You are responsible for activity under your account and for who you invite to a workspace.",
+        "A workspace is tied to a business you operate or administer. You control roles (for example owner, manager, trainer, staff) and the content your team enters.",
       ],
     },
     {
-      heading: "Fees",
+      heading: "Your content",
       body: [
-        "Paid access, if offered, is described at checkout and in separate billing materials. Taxes and currency depend on how you purchase.",
+        'You retain ownership of content you and your team upload or enter (text, media, procedures, training materials, and similar data) ("Customer Content").',
+        "You grant Rivet a worldwide, non-exclusive license to host, store, process, transmit, display, and back up Customer Content solely to provide and improve the Service, comply with law, and enforce these Terms. This license ends when Customer Content is deleted from our systems, subject to reasonable backup retention.",
+        "You are responsible for having all rights needed for Customer Content and for complying with laws that apply to your business (including privacy, employment, and industry-specific rules).",
+      ],
+    },
+    {
+      heading: "Acceptable use",
+      list: [
+        "Do not use the Service to break the law, infringe others' rights, or distribute malware.",
+        "Do not attempt to access another customer's workspace or data without authorization.",
+        "Do not reverse engineer, scrape, or overload the Service except as permitted by law.",
+        "Do not resell or sublicense the Service without our written permission.",
+      ],
+    },
+    {
+      heading: "Founder Lifetime Access and fees",
+      body: [
+        `We currently offer Founder Lifetime Access for eligible workspaces: ${founderOnce}, or ${founderInstallment} (${founderTotalInstallment}), plus applicable taxes. Payment is processed by Stripe. Prices and payment options shown at checkout are part of your order.`,
+        `Founder Lifetime Access includes: ${FOUNDER_LIFETIME_PROMISES.join("; ")}. Workspaces that complete a qualifying founder purchase are grandfathered on that workspace as described at checkout and in our Refund Policy.`,
+        "We may introduce subscription plans in the future. Founder-grandfathered workspaces keep Rivet Core access on that workspace without a recurring subscription for Rivet Core, as stated at purchase.",
+        "Except where required by law, fees are non-refundable outside our Refund Policy. You authorize Stripe to charge the payment method you provide.",
+      ],
+    },
+    {
+      heading: "Third-party services",
+      body: [
+        "The Service relies on providers such as hosting, authentication, email delivery, analytics (if enabled), and payment processing (Stripe). Their terms and privacy practices apply to their handling of data they process on our behalf.",
+        "Optional AI-assisted features, when enabled, may send content you submit to model providers under our Privacy Policy.",
       ],
     },
     {
       heading: "Disclaimer",
       body: [
-        "Rivet is provided on an “as is” and “as available” basis to the maximum extent permitted by law. We do not guarantee specific business outcomes (for example revenue, staffing, or compliance results).",
+        'THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE." TO THE MAXIMUM EXTENT PERMITTED BY LAW, RIVET DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.',
+        "Rivet does not provide legal, HR, accounting, food-safety, or regulatory advice. Outputs and scores (including scan or readiness estimates) are directional tools only—not guarantees of compliance, revenue, or operational outcomes.",
       ],
     },
     {
       heading: "Limitation of liability",
       body: [
-        "To the extent permitted by law, Rivet’s liability for issues arising from the service should be capped and certain damages excluded—your counsel will set the exact numbers and carve-outs for your entity and region.",
+        "TO THE MAXIMUM EXTENT PERMITTED BY LAW, RIVET AND ITS SUPPLIERS WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, DATA, OR GOODWILL.",
+        "OUR TOTAL LIABILITY FOR ANY CLAIM ARISING FROM THE SERVICE OR THESE TERMS IS LIMITED TO THE GREATER OF (A) THE AMOUNTS YOU PAID TO RIVET FOR THE SERVICE IN THE TWELVE (12) MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM, OR (B) ONE HUNDRED CANADIAN DOLLARS (CAD $100).",
+        "Some jurisdictions do not allow certain limitations; in those cases, our liability is limited to the fullest extent permitted by law.",
+      ],
+    },
+    {
+      heading: "Indemnity",
+      body: [
+        "You will defend and indemnify Rivet against claims arising from your Customer Content, your use of the Service, or your violation of these Terms, except to the extent caused by Rivet's gross negligence or willful misconduct.",
+      ],
+    },
+    {
+      heading: "Termination",
+      body: [
+        "You may stop using the Service at any time. We may suspend or terminate access if you materially breach these Terms, create risk for us or other users, or where required by law.",
+        "Upon termination, your right to use the Service ends. We may delete or retain Customer Content as described in our Privacy Policy and applicable law.",
       ],
     },
     {
       heading: "Changes",
       body: [
-        "We may update these terms. For material changes, we intend to post a new effective date and, where practical, give reasonable notice by email or in-product message. Details need legal review.",
+        "We may update these Terms. We will post the new effective date on this page and, for material changes, provide notice by email or in-product message when practical. Continued use after the effective date constitutes acceptance.",
+      ],
+    },
+    {
+      heading: "Governing law",
+      body: [
+        "These Terms are governed by the laws of Canada and the Province of Ontario, without regard to conflict-of-law rules. Courts in Ontario will have exclusive jurisdiction, except that either party may seek injunctive relief in any competent court.",
+        "If you are a consumer with mandatory protections in your province or country, those protections remain available to you.",
       ],
     },
     {
       heading: "Contact",
       body: [
-        `Questions about these terms: use the contact on the Support page (replace ${SUPPORT_CONTACT_EMAIL_PLACEHOLDER} with your live address).`,
+        `Questions about these Terms: ${SUPPORT_EMAIL} or our Support page at /support.`,
       ],
     },
-  ],
+  ] satisfies readonly LegalSection[],
 } as const
 
 export const privacyPage = {
-  title: "Privacy policy",
-  metaDescription: "Placeholder privacy policy for Rivet. Legal review and DPIA/data map required before production.",
+  title: "Privacy Policy",
+  metaDescription:
+    "How Rivet collects, uses, and protects personal information for accounts, workspaces, billing, and scan reports.",
+  effectiveDate: LEGAL_EFFECTIVE_DATE,
   sections: [
     {
-      heading: "Purpose",
+      heading: "Who we are",
       body: [
-        "This policy summarizes—in plain language—what personal information Rivet may process and why. It must be reconciled with your actual product, subprocessors, retention, and regional laws (for example GDPR, PIPEDA, or U.S. state privacy laws).",
+        `${LEGAL_OPERATOR_NAME} ("Rivet") operates the Rivet Service. This Privacy Policy explains how we handle personal information when you visit our site, create an account, use a workspace, purchase access, or submit a Rivet Scan.`,
+        `Effective ${LEGAL_EFFECTIVE_DATE}.`,
       ],
     },
     {
-      heading: "What we may collect",
-      body: [
-        "Account details you provide (such as name and email), workspace and usage data needed to run the product, technical logs (for example IP address, device/browser type) for security and reliability, and payment-related metadata handled by our payment processor—not full card numbers stored by Rivet.",
-        "Exact categories and lawful bases require a data map and legal review.",
+      heading: "Information we collect",
+      list: [
+        "Account data: name, email, authentication identifiers, and profile settings you provide.",
+        "Workspace data: business name, team membership, roles, and operational content you and your team enter (plays, training, media, interruptions, Ask Rivet questions, and related records).",
+        "Billing data: purchase status, Stripe customer and payment identifiers, and transaction metadata. Full payment card numbers are processed by Stripe; we do not store them.",
+        "Scan and marketing leads: contact details and answers you submit on the Rivet Scan, plus generated reports we email to you.",
+        "Technical data: IP address, browser/device type, logs, cookies, and similar data used for security, debugging, and performance.",
+        "Communications: messages you send to support and our replies.",
       ],
     },
     {
       heading: "How we use information",
+      list: [
+        "Provide, secure, and improve the Service.",
+        "Process payments and confirm Founder Lifetime Access for your workspace.",
+        "Send transactional messages (receipts, access, password resets, scan reports).",
+        "Respond to support requests and protect against abuse or fraud.",
+        "Comply with law and enforce our Terms.",
+        "With your consent or direction, where required (for example optional marketing, if offered).",
+      ],
+    },
+    {
+      heading: "Legal bases (where applicable)",
       body: [
-        "To provide and improve Rivet, to secure accounts, to communicate about the service, and to meet legal obligations. We do not sell personal information as a line of business; if that ever changed, this policy would need an update and, where required, consent or opt-out flows.",
+        "If you are in Canada, we rely on consent, contractual necessity, and legitimate interests as appropriate under PIPEDA and provincial privacy laws.",
+        "If you are in the EEA/UK, we process data based on contract performance, legitimate interests (security, product improvement), legal obligation, or consent where required.",
       ],
     },
     {
       heading: "Sharing",
       body: [
-        "We use infrastructure and service providers (for example hosting, authentication, email, analytics if enabled) under agreements that restrict their use. A current subprocessor list and DPA terms should be published after legal review.",
+        "We share personal information with service providers that help us run Rivet, under contracts that limit their use to our instructions:",
+      ],
+      list: [
+        "Supabase (database, authentication, file storage)",
+        "Stripe (payments)",
+        "Resend (transactional email, including scan reports)",
+        "Hosting and infrastructure providers that serve our application",
+        "OpenAI or similar providers, only when you use AI-assisted features that send content for processing",
       ],
     },
     {
-      heading: "Retention and security",
+      heading: "International transfers",
       body: [
-        "We retain information as long as needed to operate the service and meet legal requirements, then delete or anonymize it according to a schedule your team defines with counsel.",
-        "We use reasonable technical and organizational measures to protect data; no method of transmission over the Internet is completely secure.",
+        "Our providers may process data in Canada, the United States, or other countries. We use appropriate safeguards where required by law for cross-border transfers.",
       ],
     },
     {
-      heading: "Your choices",
+      heading: "Retention",
       body: [
-        "Depending on where you live, you may have rights to access, correct, delete, or export personal information, or to object to certain processing. Describe your process and timelines here after legal review.",
+        "We keep personal information while your account or workspace is active and for a reasonable period afterward for backups, legal compliance, and dispute resolution.",
+        "You may request deletion subject to exceptions (for example billing records we must retain).",
+      ],
+    },
+    {
+      heading: "Security",
+      body: [
+        "We use technical and organizational measures such as encryption in transit, access controls, and workspace isolation. No method of transmission or storage is completely secure.",
+      ],
+    },
+    {
+      heading: "Your rights and choices",
+      list: [
+        "Access, correct, or delete personal information we hold about you, subject to legal exceptions.",
+        "Withdraw consent where processing is consent-based (without affecting prior lawful processing).",
+        "Opt out of marketing emails using the unsubscribe link, if we send them.",
+        "Lodge a complaint with your privacy regulator (for example the Office of the Privacy Commissioner of Canada).",
       ],
     },
     {
       heading: "Children",
       body: [
-        "Rivet is not directed at children. Do not use it in primary schools or youth programs without appropriate agreements and legal advice.",
+        "The Service is for businesses and is not directed to children under 16. We do not knowingly collect children's personal information.",
+      ],
+    },
+    {
+      heading: "Changes",
+      body: [
+        "We may update this policy. We will post the new effective date here and provide additional notice for material changes when appropriate.",
       ],
     },
     {
       heading: "Contact",
       body: [
-        `Privacy requests: use the contact on the Support page (replace ${SUPPORT_CONTACT_EMAIL_PLACEHOLDER} with your live address).`,
+        `Privacy requests and questions: ${SUPPORT_EMAIL}. Include "Privacy" in the subject line and the email on your account.`,
       ],
     },
-  ],
+  ] satisfies readonly LegalSection[],
 } as const
 
 export const refundPolicyPage = {
-  title: "Refund policy",
-  metaDescription: "Placeholder refund policy for Rivet. Align with payment processor rules and counsel before production.",
+  title: "Refund Policy",
+  metaDescription:
+    "Refund and billing terms for Rivet Founder Lifetime Access, including the 14-day satisfaction window and how to request help.",
+  effectiveDate: LEGAL_EFFECTIVE_DATE,
   sections: [
     {
-      heading: "Digital product",
+      heading: "Scope",
       body: [
-        "Rivet is primarily a digital service. Refund rules often depend on how you paid (for example card network rules, Stripe’s policies, and consumer laws in the buyer’s region). This page is a starting point only.",
+        "This Refund Policy applies to Founder Lifetime Access and other paid Rivet purchases made through our checkout (processed by Stripe). It supplements our Terms of Service.",
+        "Mandatory consumer rights in your province or country are not limited by this policy.",
       ],
     },
     {
-      heading: "General approach (placeholder)",
+      heading: "Founder Lifetime Access",
       body: [
-        "We may issue refunds or credits in limited situations—for example duplicate charges or a documented failure to deliver access after successful payment. We do not guarantee a refund in any specific case.",
-        "Mandatory rights in your jurisdiction still apply. This policy does not limit those rights.",
+        `Founder Lifetime Access is a one-time purchase for lifetime Rivet Core on a single workspace: ${founderOnce}, or ${founderInstallment} (${founderTotalInstallment}).`,
+        `Your purchase includes: ${FOUNDER_LIFETIME_PROMISES.join("; ")}. Grandfathering applies to the workspace identified at checkout after payment is confirmed.`,
       ],
     },
     {
-      heading: "How to request",
+      heading: "14-day satisfaction refund",
       body: [
-        `Email the address on our Support page (replace ${SUPPORT_CONTACT_EMAIL_PLACEHOLDER} with your live address). Include the email on the account, approximate date of purchase, and a short description of the issue.`,
+        "If you are unsatisfied with Rivet, you may request a full refund within fourteen (14) days of your first successful Founder Lifetime payment for that workspace, provided you have not extensively used the Service (for example large volumes of plays, team invites, or training modules beyond reasonable evaluation).",
+        "We may decline refunds where we detect abuse, repeated refund requests, or chargeback fraud.",
+        "Installment plans: if you chose three payments, the 14-day window starts on the first successful installment. Refunding the first payment cancels remaining installments when technically possible through Stripe.",
+      ],
+    },
+    {
+      heading: "When refunds are not available",
+      list: [
+        "Requests made after the 14-day satisfaction window (except where law requires otherwise).",
+        "Duplicate or mistaken charges we cannot verify.",
+        "Dissatisfaction with business outcomes (Rivet does not guarantee operational or financial results).",
+        "Access revoked for Terms violations or abuse.",
+      ],
+    },
+    {
+      heading: "How to request a refund",
+      body: [
+        `Email ${SUPPORT_EMAIL} from the address on your Rivet account. Include your workspace name, the purchase date, and whether you paid once or in installments. We typically respond within two business days.`,
+        "Approved refunds are returned to the original payment method through Stripe. Processing times depend on your bank (often 5–10 business days).",
+      ],
+    },
+    {
+      heading: "Receipts and billing help",
+      body: [
+        "Stripe sends payment receipts to the email entered at checkout. For billing questions before requesting a refund, contact us at the address above with your receipt or the last four digits of your card.",
+        "See our Support page for Founder pricing details and workspace access after payment.",
       ],
     },
     {
       heading: "Chargebacks",
       body: [
-        "If you dispute a charge with your bank instead of contacting us first, we may restrict account access while the case is investigated—wording and process need legal and payments review.",
+        "Contact us before filing a chargeback so we can resolve the issue quickly. Unfounded chargebacks may result in suspension of workspace access while the dispute is investigated.",
       ],
     },
-  ],
+  ] satisfies readonly LegalSection[],
 } as const
 
 export const supportPage = {
   title: "Support",
-  metaDescription: "How to get help with Rivet—contact, scope, and what we do not provide.",
-  responseTimeHeading: "Expected response time",
+  metaDescription:
+    "Contact Rivet support for product help, Founder Lifetime billing, receipts, and workspace access.",
+  responseTimeHeading: "Response time",
   responseTimeBody:
-    "We aim to reply to most messages within two business days. During launches or holidays, replies may take longer. This is a goal, not a service-level agreement—legal review if you need binding SLAs.",
-  contactHeading: "Contact",
-  contactIntro: "For product help and billing questions, email:",
-  contactNote:
-    "Replace the placeholder address with your production inbox and update this page before launch. Legal review if you publish SLAs or contractual support obligations elsewhere.",
+    "We reply to most messages within two business days (Monday–Friday, excluding Canadian public holidays). Urgent billing issues that block access are prioritized when you mark the subject line “Billing — blocked access.”",
+  contactHeading: "Contact us",
+  contactIntro: "For product help, billing, privacy, and refund requests:",
+  billingHeading: "Billing and Founder Lifetime Access",
+  billingIntro:
+    "Payments are processed securely by Stripe. Your workspace unlocks when Stripe confirms payment and our system records a paid purchase.",
+  founderProductName: "Founder Lifetime Access",
+  founderPricingLines: [
+    `${founderOnce} — one payment, lifetime Rivet Core on your workspace.`,
+    `${founderInstallment} — three equal payments (${founderTotalInstallment}); same lifetime access and grandfathering when all installments complete.`,
+  ] as const,
+  founderIncludes: [...FOUNDER_LIFETIME_PROMISES] as const,
+  founderGrandfatherNote:
+    "Founder workspaces are permanently grandfathered on the workspace you paid for: Rivet Core, future core updates, and no recurring subscription for Rivet Core—even if we introduce paid subscription tiers later. Grandfathering does not transfer to a different workspace.",
+  billingHelpList: [
+    "Receipts: check the email you used at Stripe Checkout; search for “Stripe” or “Rivet.”",
+    "Wrong workspace: contact us before checkout if you operate multiple businesses—we link purchase to the workspace on your profile at checkout.",
+    "Access not unlocked after payment: email us with your account email and approximate payment time; we will verify the purchase and fix access.",
+    "Refunds: see our Refund Policy for the 14-day satisfaction window and how to request one.",
+    "Installments: all three payments must succeed for full grandfathering; failed installments may pause access until resolved.",
+  ] as const,
   includesHeading: "What support includes",
   includes: [
-    "Help signing in, linking a workspace, and using documented product features.",
-    "Guidance when something looks broken on our side (after you’ve tried a refresh and, if asked, provided a short description and screenshots).",
-    "Routing billing questions to the right internal owner when payment is handled by a third party (for example Stripe receipts and checkout emails).",
+    "Signing in, linking a workspace, and using documented Rivet features.",
+    "Troubleshooting errors that appear to originate on our side (with steps to reproduce when possible).",
+    "Billing verification, Stripe receipt questions, and founder access issues.",
+    "Rivet Scan report delivery (missing email, resend limits, or broken report links).",
   ],
   excludesHeading: "What support does not include",
   excludes: [
-    "On-site consulting, custom development, or rewriting your operating procedures for you.",
-    "Legal, tax, accounting, HR, or regulatory advice—we are not licensed professionals in those fields.",
-    "Guaranteed recovery of lost data if copies were not exported by your team (backups and export habits are your responsibility).",
-    "24/7 phone support unless you have a separate written agreement that says otherwise.",
+    "Writing or certifying your operating procedures, HR policies, or regulatory programs.",
+    "Legal, tax, accounting, or employment advice.",
+    "On-site consulting, custom development, or data recovery when your team has not exported backups.",
+    "24/7 phone support (email only unless you have a separate written agreement).",
   ],
   notSoftwareHeading: "What Rivet is not",
   notSoftwareBody:
-    "Rivet is operational workflow and visibility software for your team. It is not payroll software, accounting software, legal practice management, HR information systems, or compliance certification tooling. You remain responsible for meeting obligations that apply to your business, your industry, and your region.",
-  footerNote:
-    "If you need professional advice (for example employment law or food safety regulations), hire a qualified advisor. Rivet’s materials are for operational clarity only.",
+    "Rivet is operational workflow software for your team. It is not payroll, accounting, legal practice management, or government compliance certification. You remain responsible for obligations that apply to your business.",
+  relatedLinks: [
+    { href: "/terms", label: "Terms of Service" },
+    { href: "/privacy", label: "Privacy Policy" },
+    { href: "/refund-policy", label: "Refund Policy" },
+    { href: "/subscribe", label: "Founder checkout" },
+  ] as const,
 } as const
 
 export const landingFooterLegalLinks = [

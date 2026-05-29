@@ -60,7 +60,7 @@ function questionMeta(id: string): { section: ScannerSection; prompt: string } |
 
 function defaultRecommendations(score: number): string[] {
   const base = [
-    "Pick one bottleneck this week and turn it into a short SOP your leads can run without you.",
+    "Pick one open issue this week and turn it into a play your leads can run without you.",
     "Name a single owner for opening and another for closing—then document the last 20% only you still hold.",
     "Schedule one cross-training session so a second person can sign off on quality, not just shadow you.",
   ]
@@ -89,7 +89,7 @@ function sectionRecommendations(sectionId: string, avg: number): string[] {
       "Build a one-page quality bible: reference photos, remake rules, and who may sign off on training.",
     ],
     ordering_inventory: [
-      "Give one lead full ordering visibility: vendor list, pars, and substitution playbook in the SOP library.",
+      "Give one lead full ordering visibility: vendor list, pars, and substitution plays in your library.",
     ],
     staff_training: [
       "Publish a 14-day onboarding path with checkpoints; tie each to a written standard someone else can verify.",

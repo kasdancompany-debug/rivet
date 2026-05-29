@@ -28,7 +28,17 @@ export function detectInterruptionFix(
     /\btrain(ing|ed)?\b|\bnew hire\b|\bdoesn'?t know\b|\bforgot\b|\bnever (learned|shown)\b|\bonboard/.test(
       `${lower} ${detailText}`
     )
-  const approvalSignals = kind === "approval_request" || /\bapprov|\bcomp\b|\bdiscount|\brefund|\bexception/.test(lower)
+  if (/\brefund/.test(lower)) {
+    return {
+      rootCause: "Refund steps aren't documented on the floor—every refund routes back to you.",
+      fixType: "sop",
+      suggestedTitle: titleFromLabel(label, "Refund process"),
+      suggestedDescription: `Document how to process “${label}” with limits, who can approve, and when to escalate.`,
+      capturePrompt: `Staff keep asking about refunds: ${label}. Write a refund play with steps, dollar limits, and escalation rules.`,
+    }
+  }
+
+  const approvalSignals = kind === "approval_request" || /\bapprov|\bcomp\b|\bdiscount|\bexception/.test(lower)
   const judgmentSignals =
     kind === "judgment_call" || /\bjudgment|\bdecide|\bwhat should|\bhow (much|many)|\bpolicy/.test(lower)
   const issueSignals = kind === "unresolved_issue" || /\bbroken|\bout of|\bdown|\bcan'?t find/.test(lower)

@@ -1,28 +1,44 @@
-import { Award } from "lucide-react"
-
 import { COPY } from "@/lib/interface-copy"
 import type { CertificationBadge } from "@/lib/training/certifications/build-views"
-import { Badge } from "@/components/ui/badge"
+import { CertificationBadgeTile } from "@/components/training/certification-badge-tile"
 
-export function EmployeeCertificationBadges({ badges }: { badges: CertificationBadge[] }) {
+export function EmployeeCertificationBadges({
+  badges,
+  hrefForModule,
+  layout = "tiles",
+}: {
+  badges: CertificationBadge[]
+  /** When set, each badge links to its certificate page. */
+  hrefForModule?: (moduleId: string) => string
+  layout?: "tiles" | "compact"
+}) {
   if (badges.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">{COPY.certifications.profileEmpty}</p>
     )
   }
 
+  if (layout === "compact") {
+    return (
+      <ul className="flex flex-wrap gap-2">
+        {badges.map((badge) => (
+          <li key={badge.moduleId} className="max-w-[11rem] flex-1">
+            <CertificationBadgeTile
+              badge={badge}
+              href={hrefForModule?.(badge.moduleId)}
+              className="min-h-[4.5rem] py-2.5"
+            />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
-    <ul className="flex flex-wrap gap-2">
+    <ul className="grid gap-3 sm:grid-cols-2">
       {badges.map((badge) => (
         <li key={badge.moduleId}>
-          <Badge
-            variant="outline"
-            className="gap-1.5 border-amber-500/30 bg-amber-500/[0.08] px-2.5 py-1 font-normal text-foreground"
-            title={COPY.certifications.badgeTitle(badge.label, badge.certifiedAt)}
-          >
-            <Award className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-            {badge.label}
-          </Badge>
+          <CertificationBadgeTile badge={badge} href={hrefForModule?.(badge.moduleId)} />
         </li>
       ))}
     </ul>

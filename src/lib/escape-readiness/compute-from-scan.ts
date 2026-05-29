@@ -1,6 +1,7 @@
 import { COPY } from "@/lib/interface-copy"
 import type { OperationalScanAnswers, YesPartialNo } from "@/lib/operational-scan/score"
 import { weeklyCountMidpoint, weeklyCountRisk } from "@/lib/operational-scan/score"
+import { PLAY_COVERAGE_LABEL, UNDOCUMENTED_MEMORY_LABEL } from "@/lib/product-voice"
 
 import { finalizeEscapeReadinessView } from "@/lib/escape-readiness/enrichment"
 import type { EscapeReadinessFactorInput, EscapeReadinessView } from "@/lib/escape-readiness/types"
@@ -102,12 +103,12 @@ export function computeEscapeReadinessFromScan(answers: OperationalScanAnswers):
   const factors: EscapeReadinessFactorInput[] = [
     {
       id: "sop_coverage",
-      label: "SOP coverage",
+      label: PLAY_COVERAGE_LABEL,
       percent: sop,
       hint:
         answers.undocumentedProcedures === "0"
-          ? "You reported few undocumented gaps—verify plays are written down in Rivet, not only in your head."
-          : "Thin SOP coverage means staff still hunt you when something is not obvious.",
+          ? "You reported few gaps—verify plays are in Rivet's operating memory, not only in your head."
+          : "Thin play coverage means staff still hunt you when something is not obvious.",
     },
     {
       id: "training_coverage",
@@ -135,12 +136,12 @@ export function computeEscapeReadinessFromScan(answers: OperationalScanAnswers):
     },
     {
       id: "undocumented_procedures",
-      label: "Undocumented procedures",
+      label: UNDOCUMENTED_MEMORY_LABEL,
       percent: undocumented,
       hint:
         answers.undocumentedProcedures === "0"
-          ? "You named few undocumented procedures—capture the next one only you know."
-          : "Undocumented procedures still drive interrupts when you are not there.",
+          ? "You named few gaps still in your head—capture the next one only you know."
+          : "Knowledge still in your head drives interrupts when you are not there.",
     },
   ]
 

@@ -17,6 +17,10 @@ export type SopTemplateStep = {
   instructions: string
   /** Step needs a dated photo in your shop before sign-off. */
   requires_photo_confirmation?: boolean
+  requires_video_proof?: boolean
+  requires_manager_signoff?: boolean
+  /** Defaults true when omitted (checklist tick required). */
+  requires_checklist_completion?: boolean
 }
 
 export type SopStarterTemplate = {

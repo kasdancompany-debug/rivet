@@ -1,5 +1,8 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
 import { MarketingDemoDashboardStrip } from "@/components/marketing/marketing-demo-dashboard-strip";
-import { LANDING_DIAGNOSIS } from "@/lib/marketing-landing-copy";
+import { LANDING_CTA, LANDING_DIAGNOSIS } from "@/lib/marketing-landing-copy";
 
 export function LandingDiagnosisSection() {
   const { eyebrow, title, hook, metrics } = LANDING_DIAGNOSIS;
@@ -42,6 +45,14 @@ export function LandingDiagnosisSection() {
         <div className="mt-4">
           <MarketingDemoDashboardStrip />
         </div>
+
+        <Link
+          href="/scan?from=landing-diagnosis"
+          className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-900 transition-colors hover:text-zinc-600 dark:text-white dark:hover:text-zinc-300"
+        >
+          {LANDING_CTA.secondary}
+          <ArrowRight className="size-3.5 opacity-60" aria-hidden />
+        </Link>
       </div>
     </section>
   );

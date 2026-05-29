@@ -25,6 +25,8 @@ export function LoginForm({ supabaseConfigured }: { supabaseConfigured?: boolean
         return "That sign-in link is invalid or has expired."
       case "missing_config":
         return supabaseNotConfiguredMessage(true)
+      case "invalid_invite":
+        return "That invite link is invalid or has expired."
       default:
         return null
     }

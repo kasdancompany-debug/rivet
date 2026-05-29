@@ -1,4 +1,8 @@
 import type { InterruptionFixType } from "@/lib/owner-interruptions/fix-suggestions/types"
+import type {
+  InterruptionFixImpact,
+  InterruptionOutcomeItem,
+} from "@/lib/owner-interruptions/outcomes/types"
 import type { InterruptionActionFixType, InterruptionActionPlanStatus } from "@/types/database"
 
 export type AffectedPerson = {
@@ -48,4 +52,14 @@ export type InterruptionActionPlanView = {
   canApprove: boolean
   canPublish: boolean
   canDismiss: boolean
+  repeatCount: number
+  recommendations: {
+    suggestNewPlay: boolean
+    suggestTraining: boolean
+    suggestMedia: boolean
+    suggestAskRivet: boolean
+  }
+  outcomes: InterruptionOutcomeItem[]
+  impact: InterruptionFixImpact | null
+  askMatchCount: number
 }

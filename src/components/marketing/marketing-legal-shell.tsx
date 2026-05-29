@@ -2,19 +2,18 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 
 import { Logo } from "@/components/logo"
-import { LEGAL_REVIEW_BANNER, landingFooterLegalLinks } from "@/lib/legal-support-pages-content"
+import { landingFooterLegalLinks } from "@/lib/legal-support-pages-content"
 import { cn } from "@/lib/utils"
 
 const shellMax = "mx-auto w-full max-w-2xl px-4 sm:px-6"
 
 export function MarketingLegalShell({
   title,
-  showLegalBanner = true,
+  effectiveDate,
   children,
 }: {
   title: string
-  /** Terms, privacy, and refund pages show the legal-review banner; support may omit it. */
-  showLegalBanner?: boolean
+  effectiveDate?: string
   children: ReactNode
 }) {
   return (
@@ -32,13 +31,10 @@ export function MarketingLegalShell({
       </header>
 
       <main className={cn(shellMax, "py-10 pb-16 sm:py-12")}>
-        {showLegalBanner ? (
-          <p className="mb-8 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-[13px] leading-relaxed text-amber-950 dark:border-amber-500/25 dark:bg-amber-500/[0.08] dark:text-amber-100/95">
-            {LEGAL_REVIEW_BANNER}
-          </p>
-        ) : null}
-
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-white">{title}</h1>
+        {effectiveDate ? (
+          <p className="mt-2 text-[14px] text-zinc-600 dark:text-zinc-400">Effective {effectiveDate}</p>
+        ) : null}
         <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{children}</div>
       </main>
 

@@ -1,17 +1,26 @@
+import type { FounderPaymentOption } from "@/lib/billing/founder-offer"
+import {
+  defaultFounderCheckoutBillingPlan,
+  FOUNDER_LIFETIME_CHECKOUT_PRODUCT,
+} from "@/lib/billing/plans"
+
 /** Stripe Checkout session.metadata keys for Rivet one-time purchase + webhook. */
 export const RIVET_CHECKOUT_METADATA_KEYS = {
   userId: "user_id",
   workspaceId: "workspace_id",
   email: "email",
   product: "rivet_product",
+  billingPlan: "rivet_billing_plan",
+  paymentOption: "rivet_payment_option",
 } as const
 
-export const RIVET_CHECKOUT_PRODUCT = "rivet_lifetime_v1" as const
+export const RIVET_CHECKOUT_PRODUCT = FOUNDER_LIFETIME_CHECKOUT_PRODUCT
 
 export type RivetCheckoutMetadataInput = {
   userId: string
   workspaceId: string
   email?: string | null
+  paymentOption?: FounderPaymentOption
 }
 
 export function buildRivetCheckoutMetadata(input: RivetCheckoutMetadataInput): Record<string, string> {
@@ -19,6 +28,8 @@ export function buildRivetCheckoutMetadata(input: RivetCheckoutMetadataInput): R
     [RIVET_CHECKOUT_METADATA_KEYS.userId]: input.userId,
     [RIVET_CHECKOUT_METADATA_KEYS.workspaceId]: input.workspaceId,
     [RIVET_CHECKOUT_METADATA_KEYS.product]: RIVET_CHECKOUT_PRODUCT,
+    [RIVET_CHECKOUT_METADATA_KEYS.billingPlan]: defaultFounderCheckoutBillingPlan(),
+    [RIVET_CHECKOUT_METADATA_KEYS.paymentOption]: input.paymentOption ?? "once",
   }
   const email = input.email?.trim()
   if (email) {
@@ -32,7 +43,7 @@ export function normalizeSiteOrigin(raw: string): string {
 }
 
 export function rivetCheckoutSuccessUrl(siteOrigin: string): string {
-  return `${normalizeSiteOrigin(siteOrigin)}/dashboard?billing=success`
+  return `${normalizeSiteOrigin(siteOrigin)}/subscribe?billing=success&session_id={CHECKOUT_SESSION_ID}`
 }
 
 export function rivetCheckoutCancelUrl(siteOrigin: string): string {

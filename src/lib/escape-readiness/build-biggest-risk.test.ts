@@ -9,7 +9,7 @@ import {
 import type { EscapeReadinessFactorInput } from "@/lib/escape-readiness/types"
 
 const demoFactors: EscapeReadinessFactorInput[] = [
-  { id: "sop_coverage", label: "SOP coverage", percent: 52, hint: "" },
+  { id: "sop_coverage", label: "Play coverage", percent: 52, hint: "" },
   { id: "training_coverage", label: "Training coverage", percent: 61, hint: "" },
   { id: "unresolved_issues", label: "Unresolved issues", percent: 38, hint: "" },
   { id: "owner_interruptions", label: "Owner interruptions", percent: 32, hint: "" },
@@ -31,9 +31,9 @@ describe("buildBiggestRisk", () => {
     expect(risk!.estimatedInterruptions.count).toBeGreaterThan(0)
   })
 
-  it("uses sop future-state copy when SOP coverage is weakest", () => {
+  it("uses sop future-state copy when play coverage is weakest", () => {
     const factors: EscapeReadinessFactorInput[] = [
-      { id: "sop_coverage", label: "SOP coverage", percent: 28, hint: "" },
+      { id: "sop_coverage", label: "Play coverage", percent: 28, hint: "" },
       { id: "training_coverage", label: "Training coverage", percent: 61, hint: "" },
       { id: "unresolved_issues", label: "Unresolved issues", percent: 38, hint: "" },
       { id: "owner_interruptions", label: "Owner interruptions", percent: 32, hint: "" },

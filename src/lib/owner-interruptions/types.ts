@@ -6,6 +6,7 @@ import type {
 } from "@/types/database"
 
 import type { InterruptionFixSuggestion } from "@/lib/owner-interruptions/fix-suggestions/types"
+import type { InterruptionSystemImprovement } from "@/lib/owner-interruptions/outcomes/build-system-improvements"
 import type { OwnerValueMetrics } from "@/lib/owner-interruptions/value-metrics/compute-value-metrics"
 
 import type { TrendDayIntensity } from "@/lib/owner-interruptions/trend/compute-trend-day-intensity"
@@ -78,6 +79,7 @@ export type OwnerInterruptionRecentRow = {
   occurredAt: string
   loggerName: string
   loggerRole: string
+  improvementSummary: string | null
 }
 
 export type OwnerInterruptionTopLeak = {
@@ -106,5 +108,7 @@ export type OwnerInterruptionsDashboardView = {
   bySeverity: OwnerInterruptionSeveritySlice[]
   bySource: OwnerInterruptionSourceSlice[]
   valueMetrics: OwnerValueMetrics
+  fixSuggestions: InterruptionFixSuggestion[]
+  systemImprovements: InterruptionSystemImprovement[]
   recent: OwnerInterruptionRecentRow[]
 }

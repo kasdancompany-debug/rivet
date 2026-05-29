@@ -14,23 +14,26 @@ export type ReadinessSignalKey =
   | "sopCompletion"
   | "quizCompletion"
   | "videoWatched"
+  | "proofUploads"
   | "shiftObservations"
   | "managerSignOffs"
   | "practicalCertifications"
 
 export const READINESS_SIGNAL_LABELS: Record<ReadinessSignalKey, string> = {
-  sopCompletion: "SOP completion",
-  quizCompletion: "Quiz completion",
-  videoWatched: "Video watched",
-  shiftObservations: "Manager observations",
+  sopCompletion: "Training completed",
+  quizCompletion: "Quiz scores",
+  videoWatched: "Video lessons",
+  proofUploads: "Proof uploads",
+  shiftObservations: "Observation history",
   managerSignOffs: "Manager sign-offs",
-  practicalCertifications: "Practical certifications",
+  practicalCertifications: "Certifications earned",
 }
 
 export const READINESS_SIGNAL_ORDER: ReadinessSignalKey[] = [
   "sopCompletion",
   "quizCompletion",
   "videoWatched",
+  "proofUploads",
   "shiftObservations",
   "managerSignOffs",
   "practicalCertifications",
@@ -44,10 +47,18 @@ export const READINESS_CAPABILITY_FIELDS: ReadinessCapabilityField[] = [
 ]
 
 export const READINESS_CAPABILITY_LABELS: Record<ReadinessCapabilityField, string> = {
-  open_alone: "Can open",
-  close_alone: "Can close",
-  train_others: "Can train",
-  handle_complaints: "Can handle guest recovery",
+  open_alone: "Opening",
+  close_alone: "Closing",
+  train_others: "Trainer",
+  handle_complaints: "Customer recovery",
+}
+
+/** Floor-facing readiness titles (professional, not gamified). */
+export const READINESS_CAPABILITY_DISPLAY_LABELS: Record<ReadinessCapabilityField, string> = {
+  open_alone: "Opening Ready",
+  close_alone: "Closing Ready",
+  train_others: "Trainer Ready",
+  handle_complaints: "Customer Recovery Ready",
 }
 
 export const DELEGATION_STATUS_LABELS: Record<DelegationReadinessStatus, string> = {
@@ -78,6 +89,7 @@ export type ReadinessComputeInput = {
   passedQuizStandardIds?: Set<string>
   certifiedModuleIds?: Set<string>
   managerSignedOffModuleIds?: Set<string>
+  proofUploadedModuleIds?: Set<string>
   overrides: Partial<Record<ReadinessCapabilityField, DelegationReadinessStatus | null>>
 }
 
@@ -86,11 +98,26 @@ export type ReadinessSignalScores = Record<ReadinessSignalKey, number>
 export type CapabilityReadiness = {
   field: ReadinessCapabilityField
   label: string
+  displayLabel: string
   score: number
   calculated: DelegationReadinessStatus
   effective: DelegationReadinessStatus
   overridden: boolean
   override: DelegationReadinessStatus | null
+}
+
+export type ReadinessLevelBand = "not_started" | "in_progress" | "floor_ready"
+
+export function readinessLevelBand(score: number): ReadinessLevelBand {
+  if (score >= READINESS_READY_THRESHOLD) return "floor_ready"
+  if (score >= 35) return "in_progress"
+  return "not_started"
+}
+
+export const READINESS_LEVEL_LABELS: Record<ReadinessLevelBand, string> = {
+  not_started: "Not started",
+  in_progress: "In progress",
+  floor_ready: "Floor ready",
 }
 
 export type ComputedEmployeeReadiness = {
@@ -195,6 +222,15 @@ function computeSignals(input: ReadinessComputeInput): ReadinessSignalScores {
             100
         )
 
+  const proofUploads =
+    modules.length === 0
+      ? 0
+      : clampPct(
+          (modules.filter((m) => (input.proofUploadedModuleIds ?? new Set()).has(m.moduleId)).length /
+            modules.length) *
+            100
+        )
+
   const practicalCertifications =
     modules.length === 0
       ? 0
@@ -208,6 +244,7 @@ function computeSignals(input: ReadinessComputeInput): ReadinessSignalScores {
     sopCompletion,
     quizCompletion,
     videoWatched,
+    proofUploads,
     shiftObservations,
     managerSignOffs,
     practicalCertifications,
@@ -254,6 +291,7 @@ export function computeEmployeeReadiness(input: ReadinessComputeInput): Computed
     return {
       field,
       label: READINESS_CAPABILITY_LABELS[field],
+      displayLabel: READINESS_CAPABILITY_DISPLAY_LABELS[field],
       score,
       calculated,
       effective,

@@ -60,6 +60,35 @@ describe("computeEmployeeReadiness", () => {
     expect(result.signals.shiftObservations).toBe(100)
   })
 
+  it("includes proof uploads in signal scores", () => {
+    const result = computeEmployeeReadiness({
+      modules: [
+        {
+          moduleId: "m1",
+          title: "Opening",
+          assignedRole: null,
+          status: "in_progress",
+          pct: 50,
+          sopRows: [{ title: "Open", completed: true, standardCategory: "opening", standardId: "s1" }],
+        },
+        {
+          moduleId: "m2",
+          title: "Closing",
+          assignedRole: null,
+          status: "not_started",
+          pct: 0,
+          sopRows: [{ title: "Close", completed: false, standardCategory: "closing", standardId: "s2" }],
+        },
+      ],
+      completedShiftRuns: 0,
+      proofUploadedModuleIds: new Set(["m1"]),
+      overrides: {},
+    })
+
+    expect(result.signals.proofUploads).toBe(50)
+    expect(result.capabilities.find((c) => c.field === "open_alone")?.displayLabel).toBe("Opening Ready")
+  })
+
   it("uses manager override when set", () => {
     const result = computeEmployeeReadiness({
       modules: [],

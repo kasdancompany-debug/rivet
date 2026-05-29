@@ -54,7 +54,10 @@ export type TrainingModuleWithItems = Tables<"training_modules"> & {
 }
 
 export type TrainingItemWithSop = Tables<"training_items"> & {
-  standards: Pick<Tables<"standards">, "id" | "title" | "status" | "category"> | null
+  standards: Pick<
+    Tables<"standards">,
+    "id" | "title" | "status" | "category" | "estimated_time_minutes"
+  > | null
 }
 
 export type TrainingModuleDeep = Tables<"training_modules"> & {
@@ -128,6 +131,42 @@ export async function fetchBusinessForCurrentUser(
     .maybeSingle()
 
   if (error) return null
+  return data
+}
+
+export async function fetchBusinessMemberForUser(
+  userId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"business_members"> | null> {
+  const supabase = await getClient(client)
+  const business = await fetchBusinessForCurrentUser(supabase)
+  if (!business) return null
+
+  const { data, error } = await supabase
+    .from("business_members")
+    .select("*")
+    .eq("business_id", business.id)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) return null
+  return data
+}
+
+export async function listBusinessMembersForCurrentBusiness(
+  client?: TypedSupabaseClient
+): Promise<Tables<"business_members">[]> {
+  const supabase = await getClient(client)
+  const business = await fetchBusinessForCurrentUser(supabase)
+  if (!business) return []
+
+  const { data, error } = await supabase
+    .from("business_members")
+    .select("*")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: true })
+
+  if (error || !data) return []
   return data
 }
 
@@ -561,7 +600,7 @@ export async function fetchTrainingModuleDeep(
   const supabase = await getClient(client)
   const { data, error } = await supabase
     .from("training_modules")
-    .select("*, training_items(*, standards(id, title, status, category))")
+    .select("*, training_items(*, standards(id, title, status, category, estimated_time_minutes))")
     .eq("id", moduleId)
     .maybeSingle()
 
@@ -580,7 +619,7 @@ export async function listTrainingModulesDeepForBusiness(
   const supabase = await getClient(client)
   const { data, error } = await supabase
     .from("training_modules")
-    .select("*, training_items(*, standards(id, title, status, category))")
+    .select("*, training_items(*, standards(id, title, status, category, estimated_time_minutes))")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false })
 
@@ -1569,4 +1608,185 @@ export async function updateInterruptionActionPlan(
     .single()
   if (error) return null
   return data
+}
+
+export async function listInterruptionActionPlansForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"interruption_action_plans">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("interruption_action_plans")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false })
+  if (error) return []
+  return data ?? []
+}
+
+/** Standard IDs that have at least one row in `standard_media`. */
+export async function listStandardIdsWithMediaForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<Set<string>> {
+  const supabase = await getClient(client)
+  const { data: standards, error: standardsError } = await supabase
+    .from("standards")
+    .select("id")
+    .eq("business_id", businessId)
+  if (standardsError || !standards?.length) return new Set()
+
+  const ids = standards.map((s) => s.id)
+  const { data: media, error: mediaError } = await supabase
+    .from("standard_media")
+    .select("standard_id")
+    .in("standard_id", ids)
+  if (mediaError) return new Set()
+
+  return new Set((media ?? []).map((m) => m.standard_id))
+}
+
+export async function fetchInterruptionActionPlanByInterruptionId(
+  interruptionId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"interruption_action_plans"> | null> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("interruption_action_plans")
+    .select("*")
+    .eq("interruption_id", interruptionId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data
+}
+
+export async function listStandardsWithStepsForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<StandardWithSteps[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("standards")
+    .select("*, standard_steps(*)")
+    .eq("business_id", businessId)
+    .order("updated_at", { ascending: false })
+
+  if (error || !data) return []
+  return (data as unknown as StandardWithSteps[]).map((row) => ({
+    ...row,
+    standard_steps: [...(row.standard_steps ?? [])].sort((a, b) => a.step_order - b.step_order),
+  }))
+}
+
+export async function listStandardMediaForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"standard_media">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("standard_media")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false })
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listRivetAskQueriesForBusinessSearch(
+  businessId: string,
+  limit = 150,
+  client?: TypedSupabaseClient
+): Promise<
+  Pick<
+    Tables<"rivet_ask_queries">,
+    "id" | "question_text" | "standard_id" | "response" | "created_at"
+  >[]
+> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("rivet_ask_queries")
+    .select("id, question_text, standard_id, response, created_at")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listTeamSuccessionRolesForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"team_succession_roles">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("team_succession_roles")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("sort_order", { ascending: true })
+    .order("role_label", { ascending: true })
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listEmployeeModuleCertificationsForBusiness(
+  businessId: string,
+  client?: TypedSupabaseClient
+): Promise<Tables<"employee_module_certifications">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("employee_module_certifications")
+    .select("*")
+    .eq("business_id", businessId)
+
+  if (error || !data) return []
+  return data
+}
+
+export async function listAskQueriesForBusinessSince(
+  businessId: string,
+  sinceIso: string,
+  client?: TypedSupabaseClient
+): Promise<
+  Pick<
+    Tables<"rivet_ask_queries">,
+    "question_text" | "normalized_question" | "standard_id" | "response" | "created_at"
+  >[]
+> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("rivet_ask_queries")
+    .select("question_text, normalized_question, standard_id, response, created_at")
+    .eq("business_id", businessId)
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+  if (error) return []
+  return data ?? []
+}
+
+type StandardPlayViewInsert = TablesInsert<"standard_play_views">
+
+export async function insertStandardPlayView(
+  row: Omit<StandardPlayViewInsert, "id" | "created_at">,
+  client?: TypedSupabaseClient
+): Promise<void> {
+  const supabase = await getClient(client)
+  await supabase.from("standard_play_views").insert(row)
+}
+
+export async function listStandardPlayViewsForBusinessSince(
+  businessId: string,
+  sinceIso: string,
+  client?: TypedSupabaseClient
+): Promise<Pick<Tables<"standard_play_views">, "standard_id" | "viewed_by" | "created_at">[]> {
+  const supabase = await getClient(client)
+  const { data, error } = await supabase
+    .from("standard_play_views")
+    .select("standard_id, viewed_by, created_at")
+    .eq("business_id", businessId)
+    .gte("created_at", sinceIso)
+  if (error) return []
+  return data ?? []
 }

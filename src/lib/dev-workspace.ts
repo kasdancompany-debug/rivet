@@ -39,6 +39,8 @@ function toBusinessRow(payload: DevWorkspaceCookie): Tables<"businesses"> {
     template_installed_at: payload.templateInstalledAt,
     owner_id: getDevBypassMockUser().id,
     owner_hourly_value_cad: null,
+    billing_plan: null,
+    founder_grandfathered_at: null,
     created_at: now,
     updated_at: now,
   }

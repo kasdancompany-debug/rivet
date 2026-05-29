@@ -1,7 +1,9 @@
+import { getStepProofBlockers } from "@/lib/completion-proof/evaluate"
+import { stepProofRequirementsFromRow } from "@/lib/completion-proof/requirements"
 import type { PortalTrainingItem } from "@/lib/training/portal/types"
 
 export type PortalCompletionBlocker = {
-  code: "video" | "quiz" | "steps" | "photos"
+  code: "video" | "quiz" | "steps" | "proof"
   message: string
 }
 
@@ -23,24 +25,15 @@ export function getPortalCompletionBlockers(item: PortalTrainingItem): PortalCom
     })
   }
 
-  if (item.steps.length > 0) {
-    const unchecked = item.steps.filter((s) => !progress.stepChecklist.includes(s.id))
-    if (unchecked.length > 0) {
+  for (const step of item.steps) {
+    const requirements = stepProofRequirementsFromRow(step)
+    const checklistDone = progress.stepChecklist.includes(step.id)
+    const proofState = progress.stepProofByStepId[step.id]
+    const stepBlockers = getStepProofBlockers(requirements, proofState, checklistDone)
+    for (const b of stepBlockers) {
       blockers.push({
-        code: "steps",
-        message: `Check off all ${item.steps.length} steps in the SOP checklist.`,
-      })
-    }
-  }
-
-  if (item.photoRequiredStepIds.length > 0) {
-    const missing = item.photoRequiredStepIds.filter(
-      (stepId) => !progress.photoProofs.some((p) => p.stepId === stepId)
-    )
-    if (missing.length > 0) {
-      blockers.push({
-        code: "photos",
-        message: `Upload photo proof for ${missing.length} required step${missing.length === 1 ? "" : "s"}.`,
+        code: "proof",
+        message: `${step.title}: ${b.message}`,
       })
     }
   }

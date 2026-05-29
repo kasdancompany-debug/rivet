@@ -12,6 +12,7 @@ export function isPathExemptFromBusinessRequirement(pathname: string): boolean {
   if (pathname === "/subscribe") return true
   if (pathname.startsWith("/auth")) return true
   if (pathname.startsWith("/learn")) return true
+  if (pathname.startsWith("/join")) return true
   return false
 }
 
@@ -24,12 +25,22 @@ export function isPathExemptFromRealityCheck(pathname: string): boolean {
   if (pathname.startsWith("/auth")) return true
   if (pathname === "/setup") return true
   if (pathname.startsWith("/learn")) return true
+  if (pathname.startsWith("/join")) return true
   return false
 }
 
 /** Routes reachable before industry template foundation is installed. */
 export function isPathExemptFromTemplateInstall(pathname: string): boolean {
   return isPathExemptFromRealityCheck(pathname)
+}
+
+/** Routes that skip workspace role checks (portal, setup, billing). */
+export function isPathExemptFromRoleCheck(pathname: string): boolean {
+  if (isInternalDiagnosticsPath(pathname)) return true
+  if (isPathExemptFromBusinessRequirement(pathname)) return true
+  if (pathname.startsWith("/api")) return true
+  if (pathname.startsWith("/auth")) return true
+  return false
 }
 
 export function isApiOrStaticPath(pathname: string): boolean {

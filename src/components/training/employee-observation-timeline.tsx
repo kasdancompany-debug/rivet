@@ -47,14 +47,14 @@ export function EmployeeObservationTimeline({
   observations,
   businessId,
   employeeId,
-  isOwner,
+  canManageTeam,
   pending,
   onAction,
 }: {
   observations: ManagerObservationView[]
   businessId: string
   employeeId: string
-  isOwner: boolean
+  canManageTeam: boolean
   pending: boolean
   onAction: (fn: () => Promise<unknown>) => void
 }) {
@@ -70,7 +70,7 @@ export function EmployeeObservationTimeline({
         <p className="mt-1 text-xs text-muted-foreground">{COPY.managerObservations.timelineLead}</p>
       </div>
 
-      {isOwner ? (
+      {canManageTeam ? (
         <form
           className="space-y-3 rounded-xl border border-border/50 bg-muted/15 p-4"
           onSubmit={(e) => {

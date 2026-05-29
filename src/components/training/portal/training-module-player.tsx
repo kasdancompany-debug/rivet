@@ -8,22 +8,15 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-
 import {
   completePortalTrainingItem,
   markPortalVideoWatched,
-  savePortalStepChecklist,
-  savePortalStepPhoto,
   submitPortalQuiz,
 } from "@/app/actions/training-portal"
-import {
-  prepareStandardMediaUpload,
-  finalizeStandardMediaUpload,
-} from "@/app/actions/standard-media"
-import { uploadStandardMediaToSignedUrl } from "@/lib/standards/upload-standard-media-client"
+import { StepProofCapture } from "@/components/completion-proof/step-proof-capture"
 import { STANDARD_QUIZ_TYPE_LABELS } from "@/lib/training/portal/quiz"
 import { canCompletePortalItem, getPortalCompletionBlockers } from "@/lib/training/portal/completion-rules"
 import { formatEstimatedDuration } from "@/lib/training/portal/estimate-time"
 import type { PortalModuleView, PortalTrainingItem } from "@/lib/training/portal/types"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
+import { COPY } from "@/lib/interface-copy"
 import { cn } from "@/lib/utils"
 
 export function TrainingModulePlayer({
@@ -43,13 +36,27 @@ export function TrainingModulePlayer({
   const blockers = useMemo(() => (item ? getPortalCompletionBlockers(item) : []), [item])
   const canComplete = item ? canCompletePortalItem(item) : false
 
-  function run<T>(fn: () => Promise<T>) {
+  function run<T>(fn: () => Promise<T>, opts?: { advanceOnComplete?: boolean }) {
     setBanner(null)
     startTransition(async () => {
       const res = await fn()
       if (res && typeof res === "object" && "ok" in res && res.ok === false) {
         setBanner("message" in res ? String((res as { message: string }).message) : "Something went wrong.")
         return
+      }
+      if (
+        res &&
+        typeof res === "object" &&
+        "ok" in res &&
+        res.ok === true &&
+        "passed" in res &&
+        (res as { passed: boolean }).passed === false
+      ) {
+        setBanner(COPY.staffPortal.quizFailed)
+        return
+      }
+      if (opts?.advanceOnComplete && activeIndex < view.items.length - 1) {
+        setActiveIndex((i) => i + 1)
       }
       router.refresh()
     })
@@ -59,11 +66,21 @@ export function TrainingModulePlayer({
     return (
       <div className="rounded-2xl border border-border/60 bg-card p-6 text-center">
         <CheckCircle2 className="mx-auto size-10 text-emerald-600" aria-hidden />
-        <p className="mt-3 text-lg font-semibold">Module complete</p>
-        <p className="mt-1 text-sm text-muted-foreground">You finished every play in this module.</p>
-        <Button className="mt-6 w-full" nativeButton={false} render={<Link href="/learn" />}>
-          Back to my training
-        </Button>
+        <p className="mt-3 text-lg font-semibold">{COPY.staffPortal.moduleCompleteTitle}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{COPY.staffPortal.moduleCompleteLead}</p>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <Button className="w-full sm:w-auto" nativeButton={false} render={<Link href="/learn/certifications" />}>
+            {COPY.staffPortal.moduleCompleteCerts}
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            nativeButton={false}
+            render={<Link href="/learn" />}
+          >
+            {COPY.staffPortal.moduleCompleteHome}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -82,7 +99,7 @@ export function TrainingModulePlayer({
 
       <div className="rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="font-medium text-foreground">Progress</span>
+          <span className="font-medium text-foreground">{COPY.staffPortal.playerProgressLabel}</span>
           <span className="tabular-nums text-muted-foreground">{view.progressPct}%</span>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
@@ -104,15 +121,16 @@ export function TrainingModulePlayer({
         </p>
       ) : null}
 
-      <TrainingItemCard
-        item={item}
-        businessId={businessId}
-        moduleId={view.moduleId}
-        pending={pending}
-        quizDraft={quizDraft}
-        onQuizDraftChange={setQuizDraft}
-        onRun={run}
-      />
+        <TrainingItemCard
+          item={item}
+          businessId={businessId}
+          moduleId={view.moduleId}
+          pending={pending}
+          quizDraft={quizDraft}
+          onQuizDraftChange={setQuizDraft}
+          onRun={run}
+          onRefresh={() => router.refresh()}
+        />
 
       <div className="sticky bottom-4 z-10 space-y-3 rounded-2xl border border-border/60 bg-background/95 p-4 shadow-lg backdrop-blur">
         {blockers.length > 0 ? (
@@ -122,23 +140,25 @@ export function TrainingModulePlayer({
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-emerald-700 dark:text-emerald-400">Ready to mark this play complete.</p>
+          <p className="text-xs text-emerald-700 dark:text-emerald-400">{COPY.staffPortal.readyToComplete}</p>
         )}
         <Button
           type="button"
           className="h-12 w-full text-base"
           disabled={pending || !canComplete || item.progress.completed}
           onClick={() =>
-            run(() =>
-              completePortalTrainingItem({
-                moduleId: view.moduleId,
-                trainingItemId: item.trainingItemId,
-              })
+            run(
+              () =>
+                completePortalTrainingItem({
+                  moduleId: view.moduleId,
+                  trainingItemId: item.trainingItemId,
+                }),
+              { advanceOnComplete: true }
             )
           }
         >
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-          {item.progress.completed ? "Completed" : "Mark play complete"}
+          {item.progress.completed ? COPY.staffPortal.playCompleted : COPY.staffPortal.markPlayComplete}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -149,16 +169,22 @@ export function TrainingModulePlayer({
             onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
           >
             <ChevronLeft className="size-4" aria-hidden />
-            Previous
+            {COPY.staffPortal.previousPlay}
           </Button>
           <Button
             type="button"
             variant="outline"
             className="flex-1"
             disabled={pending || activeIndex >= view.items.length - 1}
-            onClick={() => setActiveIndex((i) => Math.min(view.items.length - 1, i + 1))}
+            onClick={() => {
+              if (!item.progress.completed) {
+                setBanner(COPY.staffPortal.finishPlayBeforeNext)
+                return
+              }
+              setActiveIndex((i) => Math.min(view.items.length - 1, i + 1))
+            }}
           >
-            Next
+            {COPY.staffPortal.nextPlay}
             <ChevronRight className="size-4" aria-hidden />
           </Button>
         </div>
@@ -175,6 +201,7 @@ function TrainingItemCard({
   quizDraft,
   onQuizDraftChange,
   onRun,
+  onRefresh,
 }: {
   item: PortalTrainingItem
   businessId: string
@@ -183,43 +210,8 @@ function TrainingItemCard({
   quizDraft: Record<string, number>
   onQuizDraftChange: (v: Record<string, number>) => void
   onRun: <T>(fn: () => Promise<T>) => void
+  onRefresh: () => void
 }) {
-  const [uploadingStepId, setUploadingStepId] = useState<string | null>(null)
-
-  async function uploadPhoto(stepId: string, file: File) {
-    setUploadingStepId(stepId)
-    try {
-      const prep = await prepareStandardMediaUpload({
-        businessId,
-        standardId: item.standardId,
-        fileName: file.name,
-        contentType: file.type,
-        byteSize: file.size,
-      })
-      if (!prep.ok) throw new Error(prep.message)
-      await uploadStandardMediaToSignedUrl(prep.signedUrl, file, () => {})
-      const fin = await finalizeStandardMediaUpload({
-        businessId,
-        standardId: item.standardId,
-        storagePath: prep.path,
-        contentType: file.type,
-        byteSize: file.size,
-      })
-      if (!fin.ok) throw new Error(fin.message)
-      onRun(() =>
-        savePortalStepPhoto({
-          moduleId,
-          trainingItemId: item.trainingItemId,
-          stepId,
-          mediaId: fin.row.id,
-          signedUrl: fin.row.signedUrl,
-        })
-      )
-    } finally {
-      setUploadingStepId(null)
-    }
-  }
-
   return (
     <article className="space-y-6 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm">
       <header>
@@ -231,6 +223,48 @@ function TrainingItemCard({
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
         ) : null}
       </header>
+
+      {item.capture?.trainingPack?.learningObjectives.length ? (
+        <section className="space-y-2 rounded-xl border border-border/50 bg-muted/10 p-3">
+          <h3 className="text-sm font-semibold text-foreground">Learning objectives</h3>
+          <ul className="space-y-1.5 text-sm text-muted-foreground">
+            {item.capture.trainingPack.learningObjectives.map((obj) => (
+              <li key={obj}>{obj}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {item.capture?.trainingPack?.lessonSections?.length ? (
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Lessons</h3>
+          {item.capture.trainingPack.lessonSections.map((lesson) => (
+            <article key={lesson.id} className="rounded-xl border border-border/50 bg-muted/10 p-3">
+              <h4 className="text-sm font-medium text-foreground">{lesson.title}</h4>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{lesson.body}</p>
+              {lesson.mediaId ? (
+                <div className="mt-3 overflow-hidden rounded-lg border border-border/50">
+                  {lesson.mediaKind === "video" ? (
+                    <video
+                      src={`/api/standard-media/${lesson.mediaId}`}
+                      controls
+                      playsInline
+                      className="aspect-video w-full bg-black"
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/standard-media/${lesson.mediaId}`}
+                      alt={lesson.title}
+                      className="max-h-56 w-full object-cover"
+                    />
+                  )}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       {item.videoUrl ? (
         <section className="space-y-2">
@@ -277,85 +311,48 @@ function TrainingItemCard({
       ) : null}
 
       {item.steps.length > 0 ? (
+        <StepProofCapture
+          moduleId={moduleId}
+          trainingItemId={item.trainingItemId}
+          standardId={item.standardId}
+          businessId={businessId}
+          steps={item.steps}
+          checklistStepIds={item.progress.stepChecklist}
+          stepProofByStepId={item.progress.stepProofByStepId}
+          completed={item.progress.completed}
+          onRefresh={onRefresh}
+        />
+      ) : null}
+
+      {item.capture?.trainingPack?.visualQuizzes.length ? (
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">SOP checklist</h3>
-          <ul className="space-y-2">
-            {item.steps.map((step) => {
-              const checked = item.progress.stepChecklist.includes(step.id)
-              const needsPhoto = step.requires_photo_confirmation
-              const proof = item.progress.photoProofs.find((p) => p.stepId === step.id)
-              return (
-                <li
-                  key={step.id}
-                  className={cn(
-                    "rounded-xl border px-3 py-3",
-                    step.is_critical ? "border-amber-500/30 bg-amber-500/[0.04]" : "border-border/50 bg-muted/15"
-                  )}
-                >
-                  <label className="flex cursor-pointer items-start gap-3">
-                    <Checkbox
-                      checked={checked}
-                      disabled={pending || item.progress.completed}
-                      className="mt-0.5"
-                      onCheckedChange={(v) => {
-                        const next = v === true
-                        const ids = next
-                          ? [...item.progress.stepChecklist, step.id]
-                          : item.progress.stepChecklist.filter((id) => id !== step.id)
-                        onRun(() =>
-                          savePortalStepChecklist({
-                            moduleId,
-                            trainingItemId: item.trainingItemId,
-                            stepIds: ids,
-                          })
-                        )
-                      }}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="text-sm font-medium text-foreground">{step.title}</span>
-                      {step.instructions ? (
-                        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                          {step.instructions}
-                        </span>
-                      ) : null}
-                    </span>
-                  </label>
-                  {needsPhoto ? (
-                    <div className="mt-3 border-t border-border/40 pt-3">
-                      <Label className="text-xs text-muted-foreground">Photo proof required</Label>
-                      {proof?.signedUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={proof.signedUrl}
-                          alt=""
-                          className="mt-2 max-h-40 w-full rounded-lg object-cover"
-                        />
-                      ) : null}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="mt-2 block w-full text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-medium file:text-primary-foreground"
-                        disabled={pending || uploadingStepId === step.id}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) void uploadPhoto(step.id, file)
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                </li>
-              )
-            })}
+          <h3 className="text-sm font-semibold text-foreground">{COPY.staffPortal.visualCheckTitle}</h3>
+          <p className="text-xs text-muted-foreground">{COPY.staffPortal.visualCheckNote}</p>
+          <ul className="space-y-3">
+            {item.capture.trainingPack.visualQuizzes.map((vq) => (
+              <li key={vq.id} className="space-y-2 rounded-xl border border-border/50 bg-muted/15 p-3">
+                <p className="text-sm font-medium text-foreground">{vq.prompt}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <p className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-xs text-foreground">
+                    <span className="font-semibold">Good · </span>
+                    {vq.goodLabel}
+                  </p>
+                  <p className="rounded-lg border border-rose-500/25 bg-rose-500/[0.06] px-3 py-2 text-xs text-foreground">
+                    <span className="font-semibold">Bad · </span>
+                    {vq.badLabel}
+                  </p>
+                </div>
+              </li>
+            ))}
           </ul>
         </section>
       ) : null}
 
       {item.quiz.length > 0 ? (
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Knowledge check</h3>
+          <h3 className="text-sm font-semibold text-foreground">{COPY.staffPortal.knowledgeCheckTitle}</h3>
           {item.progress.quizPassed ? (
-            <p className="text-xs text-emerald-700 dark:text-emerald-400">Quiz passed</p>
+            <p className="text-xs text-emerald-700 dark:text-emerald-400">{COPY.staffPortal.quizPassed}</p>
           ) : (
             <ul className="space-y-4">
               {item.quiz.map((q) => (
@@ -401,10 +398,20 @@ function TrainingItemCard({
                   )
                 }}
               >
-                Submit quiz
+                {COPY.staffPortal.submitQuiz}
               </Button>
             </ul>
           )}
+        </section>
+      ) : null}
+      {item.capture?.trainingPack?.certificationBadge ? (
+        <section className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3">
+          <p className="text-sm font-semibold text-foreground">
+            {item.capture.trainingPack.certificationBadge.title}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {item.capture.trainingPack.certificationBadge.description}
+          </p>
         </section>
       ) : null}
     </article>

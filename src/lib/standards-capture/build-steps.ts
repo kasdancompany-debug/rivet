@@ -4,6 +4,9 @@ export type CaptureChecklistRow = {
   text: string
   detail: string
   requiresPhoto: boolean
+  requiresVideo?: boolean
+  requiresManagerSignoff?: boolean
+  requiresChecklist?: boolean
 }
 
 export function buildStepsFromCapture(
@@ -31,6 +34,9 @@ export function buildStepsFromCapture(
       instructions: detail,
       media_url: null,
       requires_photo_confirmation: row.requiresPhoto,
+      requires_video_proof: Boolean(row.requiresVideo),
+      requires_manager_signoff: Boolean(row.requiresManagerSignoff),
+      requires_checklist_completion: row.requiresChecklist !== false,
     })
   }
   return steps

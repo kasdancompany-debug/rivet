@@ -1,4 +1,4 @@
-import { convertQuickCaptureHeuristic } from "./convert-heuristic"
+import { convertQuickCaptureHeuristic, convertWorkflowDemonstration } from "./convert-heuristic"
 import { convertQuickCaptureOpenAi } from "./convert-openai"
 import type { QuickCaptureDraft, QuickCaptureSource } from "./types"
 
@@ -9,14 +9,21 @@ export type QuickCaptureResult = {
 
 const MIN_INPUT_LENGTH = 8
 
-export async function convertQuickCaptureText(rawText: string): Promise<QuickCaptureResult | null> {
+export async function convertQuickCaptureText(
+  rawText: string,
+  opts?: { fromWorkflow?: boolean }
+): Promise<QuickCaptureResult | null> {
   const text = rawText.trim()
   if (text.length < MIN_INPUT_LENGTH) return null
 
-  const aiDraft = await convertQuickCaptureOpenAi(text)
+  const aiDraft = await convertQuickCaptureOpenAi(text, opts)
   if (aiDraft) {
-    return { draft: aiDraft, source: "openai" }
+    return { draft: aiDraft, source: opts?.fromWorkflow ? "workflow" : "openai" }
   }
 
-  return { draft: convertQuickCaptureHeuristic(text), source: "heuristic" }
+  const heuristic = opts?.fromWorkflow
+    ? convertWorkflowDemonstration(text)
+    : convertQuickCaptureHeuristic(text)
+
+  return { draft: heuristic, source: opts?.fromWorkflow ? "workflow" : "heuristic" }
 }

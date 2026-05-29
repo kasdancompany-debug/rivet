@@ -1,14 +1,17 @@
 import {
+  STANDARD_MEDIA_FILE_MIMES,
   STANDARD_MEDIA_IMAGE_MIMES,
+  STANDARD_MEDIA_MAX_FILE_BYTES,
   STANDARD_MEDIA_MAX_IMAGE_BYTES,
   STANDARD_MEDIA_MAX_VIDEO_BYTES,
   STANDARD_MEDIA_VIDEO_MIMES,
 } from "@/lib/standards/standard-media-constants"
 
-export type StandardMediaKind = "image" | "video"
+/** Client validation kind — maps to `standard_media.kind` (image | video | file). */
+export type StandardMediaKind = "image" | "video" | "file"
 
 export type StandardMediaValidationResult =
-  | { ok: true; kind: StandardMediaKind }
+  | { ok: true; kind: StandardMediaKind; storageKind: "image" | "video" | "file" }
   | { ok: false; message: string }
 
 function normalizeMime(mime: string): string {
@@ -21,6 +24,10 @@ function isImageMime(mime: string): boolean {
 
 function isVideoMime(mime: string): boolean {
   return (STANDARD_MEDIA_VIDEO_MIMES as readonly string[]).includes(mime)
+}
+
+function isFileMime(mime: string): boolean {
+  return (STANDARD_MEDIA_FILE_MIMES as readonly string[]).includes(mime)
 }
 
 /**
@@ -36,7 +43,7 @@ export function validateStandardMediaUpload(input: {
     return {
       ok: false,
       message:
-        "We could not read this file’s type. Use JPG, PNG, or WebP for images, or MP4, MOV, or WebM for video.",
+        "We could not read this file’s type. Use photos, video, PDF, or audio.",
     }
   }
 
@@ -47,7 +54,7 @@ export function validateStandardMediaUpload(input: {
         message: `Images must be ${Math.round(STANDARD_MEDIA_MAX_IMAGE_BYTES / (1024 * 1024))} MB or smaller.`,
       }
     }
-    return { ok: true, kind: "image" }
+    return { ok: true, kind: "image", storageKind: "image" }
   }
 
   if (isVideoMime(mime)) {
@@ -57,13 +64,23 @@ export function validateStandardMediaUpload(input: {
         message: `Videos must be ${Math.round(STANDARD_MEDIA_MAX_VIDEO_BYTES / (1024 * 1024))} MB or smaller.`,
       }
     }
-    return { ok: true, kind: "video" }
+    return { ok: true, kind: "video", storageKind: "video" }
+  }
+
+  if (isFileMime(mime)) {
+    if (input.byteSize > STANDARD_MEDIA_MAX_FILE_BYTES) {
+      return {
+        ok: false,
+        message: `Documents and audio must be ${Math.round(STANDARD_MEDIA_MAX_FILE_BYTES / (1024 * 1024))} MB or smaller.`,
+      }
+    }
+    return { ok: true, kind: "file", storageKind: "file" }
   }
 
   return {
     ok: false,
     message:
-      "Unsupported file type. Allowed: JPG, PNG, WebP, MP4, MOV, WebM.",
+      "Unsupported file type. Allowed: photos, screenshots (PNG/JPG/WebP/GIF), MP4, MOV, WebM, PDF, and audio recordings.",
   }
 }
 
@@ -75,7 +92,17 @@ export function extensionForStandardMediaKind(
   if (kind === "image") {
     if (mime === "image/png") return ".png"
     if (mime === "image/webp") return ".webp"
+    if (mime === "image/gif") return ".gif"
     return ".jpg"
+  }
+  if (kind === "file") {
+    if (mime === "application/pdf") return ".pdf"
+    if (mime === "audio/mpeg") return ".mp3"
+    if (mime === "audio/wav" || mime === "audio/x-wav") return ".wav"
+    if (mime === "audio/ogg") return ".ogg"
+    if (mime === "audio/webm") return ".webm"
+    if (mime === "audio/mp4") return ".m4a"
+    return ".bin"
   }
   if (mime === "video/quicktime") return ".mov"
   if (mime === "video/webm") return ".webm"

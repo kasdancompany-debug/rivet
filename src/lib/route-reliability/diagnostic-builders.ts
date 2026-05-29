@@ -1,3 +1,4 @@
+import type { HighFrictionAlertsView } from "@/lib/high-friction-alerts/types"
 import type { DashboardViewModel } from "@/lib/dashboard/types"
 import type { ProofOfTransferView } from "@/lib/proof-of-transfer/types"
 
@@ -32,6 +33,30 @@ export function linesForDashboard(model: DashboardViewModel): RouteFetchLine[] {
       status: "error",
       detail: "getDashboardData fell back to the error shell.",
       suggestedFix: "Inspect get-dashboard-data catch path and Supabase errors in server logs.",
+    },
+  ]
+}
+
+export function linesForAlerts(view: HighFrictionAlertsView | null): RouteFetchLine[] {
+  if (!view) {
+    return [
+      {
+        label: "High friction alerts",
+        status: "empty",
+        detail: "No workspace linked.",
+        missing: ["business"],
+        suggestedFix: "Link a business in Settings.",
+      },
+    ]
+  }
+  return [
+    {
+      label: "High friction alerts",
+      status: view.alerts.length > 0 ? "ok" : "empty",
+      detail:
+        view.alerts.length > 0
+          ? `${view.alerts.length} active alert(s) from Ask Rivet, interruptions, quizzes, and play views.`
+          : "No friction patterns crossed thresholds yet.",
     },
   ]
 }

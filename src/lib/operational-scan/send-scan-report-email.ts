@@ -43,9 +43,9 @@ function buildEmailHtml(input: SendScanReportEmailInput, reportUrl: string): str
 <body style="font-family:system-ui,sans-serif;line-height:1.5;color:#18181b;max-width:560px;margin:0 auto;padding:24px">
   <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a">Rivet scan report</p>
   <p>${greeting}</p>
-  <p>Your Owner Dependency Report is ready.</p>
+  <p>Your Owner Dependency Risk report is ready.</p>
   <p style="font-size:32px;font-weight:600;margin:16px 0">${result.ownerDependencyScore}<span style="font-size:16px;color:#71717a">/100</span></p>
-  <p><strong>Severity:</strong> ${formatSeverityLabel(result.severity)}</p>
+  <p><strong>Risk level:</strong> ${formatSeverityLabel(result.severity)}</p>
   <p><strong>Est. annual cost:</strong> ${formatCurrencyCad(result.estimatedAnnualCost)}</p>
   <p style="margin:24px 0"><a href="${reportUrl}" style="display:inline-block;background:#18181b;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:600">View your report online</a></p>
   <p style="font-size:13px;color:#52525b">Your PDF summary is attached. Save the link to re-run or share later.</p>

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react"
 
 import { saveSop } from "@/app/actions/sops"
+import { StepProofRequirementFields } from "@/components/completion-proof/step-proof-requirement-fields"
+import { COPY } from "@/lib/interface-copy"
 import { SOP_CATEGORIES, formatSopCategory, isSopCategory } from "@/lib/sops/categories"
 import type { StandardWithSteps } from "@/lib/db/queries"
 import { Button } from "@/components/ui/button"
@@ -24,6 +26,9 @@ type LocalStep = {
   instructions: string
   media_url: string
   requires_photo_confirmation: boolean
+  requires_video_proof: boolean
+  requires_manager_signoff: boolean
+  requires_checklist_completion: boolean
 }
 
 function newStep(): LocalStep {
@@ -33,6 +38,9 @@ function newStep(): LocalStep {
     instructions: "",
     media_url: "",
     requires_photo_confirmation: false,
+    requires_video_proof: false,
+    requires_manager_signoff: false,
+    requires_checklist_completion: true,
   }
 }
 
@@ -109,12 +117,15 @@ export function SopForm({ businessId, mode, initial }: SopFormProps) {
         instructions: s.instructions,
         media_url: s.media_url ?? "",
         requires_photo_confirmation: s.requires_photo_confirmation,
+        requires_video_proof: s.requires_video_proof ?? false,
+        requires_manager_signoff: s.requires_manager_signoff ?? false,
+        requires_checklist_completion: s.requires_checklist_completion !== false,
       }))
     }
     return [newStep()]
   })
 
-  const heading = mode === "create" ? "New standard" : "Edit standard"
+  const heading = mode === "create" ? COPY.sops.new : COPY.sops.edit
 
   const payloadSteps = useMemo(
     () =>
@@ -123,6 +134,9 @@ export function SopForm({ businessId, mode, initial }: SopFormProps) {
         instructions: s.instructions,
         media_url: s.media_url.trim() === "" ? null : s.media_url,
         requires_photo_confirmation: s.requires_photo_confirmation,
+        requires_video_proof: s.requires_video_proof ?? false,
+        requires_manager_signoff: s.requires_manager_signoff ?? false,
+        requires_checklist_completion: s.requires_checklist_completion !== false,
       })),
     [steps]
   )
@@ -391,50 +405,39 @@ export function SopForm({ businessId, mode, initial }: SopFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    Photo or video link{" "}
-                    <span className="font-normal text-muted-foreground">(optional)</span>
-                  </Label>
-                  <Input
-                    value={step.media_url}
-                    onChange={(e) =>
-                      setSteps((prev) =>
-                        prev.map((s, i) =>
-                          i === index ? { ...s, media_url: e.target.value } : s
-                        )
-                      )
-                    }
-                    placeholder="https://… (paste a link for now)"
-                    className="h-11 font-mono text-sm"
-                  />
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Step media is attached in{" "}
+                    <span className="font-medium text-foreground">Capture a play</span>—upload photos,
+                    video, audio, and PDFs to Rivet storage (not external links).
+                  </p>
                 </div>
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 bg-muted/15 px-4 py-3">
-                  <Checkbox
-                    checked={step.requires_photo_confirmation}
-                    onCheckedChange={(v) =>
-                      setSteps((prev) =>
-                        prev.map((s, i) =>
-                          i === index
-                            ? {
-                                ...s,
-                                requires_photo_confirmation: Boolean(v),
-                              }
-                            : s
-                        )
+                <StepProofRequirementFields
+                  values={{
+                    requiresPhoto: step.requires_photo_confirmation,
+                    requiresVideo: step.requires_video_proof,
+                    requiresManagerSignoff: step.requires_manager_signoff,
+                    requiresChecklist: step.requires_checklist_completion,
+                  }}
+                  onChange={(patch) =>
+                    setSteps((prev) =>
+                      prev.map((s, i) =>
+                        i === index
+                          ? {
+                              ...s,
+                              requires_photo_confirmation:
+                                patch.requiresPhoto ?? s.requires_photo_confirmation,
+                              requires_video_proof:
+                                patch.requiresVideo ?? s.requires_video_proof,
+                              requires_manager_signoff:
+                                patch.requiresManagerSignoff ?? s.requires_manager_signoff,
+                              requires_checklist_completion:
+                                patch.requiresChecklist ?? s.requires_checklist_completion,
+                            }
+                          : s
                       )
-                    }
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="text-sm font-medium text-foreground">
-                      Require a photo to confirm this step
-                    </span>
-                    <span className="mt-1 block text-sm text-muted-foreground">
-                      Use for quality-critical moments—closing counts, dial-in shots,
-                      case temps.
-                    </span>
-                  </span>
-                </label>
+                    )
+                  }
+                />
               </CardContent>
             </Card>
           ))}
@@ -455,10 +458,10 @@ export function SopForm({ businessId, mode, initial }: SopFormProps) {
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" className="h-10" nativeButton={false} render={<Link href="/sops" />}>
-          Back to Standards
+          {COPY.sops.backToPlays}
         </Button>
         <Button className="h-10 px-6" disabled={pending} onClick={submit}>
-          {pending ? "Saving…" : mode === "create" ? "Create standard" : "Save changes"}
+          {pending ? "Saving…" : mode === "create" ? COPY.sops.createPlay : COPY.sops.savePlay}
         </Button>
       </div>
     </div>

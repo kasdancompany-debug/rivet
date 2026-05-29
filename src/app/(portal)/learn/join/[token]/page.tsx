@@ -8,7 +8,7 @@ import { parseResolvedInvite } from "@/lib/training/portal/build-portal-module"
 import { COPY } from "@/lib/interface-copy"
 import { getServerAuthUser } from "@/lib/auth/server-auth"
 import { createClient } from "@/lib/supabase/server"
-import { TrainingPortalShell } from "@/components/training/portal/training-portal-shell"
+import { StaffPortalShell } from "@/components/training/portal/staff-portal-shell"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
@@ -31,21 +31,21 @@ export default async function TrainingPortalJoinPage({ params }: Props) {
 
   if (!invite.valid) {
     return (
-      <TrainingPortalShell>
+      <StaffPortalShell hideNav>
         <div className="rounded-2xl border border-border/60 bg-card p-6 text-center">
           <p className="font-semibold text-foreground">{COPY.trainingPortal.inviteInvalid}</p>
           <Button className="mt-6 w-full" nativeButton={false} render={<Link href="/login" />}>
             Sign in
           </Button>
         </div>
-      </TrainingPortalShell>
+      </StaffPortalShell>
     )
   }
 
   const loginNext = `/learn/join/${token}`
 
   return (
-    <TrainingPortalShell businessName={invite.businessName}>
+    <StaffPortalShell businessName={invite.businessName} hideNav>
       <div className="space-y-6 text-center">
         <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
           <GraduationCap className="size-7 text-primary" aria-hidden />
@@ -74,6 +74,6 @@ export default async function TrainingPortalJoinPage({ params }: Props) {
           </Button>
         </div>
       </div>
-    </TrainingPortalShell>
+    </StaffPortalShell>
   )
 }

@@ -2,7 +2,13 @@ import {
   fetchBusinessForCurrentUser,
   fetchCurrentProfile,
   fetchProfilesForCurrentBusiness,
+  listAskQueriesForBusinessSince,
+  listInterruptionActionPlansForBusiness,
   listOwnerInterruptionsForBusinessSince,
+  listSopsForBusiness,
+  listStandardIdsWithMediaForBusiness,
+  listTrainingModulesForBusiness,
+  listTrainingProgressForBusinessModules,
 } from "@/lib/db/queries"
 import { buildOwnerInterruptionsDashboardView } from "@/lib/owner-interruptions/build-view-model"
 import type { OwnerInterruptionsDashboardView } from "@/lib/owner-interruptions/types"
@@ -25,10 +31,22 @@ export async function getOwnerInterruptionsDashboardView(): Promise<OwnerInterru
   const weekStartIso = utcMondayStartIso()
   const historySinceIso = utcDaysAgoMidnightIso(20)
 
-  const [rows, profiles] = await Promise.all([
-    listOwnerInterruptionsForBusinessSince(business.id, historySinceIso, supabase),
-    fetchProfilesForCurrentBusiness(supabase),
-  ])
+  const [rows, profiles, actionPlans, standards, modules, askQueries, standardIdsWithMedia] =
+    await Promise.all([
+      listOwnerInterruptionsForBusinessSince(business.id, historySinceIso, supabase),
+      fetchProfilesForCurrentBusiness(supabase),
+      listInterruptionActionPlansForBusiness(business.id, supabase),
+      listSopsForBusiness(business.id, undefined, supabase),
+      listTrainingModulesForBusiness(business.id, supabase),
+      listAskQueriesForBusinessSince(business.id, utcDaysAgoMidnightIso(90), supabase),
+      listStandardIdsWithMediaForBusiness(business.id, supabase),
+    ])
+
+  const moduleIds = modules.map((m) => m.id)
+  const trainingProgress =
+    moduleIds.length > 0
+      ? await listTrainingProgressForBusinessModules(moduleIds, supabase)
+      : []
 
   const teamProfiles = profiles.filter((p) => p.business_id === business.id || p.id === business.owner_id)
   const uniq = [...new Map(teamProfiles.map((p) => [p.id, p])).values()]
@@ -45,5 +63,11 @@ export async function getOwnerInterruptionsDashboardView(): Promise<OwnerInterru
     ownerHourlyValueCad,
     businessId: business.id,
     isOwner: owner,
+    actionPlans,
+    standards,
+    modules,
+    trainingProgress,
+    askQueries,
+    standardIdsWithMedia,
   })
 }

@@ -10,6 +10,8 @@ import {
   dismissInterruptionActionPlan,
   publishInterruptionActionPlan,
 } from "@/app/actions/interruption-action-plans"
+import { InterruptionBecamePanel } from "@/components/owner-interruptions/interruption-became-panel"
+import { InterruptionRecommendationsPanel } from "@/components/owner-interruptions/interruption-recommendations-panel"
 import type { InterruptionActionPlanView } from "@/lib/owner-interruptions/action-plan/types"
 import { COPY } from "@/lib/interface-copy"
 import { Badge } from "@/components/ui/badge"
@@ -136,6 +138,10 @@ export function InterruptionActionPlanPanel({
           </dd>
         </div>
       </dl>
+
+      <InterruptionRecommendationsPanel plan={current} />
+
+      <InterruptionBecamePanel outcomes={current.outcomes} impact={current.impact} />
 
       <div className="flex flex-wrap gap-2">
         {current.draftEditHref ? (

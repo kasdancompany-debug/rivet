@@ -3,6 +3,8 @@ import { signStandardMediaRows } from "@/lib/standards/standard-media-server"
 import type { StandardMediaRowSigned } from "@/lib/standards/standard-media-types"
 import { estimateSopMinutes } from "@/lib/training/portal/estimate-time"
 import { resolveQuizForStandard } from "@/lib/training/portal/quiz"
+import { parseStepProofMap } from "@/lib/completion-proof/parse-proofs"
+import type { StepProofState } from "@/lib/completion-proof/types"
 import type {
   PortalModuleView,
   PortalSopProgress,
@@ -20,6 +22,7 @@ function emptyProgress(): PortalSopProgress {
     quizPassed: false,
     quizAnswers: {},
     photoProofs: [],
+    stepProofByStepId: {},
     completed: false,
   }
 }
@@ -54,12 +57,22 @@ function progressFromRow(
       ? (row.quiz_answers as Record<string, number>)
       : {}
   const quizPassed = quizPassedFromProfile || Boolean(row?.quiz_passed)
+  const proofMap = parseStepProofMap({
+    stepProofsRaw: row?.step_proofs,
+    photoProofsRaw: row?.photo_proofs,
+  })
+  const stepProofByStepId: Record<string, StepProofState> = {}
+  for (const [id, state] of proofMap) {
+    stepProofByStepId[id] = state
+  }
+  const photoProofs = parsePhotoProofs(row?.photo_proofs)
   return {
     stepChecklist: checklist,
     videoWatched: Boolean(row?.video_watched_at),
     quizPassed,
     quizAnswers,
-    photoProofs: parsePhotoProofs(row?.photo_proofs),
+    photoProofs,
+    stepProofByStepId,
     completed,
   }
 }
@@ -132,7 +145,6 @@ export async function buildPortalModuleView(input: {
     if (completed) done += 1
 
     const progressRow = input.progressRows.find((p) => p.training_item_id === item.id)
-    const photoRequiredStepIds = steps.filter((s) => s.requires_photo_confirmation).map((s) => s.id)
     const quizPassedFromProfile = input.passedQuizStandardIds?.has(sop.id) ?? false
 
     items.push({
@@ -147,7 +159,6 @@ export async function buildPortalModuleView(input: {
       videoUrl,
       walkthroughMedia: walkthrough,
       quiz: resolveQuizForStandard(sop, steps, capture),
-      photoRequiredStepIds,
       progress: progressFromRow(progressRow, completed, quizPassedFromProfile),
     })
   }

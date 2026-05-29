@@ -59,7 +59,7 @@ describe("billing readiness", () => {
     expect(isBillingIntentStarted()).toBe(true)
     expect(getBillingReadiness().status).toBe("misconfigured")
     expect(missingBillingEnvVars()).toContain("STRIPE_WEBHOOK_SECRET")
-    expect(shouldEnforceBillingGate()).toBe(true)
+    expect(shouldEnforceBillingGate()).toBe(false)
     expect(isBillingEnforced()).toBe(false)
   })
 

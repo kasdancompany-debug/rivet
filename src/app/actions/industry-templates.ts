@@ -135,6 +135,9 @@ export async function installIndustryTemplateBundle(
         instructions: s.instructions.trim(),
         media_url: null as string | null,
         requires_photo_confirmation: Boolean(s.requires_photo_confirmation),
+        requires_video_proof: Boolean(s.requires_video_proof),
+        requires_manager_signoff: Boolean(s.requires_manager_signoff),
+        requires_checklist_completion: s.requires_checklist_completion !== false,
       }))
 
       if (rows.length > 0) {

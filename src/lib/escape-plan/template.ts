@@ -71,7 +71,7 @@ export function defaultEscapePlanTaskSeeds(): EscapePlanTaskSeed[] {
       task_key: "w2_assign_sops",
       title: "Assign SOPs to specific employees",
       description:
-        "Each critical SOP gets a primary and a backup owner on paper. No more “everyone knows” when pressure hits.",
+        "Each critical play gets a primary and a backup owner on paper. No more “everyone knows” when pressure hits.",
       sort_order: 0,
     },
     {

@@ -20,11 +20,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { DashboardPulseMetrics } from "@/components/dashboard/dashboard-pulse-metrics"
+import { RivetOutcomeDashboard } from "@/components/dashboard/rivet-outcome-dashboard"
+import type { HighFrictionAlertsView } from "@/lib/high-friction-alerts/types"
+import type { QuestionsPreventedMetrics } from "@/lib/ask-rivet/questions-prevented"
+import { HighFrictionAlertsPanel } from "@/components/high-friction/high-friction-alerts-panel"
 import { BiggestRisksThisWeekCard } from "@/components/dashboard/biggest-risks-this-week-card"
-import { OwnerRelianceHero } from "@/components/dashboard/owner-reliance-hero"
+import { DashboardPulseMetrics } from "@/components/dashboard/dashboard-pulse-metrics"
 import { FirstDayChecklist } from "@/components/dashboard/first-day-checklist"
-import { EscapeReadinessPanel } from "@/components/escape-readiness/escape-readiness-panel"
 import { DependencyHeatmap } from "@/components/operational/dependency-heatmap"
 
 const MAX_CRITICAL = 3
@@ -108,10 +110,14 @@ function riskBadgeClass(category: OwnerRiskItem["category"]): string {
 
 export function FounderDashboard({
   model,
+  askMetrics = null,
+  frictionView = null,
   proof,
   postCheckoutNotice = false,
 }: {
   model: DashboardViewModel
+  askMetrics?: QuestionsPreventedMetrics | null
+  frictionView?: HighFrictionAlertsView | null
   /** Only used on setup/error shells; live overview does not block on proof fetch. */
   proof?: ProofOfTransferView
   postCheckoutNotice?: boolean
@@ -144,13 +150,13 @@ export function FounderDashboard({
   return (
     <div className="space-y-10 pb-12 sm:space-y-12">
       {checkoutBanner}
-      <BiggestRisksThisWeekCard risks={model.biggestRisksThisWeek} />
+      <RivetOutcomeDashboard model={model} askMetrics={askMetrics} />
+
+      {frictionView && frictionView.alerts.length > 0 ? (
+        <HighFrictionAlertsPanel alerts={frictionView.alerts} compact />
+      ) : null}
+
       {model.firstDayChecklist ? <FirstDayChecklist model={model.firstDayChecklist} /> : null}
-      <DashboardPulseMetrics model={model} />
-      <div id="first-day-escape" className="scroll-mt-24">
-        <EscapeReadinessPanel model={model.escapeReadiness} />
-      </div>
-      <OwnerRelianceHero model={model} />
 
       {model.needsFirstStandard ? (
         <Card className="border-dashed border-emerald-500/25 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.06]">
@@ -182,6 +188,22 @@ export function FounderDashboard({
           </CardContent>
         </Card>
       ) : null}
+
+      <section aria-labelledby="deeper-metrics-heading" className="space-y-8 border-t border-border/50 pt-10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="deeper-metrics-heading" className="text-lg font-semibold tracking-tight text-foreground">
+              {COPY.dashboard.deeperHeading}
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{COPY.dashboard.deeperLead}</p>
+          </div>
+          <Button variant="outline" size="sm" className="shrink-0" nativeButton={false} render={<Link href="/brain" />}>
+            {COPY.dashboard.brainLink}
+          </Button>
+        </div>
+
+        <DashboardPulseMetrics model={model} />
+        <BiggestRisksThisWeekCard risks={model.biggestRisksThisWeek} />
 
       <Link
         href="/interruptions"
@@ -310,7 +332,7 @@ export function FounderDashboard({
           </div>
         ) : null}
       </section>
+      </section>
     </div>
   )
 }
-

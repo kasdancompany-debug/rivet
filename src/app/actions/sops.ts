@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache"
 
 import { isSopCategory } from "@/lib/sops/categories"
 import { quizJsonFromSavePayload } from "@/lib/sops/persist-standard-quiz"
+import { autoGeneratePlayTraining } from "@/lib/training/auto-generate-play-training"
+import { validateOperationalMemoryForPublish } from "@/lib/standards-capture/operational-memory-publish"
 import { createClient } from "@/lib/supabase/server"
 import type { Json, StandardStatus } from "@/types/database"
 
@@ -12,10 +14,14 @@ export type SopStepPayload = {
   instructions: string
   media_url: string | null
   requires_photo_confirmation: boolean
+  requires_video_proof?: boolean
+  requires_manager_signoff?: boolean
+  requires_checklist_completion?: boolean
   estimated_time_minutes?: number | null
   is_critical?: boolean
   verification?: string | null
   notes?: string | null
+  play_metadata?: Json
 }
 
 export type SaveSopPayload = {
@@ -57,6 +63,8 @@ function validatePublishRequirements(payload: SaveSopPayload): string | null {
     if (countAssignedRolesInCapture(payload.standards_capture) < 1) {
       return "Select or add at least one owner role before publishing."
     }
+    const memoryErr = validateOperationalMemoryForPublish(payload.standards_capture)
+    if (memoryErr) return memoryErr
   }
   return null
 }
@@ -76,6 +84,41 @@ async function attachGeneratedQuiz(
     .from("standards")
     .update({ quiz_questions: quiz as unknown as Json })
     .eq("id", standardId)
+}
+
+function sopRowFromSavePayload(standardId: string, payload: SaveSopPayload) {
+  return {
+    id: standardId,
+    business_id: payload.businessId,
+    title: payload.title,
+    description: payload.description,
+    category: payload.category,
+    status: payload.status,
+    standards_capture: payload.standards_capture ?? null,
+    standard_steps: payload.steps.map((s, index) => ({
+      title: s.title.trim() || `Step ${index + 1}`,
+      instructions: s.instructions.trim(),
+      media_url: s.media_url?.trim() || null,
+      is_critical: Boolean(s.is_critical),
+      verification: s.verification?.trim() || null,
+      play_metadata: s.play_metadata ?? {},
+    })),
+  }
+}
+
+async function attachTrainingPackOnPublish(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  standardId: string,
+  payload: SaveSopPayload,
+  playJustPublished: boolean
+) {
+  if (payload.status !== "active" || payload.standards_capture === undefined) return
+
+  await autoGeneratePlayTraining(supabase, {
+    sop: sopRowFromSavePayload(standardId, payload),
+    standardsCaptureForMerge: payload.standards_capture,
+    playJustPublished,
+  })
 }
 
 export async function saveSop(
@@ -127,6 +170,9 @@ export async function saveSop(
       media_url:
         s.media_url?.trim() === "" || !s.media_url ? null : s.media_url.trim(),
       requires_photo_confirmation: Boolean(s.requires_photo_confirmation),
+      requires_video_proof: Boolean(s.requires_video_proof),
+      requires_manager_signoff: Boolean(s.requires_manager_signoff),
+      requires_checklist_completion: s.requires_checklist_completion !== false,
       estimated_time_minutes:
         s.estimated_time_minutes === null ||
         s.estimated_time_minutes === undefined ||
@@ -137,10 +183,21 @@ export async function saveSop(
       verification:
         s.verification?.trim() === "" || !s.verification ? null : s.verification.trim(),
       notes: s.notes?.trim() === "" || !s.notes ? null : s.notes.trim(),
+      play_metadata: s.play_metadata ?? {},
     }))
 
     const existingId = payload.sopId
     if (existingId) {
+      let playJustPublished = false
+      if (status === "active") {
+        const { data: prev } = await supabase
+          .from("standards")
+          .select("status")
+          .eq("id", existingId)
+          .maybeSingle()
+        playJustPublished = prev?.status !== "active"
+      }
+
       const baseUpdate = {
         title,
         description,
@@ -183,12 +240,15 @@ export async function saveSop(
       }
 
       await attachGeneratedQuiz(supabase, existingId, payload)
+      await attachTrainingPackOnPublish(supabase, existingId, payload, playJustPublished)
 
       revalidatePath("/sops")
       revalidatePath(`/sops/${existingId}`)
+      revalidatePath(`/sops/${existingId}/training`)
       revalidatePath(`/sops/${existingId}/edit`)
       revalidatePath("/sops/capture")
       revalidatePath(`/sops/capture/${existingId}`)
+      revalidatePath("/training")
       revalidatePath("/dashboard")
       return { ok: true, id: existingId }
     }
@@ -229,9 +289,12 @@ export async function saveSop(
     }
 
     await attachGeneratedQuiz(supabase, id, payload)
+    const playJustPublished = status === "active"
+    await attachTrainingPackOnPublish(supabase, id, payload, playJustPublished)
 
     revalidatePath("/sops")
     revalidatePath(`/sops/${id}`)
+    revalidatePath(`/sops/${id}/training`)
     revalidatePath("/sops/capture")
     revalidatePath(`/sops/capture/${id}`)
     revalidatePath("/dashboard")

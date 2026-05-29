@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const supabase = await createClient()
   const sop = await fetchSopWithSteps(id, supabase)
-  return { title: sop ? `Edit · ${sop.title}` : "Edit standard" }
+  return { title: sop ? `Edit · ${sop.title}` : "Edit play" }
 }
 
 export default async function EditSopPage({ params }: Props) {

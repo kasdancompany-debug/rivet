@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-import { ChevronDown } from "lucide-react";
-
 import { Logo } from "@/components/logo";
 
 import { LandingHeroOperationalViz } from "@/components/marketing/landing-hero-viz";
@@ -28,8 +26,6 @@ import {
   LANDING_CTA,
   LANDING_EXISTING_WORKSPACE_CHECKOUT,
   LANDING_FINAL_CTA,
-  LANDING_FAQ,
-  LANDING_FAQ_TITLE,
   LANDING_FOOTER_TAGLINE,
   LANDING_FOOTER_TRUST,
   LANDING_HEADER_SIGN_IN,
@@ -69,7 +65,7 @@ export function RivetLanding({
       </header>
 
       <main className="flex flex-1 flex-col">
-        {/* 1 · Hero */}
+        {/* 1 Hero → 2 Pain → 3 Diagnosis → 4 Mechanism → 5 Transformation → 6 Escape → 7 Pricing → 8 CTA */}
 
         <section
           className="relative border-b border-zinc-800 bg-zinc-950 pb-12 pt-10 text-zinc-100 sm:pb-14 sm:pt-12 lg:pb-16 lg:pt-14"
@@ -140,48 +136,6 @@ export function RivetLanding({
 
         <LandingPricingSection />
 
-        {/* FAQ */}
-
-        <section
-          className="border-b border-zinc-200 bg-white py-10 sm:py-12 dark:border-zinc-800 dark:bg-zinc-950"
-          aria-labelledby="faq-heading"
-        >
-          <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 lg:px-8">
-            <h2
-              id="faq-heading"
-              className="text-center text-lg font-semibold tracking-tight text-zinc-950 dark:text-white"
-            >
-              {LANDING_FAQ_TITLE}
-            </h2>
-
-            <div className="mt-6 divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-zinc-50 dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/30">
-              {LANDING_FAQ.map((item) => (
-                <details
-                  key={item.q}
-                  className="group px-0 [&_summary::-webkit-details-marker]:hidden"
-                >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-left sm:px-5">
-                    <span className="min-w-0 text-[13px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
-                      {item.q}
-                    </span>
-
-                    <ChevronDown
-                      className="size-4 shrink-0 text-zinc-400 transition-transform duration-200 group-open:rotate-180"
-                      aria-hidden
-                    />
-                  </summary>
-
-                  <div className="border-t border-zinc-200 px-4 pb-3.5 pt-2.5 sm:px-5 dark:border-zinc-800/80">
-                    <p className="text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      {item.a}
-                    </p>
-                  </div>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* 8 · CTA */}
 
         <section
@@ -202,9 +156,10 @@ export function RivetLanding({
 
             <LandingCtaCluster
               surface="onDark"
+              primary="scan"
               scanFrom="landing-final"
               align="center"
-              showScanSubline={false}
+              showScanSubline
               className="mt-8"
             />
           </div>

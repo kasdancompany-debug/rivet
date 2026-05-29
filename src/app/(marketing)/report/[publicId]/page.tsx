@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ publicId:
 
   return {
     title: `${business} · Owner Dependency Report · Rivet`,
-    description: `Owner Dependency Score ${report.payload.result.ownerDependencyScore}/100`,
+    description: `Owner Dependency Risk ${report.payload.result.ownerDependencyScore}/100`,
   }
 }
 
@@ -48,7 +48,7 @@ export default async function HostedScanReportPage({
             nativeButton={false}
             render={<Link href="/signup?from=scan-report" />}
           >
-            Install Rivet
+            Start removing owner dependency
             <ArrowRight className="size-3.5 opacity-60" data-icon="inline-end" />
           </Button>
         </div>

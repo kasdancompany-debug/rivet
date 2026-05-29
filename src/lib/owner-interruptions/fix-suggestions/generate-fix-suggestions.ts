@@ -1,15 +1,21 @@
-import type { OwnerInterruptionKind, Tables } from "@/types/database"
+import type { Tables } from "@/types/database"
 
+import {
+  detectInterruptionFix,
+  findRelatedModule,
+  findRelatedStandard,
+} from "@/lib/owner-interruptions/action-plan/analyze-interruption"
+import { buildOperationalFixActions } from "@/lib/owner-interruptions/fix-suggestions/build-operational-fix-actions"
+import type { InterruptionFixSuggestion } from "@/lib/owner-interruptions/fix-suggestions/types"
+import { countMatchingAskQueries } from "@/lib/owner-interruptions/outcomes/match-ask-rivet"
+import type { AskQueryRow } from "@/lib/owner-interruptions/outcomes/match-ask-rivet"
+import { normalizeSummaryKey } from "@/lib/owner-interruptions/normalize-summary"
 import type { OwnerInterruptionRepeatCategory } from "@/lib/owner-interruptions/types"
-import type { InterruptionFixSuggestion, InterruptionFixType } from "./types"
+import type { OwnerInterruptionKind } from "@/types/database"
 
 const HISTORY_WINDOW_DAYS = 14
 const MONTHLY_MULTIPLIER = 30 / HISTORY_WINDOW_DAYS
 const PREVENTION_RATE = 0.7
-
-function normalizeSummaryKey(summary: string): string {
-  return summary.trim().toLowerCase().replace(/\s+/g, " ")
-}
 
 function dominantKind(
   rows: Tables<"owner_interruptions">[]
@@ -29,119 +35,6 @@ function dominantKind(
   return best
 }
 
-type RootCauseResult = {
-  rootCause: string
-  fixType: InterruptionFixType
-  suggestedTitle: string
-  suggestedDescription: string
-  capturePrompt: string
-}
-
-function detectRootCause(
-  label: string,
-  kind: OwnerInterruptionKind | null,
-  rows: Tables<"owner_interruptions">[]
-): RootCauseResult {
-  const lower = label.toLowerCase()
-  const detailText = rows
-    .map((r) => r.detail?.trim() ?? "")
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-
-  const trainingSignals =
-    /\btrain(ing|ed)?\b|\bnew hire\b|\bdoesn'?t know\b|\bforgot\b|\bnever (learned|shown)\b|\bonboard/.test(
-      `${lower} ${detailText}`
-    )
-  const approvalSignals = kind === "approval_request" || /\bapprov|\bcomp\b|\bdiscount|\brefund|\bexception/.test(lower)
-  const judgmentSignals =
-    kind === "judgment_call" || /\bjudgment|\bdecide|\bwhat should|\bhow (much|many)|\bpolicy/.test(lower)
-  const issueSignals = kind === "unresolved_issue" || /\bbroken|\bout of|\bdown|\bcan'?t find/.test(lower)
-
-  if (trainingSignals) {
-    return {
-      rootCause: "The team lacks a repeatable reference—knowledge still lives with you.",
-      fixType: "training_module",
-      suggestedTitle: titleFromLabel(label, "Training"),
-      suggestedDescription: `Teach the floor how to handle “${label}” without routing back to the owner.`,
-      capturePrompt: `Team keeps asking about: ${label}. Write a short training module so they can run this without calling the owner.`,
-    }
-  }
-
-  if (approvalSignals) {
-    return {
-      rootCause: "No written approval threshold—every exception routes to the owner.",
-      fixType: "sop",
-      suggestedTitle: titleFromLabel(label, "Approval play"),
-      suggestedDescription: `Document who can approve “${label}”, dollar limits, and when to escalate.`,
-      capturePrompt: `This keeps routing to the owner: ${label}. Write an approval play with limits, who can sign off, and when to escalate.`,
-    }
-  }
-
-  if (judgmentSignals) {
-    return {
-      rootCause: "Judgment calls are undocumented—the team waits for your answer.",
-      fixType: "sop",
-      suggestedTitle: titleFromLabel(label, "Decision play"),
-      suggestedDescription: `Turn “${label}” into a decision tree the shift can run alone.`,
-      capturePrompt: `Staff keeps asking the owner: ${label}. Write a decision play with triggers, options, and who owns the call.`,
-    }
-  }
-
-  if (issueSignals) {
-    return {
-      rootCause: "A recurring floor issue has no owned fix—the team escalates instead of resolving.",
-      fixType: "sop",
-      suggestedTitle: titleFromLabel(label, "Recovery play"),
-      suggestedDescription: `Document how to handle “${label}” on the floor before it reaches you.`,
-      capturePrompt: `This issue keeps pulling the owner in: ${label}. Write a recovery play with steps, owner, and escalation only when needed.`,
-    }
-  }
-
-  if (kind === "staff_ping") {
-    return {
-      rootCause: "Answers are not findable—staff ping you because nothing is written down.",
-      fixType: "sop",
-      suggestedTitle: titleFromLabel(label, "Standard"),
-      suggestedDescription: `Capture how “${label}” should run so the team stops texting you.`,
-      capturePrompt: `Same question keeps coming to the owner: ${label}. Write a playable standard the shift can follow without asking.`,
-    }
-  }
-
-  return {
-    rootCause: "The system is unfinished—this decision or procedure still defaults to you.",
-    fixType: "sop",
-    suggestedTitle: titleFromLabel(label, "Play"),
-    suggestedDescription: `Document “${label}” so the business stops routing it back to you.`,
-    capturePrompt: `This pattern keeps repeating: ${label}. Write a play the team can run without pulling the owner.`,
-  }
-}
-
-function titleFromLabel(label: string, fallback: string): string {
-  const trimmed = label.trim()
-  if (trimmed.length >= 4 && trimmed.length <= 72) {
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
-  }
-  return fallback
-}
-
-function buildCreateHref(
-  fixType: InterruptionFixType,
-  suggestedTitle: string,
-  suggestedDescription: string,
-  capturePrompt: string
-): string {
-  const params = new URLSearchParams()
-  if (fixType === "training_module") {
-    params.set("title", suggestedTitle)
-    if (suggestedDescription) params.set("description", suggestedDescription)
-    return `/training/modules/new?${params.toString()}`
-  }
-  params.set("title", suggestedTitle)
-  params.set("prompt", capturePrompt)
-  return `/sops/capture?${params.toString()}`
-}
-
 function estimateImpact(count: number, totalMinutes: number): {
   estimatedInterruptionsPrevented: number
   estimatedOwnerMinutesRecovered: number
@@ -156,9 +49,17 @@ function estimateImpact(count: number, totalMinutes: number): {
 export function generateInterruptionFixSuggestions(input: {
   repeatCategories: OwnerInterruptionRepeatCategory[]
   historyRows: Tables<"owner_interruptions">[]
+  standards?: Tables<"standards">[]
+  modules?: Tables<"training_modules">[]
+  standardIdsWithMedia?: Set<string>
+  askQueries?: AskQueryRow[]
   maxSuggestions?: number
 }): InterruptionFixSuggestion[] {
   const max = input.maxSuggestions ?? 3
+  const standards = input.standards ?? []
+  const modules = input.modules ?? []
+  const mediaIds = input.standardIdsWithMedia ?? new Set<string>()
+  const askQueries = input.askQueries ?? []
   const suggestions: InterruptionFixSuggestion[] = []
 
   for (const pattern of input.repeatCategories) {
@@ -169,8 +70,32 @@ export function generateInterruptionFixSuggestions(input: {
 
     const kind = dominantKind(matching)
     const totalMinutes = matching.reduce((s, r) => s + (r.estimated_minutes ?? 0), 0)
-    const analysis = detectRootCause(pattern.label, kind, matching)
+    const analysis = detectInterruptionFix(pattern.label, kind, matching)
+    const relatedStandard = findRelatedStandard(standards, pattern.label)
+    const relatedModule = findRelatedModule(modules, pattern.label)
+    const standardHasMedia = relatedStandard ? mediaIds.has(relatedStandard.id) : false
+    const askMatchCount = countMatchingAskQueries(pattern.label, askQueries)
+
+    const actions = buildOperationalFixActions({
+      label: pattern.label,
+      repeatCount: pattern.count,
+      kind,
+      suggestedTitle: analysis.suggestedTitle,
+      suggestedDescription: analysis.suggestedDescription,
+      capturePrompt: analysis.capturePrompt,
+      relatedStandard,
+      relatedModule,
+      standardHasMedia,
+      askMatchCount,
+    })
+
     const impact = estimateImpact(pattern.count, totalMinutes)
+    const sampleInterruptionId =
+      [...matching].sort(
+        (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+      )[0]?.id ?? null
+
+    const createHref = actions[0]?.href ?? `/sops/capture`
 
     suggestions.push({
       patternKey: pattern.key,
@@ -182,12 +107,10 @@ export function generateInterruptionFixSuggestions(input: {
       capturePrompt: analysis.capturePrompt,
       repeatCount: pattern.count,
       ...impact,
-      createHref: buildCreateHref(
-        analysis.fixType,
-        analysis.suggestedTitle,
-        analysis.suggestedDescription,
-        analysis.capturePrompt
-      ),
+      createHref,
+      actions,
+      sampleInterruptionId,
+      askMatchCount,
     })
   }
 

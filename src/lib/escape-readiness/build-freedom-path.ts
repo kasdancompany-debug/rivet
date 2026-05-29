@@ -16,7 +16,7 @@ type PathTemplate = {
 const PATH_BY_FACTOR: Record<EscapeReadinessFactorId, PathTemplate> = {
   sop_coverage: {
     title: "Document open, close, and your highest-variance procedure",
-    action: "Publish one-page SOPs with a named owner—your phone should not be step one.",
+    action: "Publish one-page plays with a named owner—your phone should not be step one.",
     targetFactorPercent: 78,
     effort: "medium",
     timeRequired: "3–5 hours",

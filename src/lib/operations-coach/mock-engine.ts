@@ -45,10 +45,10 @@ export function generateCoachBrief(snapshot: OperationsCoachSnapshot): CoachBrie
       priority: 15,
       headline:
         pq >= 2
-          ? `You have ${pq} quality issues flagged for your judgment. Create a quality standards SOP.`
-          : "Product quality keeps routing to you—create a short quality standards SOP.",
+          ? `You have ${pq} quality issues flagged for your judgment. Capture a quality play.`
+          : "Product quality keeps routing to you—capture a short quality play.",
       detail:
-        "Draft a one-page quality SOP: reference photos, remake rules, and who may sign off. Link it from training so judgment calls stop landing on your phone.",
+        "Draft a one-page quality play: reference photos, remake rules, and who may sign off. Link it from training so judgment calls stop landing on your phone.",
       signal: "Issues flagged for your judgment cluster on product_quality.",
       href: "/sops",
     })
@@ -93,13 +93,13 @@ export function generateCoachBrief(snapshot: OperationsCoachSnapshot): CoachBrie
     pushRec(recs, seen, {
       id: "close-sop-gaps",
       priority: 25,
-      headline: "Close the SOP gaps before they become emergencies.",
+      headline: "Close the play gaps before they become emergencies.",
       detail:
-        "Ship or merge draft procedures, and add two concrete steps to thin active SOPs. The goal is runnable detail, not a longer library.",
+        "Ship or merge draft plays, and add two concrete steps to thin active ones. The goal is runnable detail, not a longer library.",
       signal:
         snapshot.sops.draftCount >= 2
-          ? `${snapshot.sops.draftCount} procedures still in draft.`
-          : "Several active SOPs read like titles, not runbooks.",
+          ? `${snapshot.sops.draftCount} plays still in draft.`
+          : "Several active plays read like titles, not runbooks.",
       href: "/sops",
     })
   }
@@ -129,7 +129,7 @@ export function generateCoachBrief(snapshot: OperationsCoachSnapshot): CoachBrie
       priority: 35,
       headline: "Triage issues flagged for you in one short block this week.",
       detail:
-        "Batch decisions: what becomes a SOP, what becomes training, and what is a one-off. The team learns faster when your answers become artifacts, not texts.",
+        "Batch decisions: what becomes a play, what becomes training, and what is a one-off. The team learns faster when your answers become operating memory, not texts.",
       signal: `${snapshot.issues.ownerRequiredUnresolvedCount} unresolved issue(s) still need you.`,
       href: "/issues?view=owner_required",
     })

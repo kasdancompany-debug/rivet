@@ -3,6 +3,9 @@ import { headers } from "next/headers"
 
 import { DashboardShell } from "@/components/dashboard-shell"
 import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
+import { loadWorkspaceAccess } from "@/lib/ops/load-workspace-access"
+import { filterNavForRole } from "@/lib/ops/workspace-permissions"
+import { buildWorkspaceAccess } from "@/lib/ops/load-workspace-access"
 import { getSafeInternalNextPath } from "@/lib/auth/safe-next-path"
 import {
   getDevBypassMockUser,
@@ -20,8 +23,14 @@ export default async function AppLayout({
   if (isDevAuthBypassEnabled()) {
     if (shouldSkipSupabaseNetwork()) {
       const devBusiness = await getDevWorkspaceBusiness()
+      const devAccess = buildWorkspaceAccess("owner")
       return (
-        <DashboardShell user={getDevBypassMockUser()} hasWorkspace={Boolean(devBusiness)}>
+        <DashboardShell
+          user={getDevBypassMockUser()}
+          hasWorkspace={Boolean(devBusiness)}
+          navItems={filterNavForRole(devAccess.role)}
+          workspaceRole={devAccess.role}
+        >
           {children}
         </DashboardShell>
       )
@@ -40,8 +49,11 @@ export default async function AppLayout({
       hasWorkspace = Boolean(business)
     }
 
+    const access = await loadWorkspaceAccess(supabase, user.id)
+    const navItems = access ? filterNavForRole(access.role) : undefined
+
     return (
-      <DashboardShell user={user} hasWorkspace={hasWorkspace}>
+      <DashboardShell user={user} hasWorkspace={hasWorkspace} navItems={navItems} workspaceRole={access?.role}>
         {children}
       </DashboardShell>
     )
@@ -59,9 +71,16 @@ export default async function AppLayout({
   }
 
   const business = await fetchBusinessForCurrentUser(supabase)
+  const access = await loadWorkspaceAccess(supabase, user.id)
+  const navItems = access ? filterNavForRole(access.role) : undefined
 
   return (
-    <DashboardShell user={user} hasWorkspace={Boolean(business)}>
+    <DashboardShell
+      user={user}
+      hasWorkspace={Boolean(business)}
+      navItems={navItems}
+      workspaceRole={access?.role}
+    >
       {children}
     </DashboardShell>
   )

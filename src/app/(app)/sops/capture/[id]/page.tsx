@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const supabase = await createClient()
   const sop = await fetchSopWithSteps(id, supabase)
-  return { title: sop ? `Capture · ${sop.title}` : "Capture standard" }
+  return { title: sop ? `Capture · ${sop.title}` : "Capture a play" }
 }
 
 export default async function ResumeCapturePage({ params }: Props) {
@@ -36,11 +36,11 @@ export default async function ResumeCapturePage({ params }: Props) {
         <div className="space-y-4">
           <BusinessLinkRequiredPanel
             title="Workspace required"
-            description="Link a business in Settings before capturing standards."
+            description="Link a business in Settings before capturing plays."
             className="border-border/60 bg-card/70 shadow-sm"
           />
           <Button variant="outline" nativeButton={false} render={<Link href="/sops" />}>
-            Back to Standards
+            Back to plays
           </Button>
         </div>
       </DashboardRouteShell>

@@ -2,13 +2,21 @@ import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
 
 import { isBillingExemptPath, shouldEnforceBillingGate } from "@/lib/billing/config"
+import { workspaceHasRivetAppAccess } from "@/lib/billing/workspace-access"
 import { isDevAuthBypassEnabled } from "@/lib/dev-auth-bypass"
 import {
   isApiOrStaticPath,
   isPathExemptFromBusinessRequirement,
   isPathExemptFromRealityCheck,
+  isPathExemptFromRoleCheck,
   isPathExemptFromTemplateInstall,
 } from "@/lib/onboarding/paths"
+import {
+  canAccessAppPath,
+  defaultHomePathForRole,
+} from "@/lib/ops/workspace-permissions"
+import { resolveMiddlewareWorkspaceRole } from "@/lib/ops/middleware-workspace-role"
+import type { BusinessMemberRole } from "@/types/database"
 import { createSupabaseFetch, MIDDLEWARE_SUPABASE_FETCH_MS } from "@/lib/supabase/fetch-with-timeout"
 import { nextResponseCloningRequestWithReturnTo } from "@/lib/supabase/middleware-request-headers"
 import { getSafeInternalNextPath } from "@/lib/auth/safe-next-path"
@@ -29,6 +37,7 @@ function isPublicPath(pathname: string) {
   if (publicPaths.has(pathname)) return true
   if (pathname.startsWith("/auth")) return true
   if (pathname.startsWith("/learn/join/")) return true
+  if (pathname.startsWith("/join/")) return true
   if (pathname === "/api/stripe/webhook") return true
   return false
 }
@@ -109,16 +118,20 @@ export async function updateSession(request: NextRequest) {
     Boolean(businessId) && !isApiOrStaticPath(pathname) && !isPathExemptFromRealityCheck(pathname)
 
   if (needsBillingGate || needsTemplateGate || needsRealityGate) {
-    const [purchaseRes, businessRes, realityRes] = await Promise.all([
+    const [billingAccessRes, businessRes, realityRes] = await Promise.all([
       needsBillingGate
         ? supabase
-            .from("rivet_purchases")
-            .select("id")
-            .eq("business_id", businessId!)
-            .eq("status", "paid")
-            .limit(1)
+            .from("businesses")
+            .select("owner_id")
+            .eq("id", businessId!)
             .maybeSingle()
-        : Promise.resolve({ data: { id: "skip" }, error: null }),
+            .then(async (ownerRes) => {
+              if (ownerRes.error) return { hasAccess: false, error: ownerRes.error }
+              const ownerId = ownerRes.data?.owner_id as string | undefined
+              const hasAccess = await workspaceHasRivetAppAccess(supabase, businessId!, ownerId)
+              return { hasAccess, error: null as null }
+            })
+        : Promise.resolve({ hasAccess: true, error: null }),
       needsTemplateGate
         ? supabase
             .from("businesses")
@@ -134,8 +147,12 @@ export async function updateSession(request: NextRequest) {
         : Promise.resolve({ count: 1, error: null }),
     ])
 
-    if (needsBillingGate && (purchaseRes.error || !purchaseRes.data?.id)) {
-      return NextResponse.redirect(new URL("/subscribe", request.url))
+    if (needsBillingGate) {
+      if (billingAccessRes.error) {
+        console.error("[middleware] billing access check failed", billingAccessRes.error)
+      } else if (!billingAccessRes.hasAccess) {
+        return NextResponse.redirect(new URL("/subscribe", request.url))
+      }
     }
 
     if (needsTemplateGate && !businessRes.error && !businessRes.data?.template_installed_at) {
@@ -150,6 +167,46 @@ export async function updateSession(request: NextRequest) {
   if (!isApiOrStaticPath(pathname)) {
     if (!businessId && !isPathExemptFromBusinessRequirement(pathname)) {
       return NextResponse.redirect(new URL("/setup", request.url))
+    }
+  }
+
+  if (
+    businessId &&
+    !isPathExemptFromRoleCheck(pathname) &&
+    !isApiOrStaticPath(pathname)
+  ) {
+    const [{ data: business }, { data: member }] = await Promise.all([
+      supabase
+        .from("businesses")
+        .select("owner_id")
+        .eq("id", businessId)
+        .maybeSingle(),
+      supabase
+        .from("business_members")
+        .select("role")
+        .eq("business_id", businessId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ])
+
+    const { data: profRow } = await supabase
+      .from("profiles")
+      .select("is_owner")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    const role = resolveMiddlewareWorkspaceRole({
+      userId: user.id,
+      businessOwnerId: business?.owner_id ?? null,
+      memberRole: member?.role as BusinessMemberRole | undefined,
+      profileIsOwner: profRow?.is_owner,
+    })
+
+    if (!canAccessAppPath(role, pathname)) {
+      const home = defaultHomePathForRole(role)
+      if (pathname !== home) {
+        return NextResponse.redirect(new URL(home, request.url))
+      }
     }
   }
 

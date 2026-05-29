@@ -7,7 +7,6 @@ import {
   countCompletedExecutionRecordsByEmployee,
   ensureEmployeeReadinessRows,
   fetchBusinessForCurrentUser,
-  fetchCurrentProfile,
   fetchProfilesForCurrentBusiness,
   listEmployeeReadinessForBusiness,
   listEmployeeModuleCertificationsForEmployeeIds,
@@ -22,10 +21,11 @@ import { formatTrainingRole } from "@/lib/training/roles"
 import { COPY } from "@/lib/interface-copy"
 import { lineForWorkspaceLinked } from "@/lib/route-reliability/diagnostic-builders"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
-import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
+import { loadWorkspaceAccess } from "@/lib/ops/load-workspace-access"
 import { getServerAuthUser, requireAuthUser } from "@/lib/auth/server-auth"
 import { createClient } from "@/lib/supabase/server"
 import { AppPageHeader } from "@/components/app-page-header"
+import { AskRivetSearchBar } from "@/components/ask-rivet/ask-rivet-search-bar"
 import { EmptyState } from "@/components/empty-state"
 import { BusinessLinkRequiredPanel } from "@/components/route-reliability/business-link-required-panel"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
@@ -59,10 +59,11 @@ export default async function TrainingPage() {
     )
   }
 
-  const profile = await fetchCurrentProfile(supabase)
-  const owner = isWorkspaceOwner(user.id, business, profile)
+  const access = await loadWorkspaceAccess(supabase, user.id)
+  const canManageTeam = access?.can("manage_team_training") ?? false
+  const canManageModules = access?.can("manage_training_modules") ?? false
 
-  if (owner) {
+  if (canManageTeam) {
     await ensureEmployeeReadinessRows(business.id, supabase)
   }
 
@@ -122,7 +123,7 @@ export default async function TrainingPage() {
             description={COPY.training.description}
             className="mb-0 sm:max-w-2xl"
           />
-          {owner ? (
+          {canManageModules ? (
             <Button
               size="lg"
               className="h-11 shrink-0 self-start sm:self-auto"
@@ -145,6 +146,8 @@ export default async function TrainingPage() {
           )}
         </div>
 
+        <AskRivetSearchBar variant="inline" className="mt-6" />
+
         <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/[0.04] px-4 py-4 sm:px-5">
           <p className="text-sm font-medium text-foreground">{COPY.trainingPortal.openPortal}</p>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{COPY.trainingPortal.portalCtaLead}</p>
@@ -153,16 +156,58 @@ export default async function TrainingPage() {
           </Button>
         </div>
 
-        <section className="mt-10 space-y-4" aria-labelledby="modules-heading">
+        <section className="mt-10 space-y-4" aria-labelledby="training-center-heading">
+          <div>
+            <h2 id="training-center-heading" className="text-lg font-semibold tracking-tight">
+              {COPY.training.teamSectionTitle}
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{COPY.training.teamSectionLead}</p>
+          </div>
+          {team.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {COPY.training.teamEmpty}{" "}
+              <Link href="/settings" className="font-medium text-primary underline-offset-4 hover:underline">
+                {COPY.training.teamLink}
+              </Link>
+              .
+            </p>
+          ) : (
+            <ul className="grid gap-6 lg:grid-cols-2">
+              {viewModels.map((vm) => (
+                <li key={vm.profile.id}>
+                  <TrainingEmployeeCard
+                    vm={vm}
+                    businessId={business.id}
+                    currentUserId={user.id}
+                    canManageTeam={canManageTeam}
+                    canSignOff={access?.can("sign_off_training") ?? false}
+                    moduleOptions={moduleOptions}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <Separator className="my-12" />
+
+        <section className="space-y-4" aria-labelledby="modules-heading">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <h2 id="modules-heading" className="text-lg font-semibold tracking-tight">
               {COPY.training.modulesHeading}
             </h2>
-            {modules.length > 0 && team.length > 0 ? (
-              <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/training/matrix" />}>
-                {COPY.training.matrixLink}
-              </Button>
-            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {team.length > 0 ? (
+                <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/training/succession" />}>
+                  {COPY.training.successionLink}
+                </Button>
+              ) : null}
+              {modules.length > 0 && team.length > 0 ? (
+                <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/training/matrix" />}>
+                  {COPY.training.matrixLink}
+                </Button>
+              ) : null}
+            </div>
           </div>
           {modules.length === 0 ? (
             <div className="space-y-6">
@@ -172,7 +217,7 @@ export default async function TrainingPage() {
                 title={COPY.training.emptyTitle}
                 description={COPY.training.emptyDesc}
               >
-                {owner ? (
+                {canManageModules ? (
                   <Button nativeButton={false} render={<Link href="/training/modules/new" />}>
                     {COPY.training.emptyCta}
                   </Button>
@@ -208,38 +253,6 @@ export default async function TrainingPage() {
                   </li>
                 )
               })}
-            </ul>
-          )}
-        </section>
-
-        <Separator className="my-12" />
-
-        <section className="space-y-4" aria-labelledby="team-heading">
-          <h2 id="team-heading" className="text-lg font-semibold tracking-tight">
-            {COPY.training.teamSectionTitle}
-          </h2>
-          <p className="max-w-2xl text-sm text-muted-foreground">{COPY.training.teamSectionLead}</p>
-          {team.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {COPY.training.teamEmpty}{" "}
-              <Link href="/settings" className="font-medium text-primary underline-offset-4 hover:underline">
-                {COPY.training.teamLink}
-              </Link>
-              .
-            </p>
-          ) : (
-            <ul className="grid gap-6 lg:grid-cols-2">
-              {viewModels.map((vm) => (
-                <li key={vm.profile.id}>
-                  <TrainingEmployeeCard
-                    vm={vm}
-                    businessId={business.id}
-                    currentUserId={user.id}
-                    isOwner={owner}
-                    moduleOptions={moduleOptions}
-                  />
-                </li>
-              ))}
             </ul>
           )}
         </section>

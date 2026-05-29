@@ -13,7 +13,7 @@ export function buildInviteMailtoLink(params: {
 }): string {
   const subject = encodeURIComponent(`Training: ${params.moduleTitle}`)
   const body = encodeURIComponent(
-    `${params.businessName} assigned you training: ${params.moduleTitle}\n\nOpen your training portal:\n${params.url}\n\nComplete the plays on your phone before your next shift.`
+    `${params.businessName} assigned you training: ${params.moduleTitle}\n\nOpen Training Center on your phone:\n${params.url}\n\nComplete the plays before your next shift.`
   )
   const to = params.recipientEmail?.trim() ? encodeURIComponent(params.recipientEmail.trim()) : ""
   return to ? `mailto:${to}?subject=${subject}&body=${body}` : `mailto:?subject=${subject}&body=${body}`

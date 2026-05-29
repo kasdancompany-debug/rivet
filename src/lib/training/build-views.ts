@@ -102,6 +102,11 @@ export function buildEmployeeTrainingViewModel(
       .filter((c) => c.employee_id === profile.id && c.manager_signed_off_at)
       .map((c) => c.training_module_id)
   )
+  const proofUploadedModuleIds = new Set(
+    certificationRows
+      .filter((c) => c.employee_id === profile.id && c.proof_uploaded_at)
+      .map((c) => c.training_module_id)
+  )
 
   const modules: ModuleProgressView[] = []
 
@@ -187,6 +192,7 @@ export function buildEmployeeTrainingViewModel(
     passedQuizStandardIds,
     certifiedModuleIds,
     managerSignedOffModuleIds,
+    proofUploadedModuleIds,
     overrides: readinessOverridesFromRow(readinessRow),
   })
 
@@ -205,6 +211,7 @@ export function buildEmployeeTrainingViewModel(
       moduleTitle: mod.title,
       moduleCompleted: mod.status === "completed",
       quizzesPassed: false,
+      proofUploaded: false,
       managerSignedOff: false,
       certified: false,
       certifiedAt: null,

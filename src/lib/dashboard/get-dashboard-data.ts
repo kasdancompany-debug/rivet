@@ -2,6 +2,12 @@ import type { DashboardViewModel, OwnerRiskItem } from "@/lib/dashboard/types"
 import { buildLoadErrorDashboardViewModel, buildSetupDashboardViewModel } from "@/lib/dashboard/setup-model"
 import { COPY } from "@/lib/interface-copy"
 import {
+  buildSimulationContextFromCompute,
+  extractSimulationContextFromInterruptions,
+  extractSimulationContextFromIssues,
+  extractSimulationContextFromSops,
+} from "@/lib/escape-readiness/build-simulation-context"
+import {
   countCompletedExecutionRecordsByEmployee,
   fetchBusinessForCurrentUser,
   fetchCurrentProfile,
@@ -125,7 +131,7 @@ function pickNextBestMove(risks: OwnerRiskItem[]): DashboardViewModel["nextBestM
   return {
     title: "Document espresso dialing",
     description:
-      "Turn the most repeated question at the bar into a short SOP your leads can follow without texting you.",
+      "Turn the most repeated question at the bar into a play your leads can follow without texting you.",
     href: "/sops",
     cta: "Open Standards",
   }
@@ -564,9 +570,18 @@ export async function getDashboardData(): Promise<DashboardViewModel> {
       ownerInterruptionsThisWeekCount,
     }
     const escapeBase = computeEscapeReadiness(rivetCtx)
+    const simulationContext = buildSimulationContextFromCompute(rivetCtx, {
+      ...extractSimulationContextFromIssues(bottlenecks),
+      ...extractSimulationContextFromSops(standards, stepCountBySopId),
+      ...extractSimulationContextFromInterruptions(ownerInterruptionsRaw),
+    })
     const escapeReadiness = {
       ...escapeBase,
       progress: escapeProgressFromAutonomyTrend(rivetIndex.trend, escapeBase.score),
+      simulationContext: {
+        ...simulationContext,
+        teamReadinessPercent: staffReadinessPercent,
+      },
     }
 
     const firstDayChecklist = buildFirstDayChecklist({

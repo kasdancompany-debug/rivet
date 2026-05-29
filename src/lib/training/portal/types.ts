@@ -1,8 +1,10 @@
+import type { StepProofState } from "@/lib/completion-proof/types"
 import type { PortalQuizQuestion } from "@/lib/training/portal/quiz"
 import type { StandardMediaRowSigned } from "@/lib/standards/standard-media-types"
 import type { StandardsCaptureV1 } from "@/lib/standards-capture/types"
 import type { Tables, TrainingProgressStatus } from "@/types/database"
 
+/** @deprecated Use stepProofByStepId.photo */
 export type TrainingPhotoProof = {
   stepId: string
   mediaId: string
@@ -14,7 +16,9 @@ export type PortalSopProgress = {
   videoWatched: boolean
   quizPassed: boolean
   quizAnswers: Record<string, number>
+  /** Legacy mirror of photo entries in stepProofByStepId */
   photoProofs: TrainingPhotoProof[]
+  stepProofByStepId: Record<string, StepProofState>
   completed: boolean
 }
 
@@ -30,7 +34,6 @@ export type PortalTrainingItem = {
   videoUrl: string | null
   walkthroughMedia: StandardMediaRowSigned | null
   quiz: PortalQuizQuestion[]
-  photoRequiredStepIds: string[]
   progress: PortalSopProgress
 }
 

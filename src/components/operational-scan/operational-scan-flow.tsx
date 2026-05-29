@@ -484,7 +484,7 @@ export function OperationalScanFlow() {
                       Back
                     </Button>
                     <Button type="button" className={formBtnPrimary} onClick={goNextQuestion}>
-                      {questionIndex === QUESTION_COUNT - 1 ? "See my score" : "Continue"}
+                      {questionIndex === QUESTION_COUNT - 1 ? "See my diagnosis" : "Continue"}
                     </Button>
                   </div>
                 </div>

@@ -11,7 +11,11 @@ export type Json =
 export type StandardStatus = "draft" | "active" | "archived"
 /** @deprecated use StandardStatus — DB enum `standard_status` */
 export type SopStatus = StandardStatus
-export type BusinessMemberRole = "owner" | "admin" | "member"
+export type BusinessMemberRole = "owner" | "manager" | "trainer" | "staff" | "admin" | "member"
+
+export type WorkspaceInviteStatus = "pending" | "accepted" | "revoked"
+
+export type AskRivetReviewStatus = "auto_approved" | "pending" | "approved" | "improved"
 
 export type TrainingProgressStatus = "not_started" | "in_progress" | "completed"
 
@@ -94,6 +98,8 @@ export type Database = {
           template_installed_at: string | null
           owner_id: string
           owner_hourly_value_cad: number | null
+          billing_plan: string | null
+          founder_grandfathered_at: string | null
           created_at: string
           updated_at: string
         }
@@ -105,6 +111,8 @@ export type Database = {
           template_installed_at?: string | null
           owner_id: string
           owner_hourly_value_cad?: number | null
+          billing_plan?: string | null
+          founder_grandfathered_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -116,6 +124,8 @@ export type Database = {
           template_installed_at?: string | null
           owner_id?: string
           owner_hourly_value_cad?: number | null
+          billing_plan?: string | null
+          founder_grandfathered_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -160,6 +170,60 @@ export type Database = {
           severity?: string | null
           sort_order?: number
           created_at?: string
+        }
+        Relationships: []
+      }
+      workspace_invites: {
+        Row: {
+          id: string
+          business_id: string
+          email: string
+          role: BusinessMemberRole
+          token: string
+          status: WorkspaceInviteStatus
+          invited_by: string
+          expires_at: string
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          revoked_at: string | null
+          last_sent_at: string | null
+          send_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          email: string
+          role: BusinessMemberRole
+          token: string
+          status?: WorkspaceInviteStatus
+          invited_by: string
+          expires_at: string
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          revoked_at?: string | null
+          last_sent_at?: string | null
+          send_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          email?: string
+          role?: BusinessMemberRole
+          token?: string
+          status?: WorkspaceInviteStatus
+          invited_by?: string
+          expires_at?: string
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          revoked_at?: string | null
+          last_sent_at?: string | null
+          send_count?: number
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -238,6 +302,7 @@ export type Database = {
           profile_id: string | null
           display_name: string
           notes: string | null
+          play_metadata: Json
           created_at: string
           updated_at: string
         }
@@ -247,6 +312,7 @@ export type Database = {
           profile_id?: string | null
           display_name: string
           notes?: string | null
+          play_metadata?: Json
           created_at?: string
           updated_at?: string
         }
@@ -255,6 +321,46 @@ export type Database = {
           business_id?: string
           profile_id?: string | null
           display_name?: string
+          notes?: string | null
+          play_metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_succession_roles: {
+        Row: {
+          id: string
+          business_id: string
+          role_label: string
+          capability_field: string | null
+          primary_profile_id: string | null
+          backup_profile_id: string | null
+          sort_order: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          role_label: string
+          capability_field?: string | null
+          primary_profile_id?: string | null
+          backup_profile_id?: string | null
+          sort_order?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          role_label?: string
+          capability_field?: string | null
+          primary_profile_id?: string | null
+          backup_profile_id?: string | null
+          sort_order?: number
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -308,6 +414,8 @@ export type Database = {
           amount: number
           currency: string
           status: string
+          product_plan: string
+          payment_option: string | null
           purchased_at: string | null
           created_at: string
           updated_at: string
@@ -322,6 +430,8 @@ export type Database = {
           amount: number
           currency?: string
           status?: string
+          product_plan?: string
+          payment_option?: string | null
           purchased_at?: string | null
           created_at?: string
           updated_at?: string
@@ -336,9 +446,29 @@ export type Database = {
           amount?: number
           currency?: string
           status?: string
+          product_plan?: string
+          payment_option?: string | null
           purchased_at?: string | null
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      stripe_webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          created_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          created_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          created_at?: string
         }
         Relationships: []
       }
@@ -402,10 +532,14 @@ export type Database = {
           instructions: string
           media_url: string | null
           requires_photo_confirmation: boolean
+          requires_video_proof: boolean
+          requires_manager_signoff: boolean
+          requires_checklist_completion: boolean
           estimated_time_minutes: number | null
           is_critical: boolean
           verification: string | null
           notes: string | null
+          play_metadata: Json
           created_at: string
           updated_at: string
         }
@@ -417,10 +551,14 @@ export type Database = {
           instructions?: string
           media_url?: string | null
           requires_photo_confirmation?: boolean
+          requires_video_proof?: boolean
+          requires_manager_signoff?: boolean
+          requires_checklist_completion?: boolean
           estimated_time_minutes?: number | null
           is_critical?: boolean
           verification?: string | null
           notes?: string | null
+          play_metadata?: Json
           created_at?: string
           updated_at?: string
         }
@@ -432,10 +570,14 @@ export type Database = {
           instructions?: string
           media_url?: string | null
           requires_photo_confirmation?: boolean
+          requires_video_proof?: boolean
+          requires_manager_signoff?: boolean
+          requires_checklist_completion?: boolean
           estimated_time_minutes?: number | null
           is_critical?: boolean
           verification?: string | null
           notes?: string | null
+          play_metadata?: Json
           created_at?: string
           updated_at?: string
         }
@@ -614,6 +756,7 @@ export type Database = {
           quiz_passed: boolean
           quiz_answers: Json
           photo_proofs: Json
+          step_proofs: Json
           updated_at: string
         }
         Insert: {
@@ -626,6 +769,7 @@ export type Database = {
           quiz_passed?: boolean
           quiz_answers?: Json
           photo_proofs?: Json
+          step_proofs?: Json
           updated_at?: string
         }
         Update: {
@@ -638,6 +782,7 @@ export type Database = {
           quiz_passed?: boolean
           quiz_answers?: Json
           photo_proofs?: Json
+          step_proofs?: Json
           updated_at?: string
         }
         Relationships: []
@@ -924,6 +1069,120 @@ export type Database = {
         }
         Relationships: []
       }
+      rivet_ask_queries: {
+        Row: {
+          id: string
+          business_id: string
+          asked_by: string | null
+          question_text: string
+          normalized_question: string
+          standard_id: string | null
+          matched_source: string | null
+          response: Json
+          prevented_owner_interrupt: boolean
+          review_status: AskRivetReviewStatus
+          reviewed_by: string | null
+          reviewed_at: string | null
+          owner_improved_answer: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          asked_by?: string | null
+          question_text: string
+          normalized_question: string
+          standard_id?: string | null
+          matched_source?: string | null
+          response?: Json
+          prevented_owner_interrupt?: boolean
+          review_status?: AskRivetReviewStatus
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          owner_improved_answer?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          asked_by?: string | null
+          question_text?: string
+          normalized_question?: string
+          standard_id?: string | null
+          matched_source?: string | null
+          response?: Json
+          prevented_owner_interrupt?: boolean
+          review_status?: AskRivetReviewStatus
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          owner_improved_answer?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      rivet_high_friction_procedures: {
+        Row: {
+          id: string
+          business_id: string
+          normalized_question: string
+          display_question: string
+          ask_count: number
+          standard_id: string | null
+          status: "open" | "acknowledged" | "resolved"
+          first_asked_at: string
+          last_asked_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          normalized_question: string
+          display_question: string
+          ask_count?: number
+          standard_id?: string | null
+          status?: "open" | "acknowledged" | "resolved"
+          first_asked_at?: string
+          last_asked_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          normalized_question?: string
+          display_question?: string
+          ask_count?: number
+          standard_id?: string | null
+          status?: "open" | "acknowledged" | "resolved"
+          first_asked_at?: string
+          last_asked_at?: string
+        }
+        Relationships: []
+      }
+      standard_play_views: {
+        Row: {
+          id: string
+          business_id: string
+          standard_id: string
+          viewed_by: string | null
+          source: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          standard_id: string
+          viewed_by?: string | null
+          source?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          standard_id?: string
+          viewed_by?: string | null
+          source?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       interruption_action_plans: {
         Row: {
           id: string
@@ -1064,6 +1323,7 @@ export type Database = {
           training_module_id: string
           module_completed_at: string | null
           quizzes_passed_at: string | null
+          proof_uploaded_at: string | null
           manager_signed_off_at: string | null
           manager_signed_off_by: string | null
           certified_at: string | null
@@ -1076,6 +1336,7 @@ export type Database = {
           training_module_id: string
           module_completed_at?: string | null
           quizzes_passed_at?: string | null
+          proof_uploaded_at?: string | null
           manager_signed_off_at?: string | null
           manager_signed_off_by?: string | null
           certified_at?: string | null
@@ -1088,6 +1349,7 @@ export type Database = {
           training_module_id?: string
           module_completed_at?: string | null
           quizzes_passed_at?: string | null
+          proof_uploaded_at?: string | null
           manager_signed_off_at?: string | null
           manager_signed_off_by?: string | null
           certified_at?: string | null
@@ -1467,10 +1729,16 @@ export type Database = {
         Args: { p_token: string }
         Returns: Json
       }
+      resolve_workspace_invite: {
+        Args: { p_token: string }
+        Returns: Json
+      }
     }
     Enums: {
       standard_status: StandardStatus
       business_member_role: BusinessMemberRole
+      workspace_invite_status: WorkspaceInviteStatus
+      ask_rivet_review_status: AskRivetReviewStatus
       training_progress_status: TrainingProgressStatus
       training_invite_channel: TrainingInviteChannel
       daily_checklist_type: DailyChecklistType

@@ -3,10 +3,13 @@
 import { AlertTriangle, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { StepProofRequirementFields } from "@/components/completion-proof/step-proof-requirement-fields"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { StepExampleFields } from "@/components/sops/step-example-fields"
+import type { StandardMediaRowSigned } from "@/lib/standards/standard-media-types"
 import type { CaptureStepFields } from "@/lib/sops/step-fields"
 import { cn } from "@/lib/utils"
 
@@ -21,16 +24,32 @@ type CaptureStepEditorProps = {
   step: CaptureStepRow
   index: number
   canRemove: boolean
+  canUpload: boolean
+  uploadPending?: boolean
+  goodExampleMedia?: StandardMediaRowSigned | null
+  badExampleMedia?: StandardMediaRowSigned | null
   onChange: (patch: Partial<CaptureStepRow>) => void
   onRemove: () => void
+  onUploadGoodExample: (file: File) => void | Promise<void>
+  onUploadBadExample: (file: File) => void | Promise<void>
+  onRemoveGoodExample?: () => void
+  onRemoveBadExample?: () => void
 }
 
 export function CaptureStepEditor({
   step,
   index,
   canRemove,
+  canUpload,
+  uploadPending,
+  goodExampleMedia,
+  badExampleMedia,
   onChange,
   onRemove,
+  onUploadGoodExample,
+  onUploadBadExample,
+  onRemoveGoodExample,
+  onRemoveBadExample,
 }: CaptureStepEditorProps) {
   return (
     <li
@@ -92,6 +111,48 @@ export function CaptureStepEditor({
           />
         </div>
 
+        <div className="space-y-1.5">
+          <Label htmlFor={`step-visual-${step.key}`} className="text-sm">
+            Visual target
+          </Label>
+          <Textarea
+            id={`step-visual-${step.key}`}
+            value={step.visualTarget}
+            onChange={(e) => onChange({ visualTarget: e.target.value })}
+            placeholder="What done-right looks like on the line"
+            className="min-h-[3.5rem] text-sm"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor={`step-mistakes-${step.key}`} className="text-sm">
+            Common mistakes
+          </Label>
+          <Textarea
+            id={`step-mistakes-${step.key}`}
+            value={step.commonMistakes}
+            onChange={(e) => onChange({ commonMistakes: e.target.value })}
+            placeholder="One mistake per line — what crew gets wrong under rush"
+            className="min-h-[3.5rem] text-sm"
+          />
+        </div>
+
+        <StepExampleFields
+          stepKey={step.key}
+          goodCaption={step.goodExampleCaption}
+          badCaption={step.badExampleCaption}
+          goodMedia={goodExampleMedia}
+          badMedia={badExampleMedia}
+          canUpload={canUpload}
+          uploadPending={uploadPending}
+          onGoodCaptionChange={(goodExampleCaption) => onChange({ goodExampleCaption })}
+          onBadCaptionChange={(badExampleCaption) => onChange({ badExampleCaption })}
+          onUploadGood={onUploadGoodExample}
+          onUploadBad={onUploadBadExample}
+          onRemoveGood={onRemoveGoodExample}
+          onRemoveBad={onRemoveBadExample}
+        />
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor={`step-minutes-${step.key}`} className="text-sm">
@@ -132,13 +193,16 @@ export function CaptureStepEditor({
               — failure here creates real risk
             </span>
           </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-            <Checkbox
-              checked={step.requiresPhoto}
-              onCheckedChange={(c) => onChange({ requiresPhoto: Boolean(c) })}
-            />
-            Photo required to complete this step
-          </label>
+          <StepProofRequirementFields
+            values={{
+              requiresPhoto: step.requiresPhoto,
+              requiresVideo: step.requiresVideo,
+              requiresManagerSignoff: step.requiresManagerSignoff,
+              requiresChecklist: step.requiresChecklist,
+            }}
+            onChange={onChange}
+            compact
+          />
         </div>
 
         <div className="space-y-1.5">

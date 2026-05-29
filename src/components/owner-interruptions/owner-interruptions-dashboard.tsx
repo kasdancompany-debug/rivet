@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { ArrowRight, Droplets } from "lucide-react"
 
+import { InterruptionFixSuggestionsPanel } from "@/components/owner-interruptions/interruption-fix-suggestions-panel"
+import { InterruptionSystemImprovementsPanel } from "@/components/owner-interruptions/interruption-system-improvements-panel"
 import { InterruptionTrendHeatmap } from "@/components/owner-interruptions/interruption-trend-heatmap"
 import { InterruptionSeverityBadge } from "@/components/owner-interruptions/interruption-severity-badge"
 import { InterruptionStarterExamples } from "@/components/owner-interruptions/interruption-starter-examples"
@@ -182,7 +184,11 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
         </Card>
       </div>
 
+      <InterruptionFixSuggestionsPanel suggestions={view.fixSuggestions} businessId={view.businessId} />
+
       <TopLeaksPanel topLeaks={view.topLeaks} isEmpty={isEmpty} />
+
+      <InterruptionSystemImprovementsPanel improvements={view.systemImprovements} />
 
       <OwnerValueMetricsPanel
         businessId={view.businessId}
@@ -284,6 +290,11 @@ export function OwnerInterruptionsDashboard({ view }: { view: OwnerInterruptions
                       <span className="text-[0.65rem] tabular-nums text-muted-foreground">{r.estimatedMinutes}m</span>
                     </div>
                     <p className="text-sm font-medium leading-snug text-foreground">{r.summary}</p>
+                    {r.improvementSummary ? (
+                      <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                        {r.improvementSummary}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-muted-foreground">
                       {r.loggerName}
                       {r.loggerRole ? ` · ${r.loggerRole}` : null}

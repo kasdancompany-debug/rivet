@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache"
 
 import {
   fetchBusinessForCurrentUser,
-  fetchCurrentProfile,
   listTrainingItemsForModule,
   syncEmployeeTrainingModuleProgress,
 } from "@/lib/db/queries"
-import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
+import {
+  canManageEmployeeTraining,
+  requireWorkspacePermission,
+} from "@/lib/ops/workspace-auth"
 import { createClient } from "@/lib/supabase/server"
 import type { DelegationReadinessStatus, ReadinessBadge, TablesUpdate, TypedSupabaseClient } from "@/types/database"
 
@@ -18,20 +20,6 @@ const READINESS_VALUES = new Set<ReadinessBadge>([
   "ready_with_support",
   "fully_ready",
 ])
-
-async function requireWorkspaceOwner(supabase: TypedSupabaseClient) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { ok: false as const, message: "You need to be signed in." }
-  const business = await fetchBusinessForCurrentUser(supabase)
-  const profile = await fetchCurrentProfile(supabase)
-  if (!business) return { ok: false as const, message: "No business linked." }
-  if (!isWorkspaceOwner(user.id, business, profile)) {
-    return { ok: false as const, message: "Only the business owner can do that." }
-  }
-  return { ok: true as const, user, business }
-}
 
 function revalidateTraining() {
   revalidatePath("/training")
@@ -47,7 +35,7 @@ export async function saveTrainingModule(payload: {
 }): Promise<{ ok: true; id: string } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_training_modules")
     if (!gate.ok) return gate
 
     const title = payload.title.trim()
@@ -94,7 +82,7 @@ export async function deleteTrainingModule(
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_training_modules")
     if (!gate.ok) return gate
 
     const { error } = await supabase.from("training_modules").delete().eq("id", moduleId)
@@ -112,7 +100,7 @@ export async function addSopToTrainingModule(payload: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_training_modules")
     if (!gate.ok) return gate
 
     const { error } = await supabase.from("training_items").insert({
@@ -121,7 +109,7 @@ export async function addSopToTrainingModule(payload: {
       required: true,
     })
     if (error) {
-      if (error.code === "23505") return { ok: false, message: "That SOP is already in this module." }
+      if (error.code === "23505") return { ok: false, message: "That play is already in this module." }
       return { ok: false, message: error.message }
     }
     revalidateTraining()
@@ -138,7 +126,7 @@ export async function removeSopFromTrainingModule(payload: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_training_modules")
     if (!gate.ok) return gate
 
     const { error } = await supabase.from("training_items").delete().eq("id", payload.trainingItemId)
@@ -157,7 +145,7 @@ export async function assignTrainingModule(payload: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_team_training")
     if (!gate.ok) return gate
 
     const { error } = await supabase.from("training_progress").insert({
@@ -184,7 +172,7 @@ export async function unassignTrainingModule(payload: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_team_training")
     if (!gate.ok) return gate
 
     const items = await listTrainingItemsForModule(payload.moduleId, supabase)
@@ -220,11 +208,10 @@ export async function toggleTrainingSopCompletion(payload: {
     if (!user) return { ok: false, message: "You need to be signed in." }
 
     const business = await fetchBusinessForCurrentUser(supabase)
-    const profile = await fetchCurrentProfile(supabase)
     if (!business) return { ok: false, message: "No business linked." }
 
-    const owner = isWorkspaceOwner(user.id, business, profile)
-    if (payload.employeeId !== user.id && !owner) {
+    const allowed = await canManageEmployeeTraining(supabase, payload.employeeId)
+    if (!allowed) {
       return { ok: false, message: "You can only update your own training checklist." }
     }
 
@@ -272,7 +259,7 @@ export async function setReadinessOverride(payload: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_team_training")
     if (!gate.ok) return gate
 
     const column = `${payload.field}_override` as
@@ -309,7 +296,7 @@ export async function updateEmployeeReadiness(payload: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const supabase = await createClient()
-    const gate = await requireWorkspaceOwner(supabase)
+    const gate = await requireWorkspacePermission(supabase, "manage_team_training")
     if (!gate.ok) return gate
 
     if (!READINESS_VALUES.has(payload.value)) {

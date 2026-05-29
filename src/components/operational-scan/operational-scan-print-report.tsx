@@ -1,3 +1,4 @@
+import { buildScanDiagnosis } from "@/lib/operational-scan/build-scan-diagnosis"
 import type { OperationalScanAnswers, OperationalScanResult } from "@/lib/operational-scan/score"
 import { formatCurrencyCad, formatSeverityLabel } from "@/lib/operational-scan/score"
 import { SCAN_RESULTS } from "@/lib/operational-scan/scan-copy"
@@ -25,6 +26,7 @@ export function OperationalScanPrintReport({
   visible?: boolean
 }) {
   const business = answers.businessName.trim() || "Operation"
+  const diagnosis = buildScanDiagnosis(result, answers)
 
   return (
     <div
@@ -46,40 +48,57 @@ export function OperationalScanPrintReport({
         </header>
 
         <section className="mt-8 border border-zinc-200 bg-white p-6">
-          <div className="flex flex-wrap items-end justify-between gap-6 border-b border-zinc-200 pb-6">
+          <p className="text-[14px] leading-relaxed text-zinc-700">{diagnosis.ownerDependencyNarrative}</p>
+
+          <div className="mt-6 grid grid-cols-2 gap-4 border-b border-zinc-100 pb-6 sm:grid-cols-4">
+            <div className="sm:col-span-2">
+              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Owner-free capacity
+              </p>
+              <p className="mt-1.5 text-2xl font-semibold">{diagnosis.ownerFreeCapacityLabel}</p>
+            </div>
             <div>
+              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Operational risk
+              </p>
+              <p className="mt-1.5 text-lg font-semibold">{formatSeverityLabel(result.severity)}</p>
+            </div>
+            <div>
+              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Hours trapped / year
+              </p>
+              <p className="mt-1.5 text-lg font-semibold tabular-nums">~{diagnosis.impact.hoursTrappedAnnually}h</p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-[12px] font-medium text-zinc-700">
+            ~{diagnosis.impact.interruptionsPerWeek} owner pulls/week ·{" "}
+            {formatCurrencyCad(diagnosis.impact.estimatedDollarValue)} equivalent annually · ~
+            {diagnosis.impact.interruptionsPreventedAnnually} interruptions preventable if fixes ship.
+          </p>
+
+          {diagnosis.whyRivetBelieves.length > 0 ? (
+            <div className="mt-6 border-t border-zinc-100 pt-6">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                Owner Dependency Score
+                Why Rivet believes this
               </p>
-              <p className="mt-1 text-5xl font-semibold tabular-nums tracking-[-0.04em]">{result.ownerDependencyScore}</p>
-              <p className="mt-1 font-mono text-[10px] text-zinc-500">0–100 · higher = more load on you</p>
+              <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[12px] leading-relaxed text-zinc-700">
+                {diagnosis.whyRivetBelieves.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
             </div>
-            <div className="border-l border-zinc-200 pl-6">
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Severity</p>
-              <p className="mt-2 text-xl font-semibold">{formatSeverityLabel(result.severity)}</p>
-            </div>
-          </div>
+          ) : null}
 
-          <div className="mt-6 grid grid-cols-3 gap-4 border-b border-zinc-100 pb-6">
-            <div>
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Est. interrupts / month
+          {diagnosis.fastestPath ? (
+            <div className="mt-6 border-t border-zinc-100 pt-6">
+              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                Fastest path
               </p>
-              <p className="mt-1.5 text-2xl font-semibold tabular-nums">~{result.estimatedInterruptionsPerMonth}</p>
+              <p className="mt-2 text-[13px] font-semibold text-zinc-900">{diagnosis.fastestPath.title}</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-zinc-700">{diagnosis.fastestPath.action}</p>
             </div>
-            <div>
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Est. hours lost / month
-              </p>
-              <p className="mt-1.5 text-2xl font-semibold tabular-nums">~{result.estimatedOwnerHoursLostPerMonth}h</p>
-            </div>
-            <div>
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Est. annual cost</p>
-              <p className="mt-1.5 text-2xl font-semibold tabular-nums">{formatCurrencyCad(result.estimatedAnnualCost)}</p>
-            </div>
-          </div>
-
-          <p className="mt-4 text-[12px] font-medium text-zinc-700">{SCAN_RESULTS.underestimate}</p>
+          ) : null}
 
           <div className="mt-6">
             <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500">

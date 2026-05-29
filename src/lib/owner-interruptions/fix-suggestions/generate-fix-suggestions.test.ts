@@ -86,6 +86,65 @@ describe("generateInterruptionFixSuggestions", () => {
     })
 
     expect(suggestions[0]?.fixType).toBe("training_module")
-    expect(suggestions[0]?.createHref).toContain("/training/modules/new")
+    expect(suggestions[0]?.actions.some((a) => a.kind === "assign_training")).toBe(true)
+    expect(suggestions[0]?.actions.find((a) => a.kind === "assign_training")?.href).toContain(
+      "/training/modules/new"
+    )
+  })
+
+  it("bundles play, training, and Ask Rivet for repeat refund questions", () => {
+    const rows = [
+      {
+        id: "1",
+        business_id: "b1",
+        logged_by: "u1",
+        kind: "staff_ping" as const,
+        summary: "How do I process refunds?",
+        detail: null,
+        estimated_minutes: 8,
+        urgency: "today" as const,
+        source: "in_person" as const,
+        related_bottleneck_id: null,
+        occurred_at: "2026-05-10T12:00:00Z",
+        created_at: "2026-05-10T12:00:00Z",
+        updated_at: "2026-05-10T12:00:00Z",
+      },
+      {
+        id: "2",
+        business_id: "b1",
+        logged_by: "u2",
+        kind: "staff_ping" as const,
+        summary: "How do I process refunds?",
+        detail: null,
+        estimated_minutes: 10,
+        urgency: "today" as const,
+        source: "text_message" as const,
+        related_bottleneck_id: null,
+        occurred_at: "2026-05-12T12:00:00Z",
+        created_at: "2026-05-12T12:00:00Z",
+        updated_at: "2026-05-12T12:00:00Z",
+      },
+    ]
+
+    const suggestions = generateInterruptionFixSuggestions({
+      repeatCategories: [
+        { key: "how do i process refunds?", label: "How do I process refunds?", count: 2 },
+      ],
+      historyRows: rows,
+      askQueries: [
+        {
+          normalized_question: "how do i process refunds",
+          standard_id: null,
+          response: { confidence: "low" },
+        },
+      ],
+    })
+
+    expect(suggestions).toHaveLength(1)
+    expect(suggestions[0]?.rootCause).toContain("Refund")
+    const kinds = suggestions[0]?.actions.map((a) => a.kind) ?? []
+    expect(kinds).toContain("create_play")
+    expect(kinds).toContain("assign_training")
+    expect(kinds).toContain("wire_ask_rivet")
   })
 })

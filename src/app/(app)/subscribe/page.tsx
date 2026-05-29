@@ -2,23 +2,25 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { SubscribeClient } from "@/components/billing/subscribe-client"
+import { RIVET_PRICING } from "@/lib/pricing-copy"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
 import { getBillingReadiness, isBillingEnforced } from "@/lib/billing/config"
-import { businessHasPaidRivetPurchase } from "@/lib/billing/rivet-access"
+import { founderStripePriceId } from "@/lib/billing/founder-offer"
+import { confirmCheckoutSession } from "@/app/actions/billing"
+import { businessHasRivetAppAccess } from "@/lib/billing/rivet-access"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
 import { getServerAuthUser, requireAuthUser } from "@/lib/auth/server-auth"
 import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
-  title: "Get Rivet",
-  description:
-    "One-time $799 CAD. Unlock procedures, training, owner-interruption log, bottlenecks, escape readiness, and owner overview for your workspace.",
+  title: RIVET_PRICING.subscribeTitle,
+  description: `${RIVET_PRICING.priceOnce} ${RIVET_PRICING.priceInstallment}. ${RIVET_PRICING.positioningShort}`,
 }
 
 export default async function SubscribePage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string }>
+  searchParams: Promise<{ billing?: string; session_id?: string; message?: string }>
 }) {
   const sp = await searchParams
   const billingCanceled = sp.billing === "canceled"
@@ -29,6 +31,23 @@ export default async function SubscribePage({
   }
 
   const user = requireAuthUser(await getServerAuthUser(), "/subscribe")
+
+  if (sp.billing === "success" && sp.session_id?.trim()) {
+    const confirmed = await confirmCheckoutSession(sp.session_id.trim())
+    if (confirmed.ok && confirmed.hasAppAccess) {
+      redirect("/dashboard?billing=success")
+    }
+    if (confirmed.ok && !confirmed.hasAppAccess) {
+      redirect("/subscribe?billing=installment_pending")
+    }
+    if (!confirmed.ok && confirmed.pending) {
+      redirect("/subscribe?billing=pending")
+    }
+    if (!confirmed.ok) {
+      redirect(`/subscribe?billing=confirm_error&message=${encodeURIComponent(confirmed.message)}`)
+    }
+  }
+
   const supabase = await createClient()
 
   const { data: profile } = await supabase
@@ -41,8 +60,8 @@ export default async function SubscribePage({
     redirect("/setup?next=/subscribe")
   }
 
-  const paid = await businessHasPaidRivetPurchase(supabase, profile.business_id)
-  if (paid) {
+  const hasAccess = await businessHasRivetAppAccess(supabase, profile.business_id, user.id)
+  if (hasAccess) {
     redirect("/dashboard")
   }
 
@@ -61,7 +80,17 @@ export default async function SubscribePage({
       <SubscribeClient
         email={user.email ?? ""}
         billingCanceled={billingCanceled}
+        billingStatusMessage={
+          sp.billing === "pending"
+            ? "Payment is still processing. Refresh this page in a moment."
+            : sp.billing === "installment_pending"
+              ? "Installment received. Complete all three payments to unlock full access."
+              : sp.billing === "confirm_error" && typeof sp.message === "string"
+                ? decodeURIComponent(sp.message)
+                : null
+        }
         checkoutDisabledMessage={isBillingEnforced() ? null : readiness.message}
+        installmentCheckoutAvailable={Boolean(founderStripePriceId("installment_3"))}
       />
     </DashboardRouteShell>
   )

@@ -1,4 +1,8 @@
 import { COPY } from "@/lib/interface-copy"
+import {
+  PLAY_COVERAGE_LABEL,
+  UNDOCUMENTED_MEMORY_LABEL,
+} from "@/lib/product-voice"
 import { isIssueUnresolved } from "@/lib/issues/constants"
 import type { RivetIndexComputeContext } from "@/lib/rivet-score/compute"
 
@@ -17,13 +21,13 @@ function computeSopCoverage(ctx: RivetIndexComputeContext): {
   if (active.length === 0) {
     return {
       percent: null,
-      hint: "No active standards yet—publish open, close, and your highest-variance plays first.",
+      hint: "No active plays yet—publish open, close, and your highest-variance work first.",
     }
   }
   if (ctx.standardsDepthPercent != null) {
     return {
       percent: ctx.standardsDepthPercent,
-      hint: `SOP depth averages ${ctx.standardsDepthPercent}% across active plays (steps, roles, evidence, refresh).`,
+      hint: `Play depth averages ${ctx.standardsDepthPercent}% across active plays (steps, roles, evidence, refresh).`,
     }
   }
   let withSteps = 0
@@ -111,7 +115,7 @@ function computeUndocumentedProceduresHealth(ctx: RivetIndexComputeContext): {
   if (active.length === 0 && drafts.length === 0) {
     return {
       percent: null,
-      hint: "No standards on file—capture the procedures only you know first.",
+      hint: "No plays on file—capture what only you still know first.",
     }
   }
   let undocumented = drafts.length
@@ -125,7 +129,7 @@ function computeUndocumentedProceduresHealth(ctx: RivetIndexComputeContext): {
     percent: pct,
     hint:
       undocumented === 0
-        ? "Every standard on file has at least a draft or steps—keep depth growing."
+        ? "Every play on file has at least a draft or steps—keep depth growing."
         : `${undocumented} procedure gap(s)—drafts or active plays still without runnable steps.`,
   }
 }
@@ -140,7 +144,7 @@ export function computeEscapeReadiness(ctx: RivetIndexComputeContext): EscapeRea
   const factors: EscapeReadinessFactorInput[] = [
     {
       id: "sop_coverage",
-      label: "SOP coverage",
+      label: PLAY_COVERAGE_LABEL,
       percent: sop.percent,
       hint: sop.hint,
     },
@@ -164,7 +168,7 @@ export function computeEscapeReadiness(ctx: RivetIndexComputeContext): EscapeRea
     },
     {
       id: "undocumented_procedures",
-      label: "Undocumented procedures",
+      label: UNDOCUMENTED_MEMORY_LABEL,
       percent: undocumented.percent,
       hint: undocumented.hint,
     },

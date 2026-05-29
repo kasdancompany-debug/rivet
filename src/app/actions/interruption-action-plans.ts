@@ -8,23 +8,27 @@ import {
   analyzeInterruptionForActionPlan,
   resolveAffectedPeople,
 } from "@/lib/owner-interruptions/action-plan/analyze-interruption"
-import { buildInterruptionActionPlanView } from "@/lib/owner-interruptions/action-plan/build-action-plan-view"
+import { enrichInterruptionActionPlanView } from "@/lib/owner-interruptions/action-plan/enrich-action-plan-view"
 import type { InterruptionActionPlanView } from "@/lib/owner-interruptions/action-plan/types"
+import { normalizeSummaryKey } from "@/lib/owner-interruptions/normalize-summary"
 import {
   fetchBusinessForCurrentUser,
   fetchCurrentProfile,
   fetchOwnerInterruptionById,
   fetchProfilesForCurrentBusiness,
   insertInterruptionActionPlan,
+  listAskQueriesForBusinessSince,
   listOwnerInterruptionsForBusinessSince,
   listSopsForBusiness,
+  listStandardIdsWithMediaForBusiness,
   listTrainingModulesForBusiness,
+  listTrainingProgressForBusinessModules,
   updateInterruptionActionPlan,
 } from "@/lib/db/queries"
 import { isWorkspaceOwner } from "@/lib/ops/workspace-role"
 import { utcDaysAgoMidnightIso } from "@/lib/time/utc-week"
 import { createClient } from "@/lib/supabase/server"
-import type { Json } from "@/types/database"
+import type { Json, Tables } from "@/types/database"
 
 function revalidateInterruptionPaths() {
   revalidatePath("/interruptions")
@@ -32,6 +36,72 @@ function revalidateInterruptionPaths() {
   revalidatePath("/dashboard")
   revalidatePath("/sops")
   revalidatePath("/training")
+  revalidatePath("/ask")
+}
+
+async function loadActionPlanContext(businessId: string, interruptionId: string) {
+  const supabase = await createClient()
+  const historySinceIso = utcDaysAgoMidnightIso(60)
+
+  const [interruption, historyRows, standards, modules, profiles, profile, askQueries, standardIdsWithMedia] =
+    await Promise.all([
+      fetchOwnerInterruptionById(interruptionId, supabase),
+      listOwnerInterruptionsForBusinessSince(businessId, historySinceIso, supabase),
+      listSopsForBusiness(businessId, undefined, supabase),
+      listTrainingModulesForBusiness(businessId, supabase),
+      fetchProfilesForCurrentBusiness(supabase),
+      fetchCurrentProfile(supabase),
+      listAskQueriesForBusinessSince(businessId, utcDaysAgoMidnightIso(90), supabase),
+      listStandardIdsWithMediaForBusiness(businessId, supabase),
+    ])
+
+  const business = await fetchBusinessForCurrentUser(supabase)
+  if (!business || business.id !== businessId || !interruption) {
+    return null
+  }
+
+  const moduleIds = modules.map((m) => m.id)
+  const trainingProgress =
+    moduleIds.length > 0
+      ? await listTrainingProgressForBusinessModules(moduleIds, supabase)
+      : []
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  return {
+    supabase,
+    business,
+    user,
+    profile,
+    interruption,
+    historyRows,
+    standards,
+    modules,
+    trainingProgress,
+    askQueries,
+    standardIdsWithMedia,
+    profiles,
+    isOwner: user ? isWorkspaceOwner(user.id, business, profile) : false,
+  }
+}
+
+function viewFromContext(
+  ctx: NonNullable<Awaited<ReturnType<typeof loadActionPlanContext>>>,
+  plan: Tables<"interruption_action_plans">
+): InterruptionActionPlanView {
+  return enrichInterruptionActionPlanView({
+    plan,
+    interruption: ctx.interruption,
+    historyRows: ctx.historyRows,
+    standards: ctx.standards.map((s) => ({ id: s.id, title: s.title, status: s.status })),
+    modules: ctx.modules.map((m) => ({ id: m.id, title: m.title })),
+    trainingProgress: ctx.trainingProgress,
+    askQueries: ctx.askQueries,
+    standardIdsWithMedia: ctx.standardIdsWithMedia,
+    isOwner: ctx.isOwner,
+  })
 }
 
 export async function createInterruptionActionPlan(payload: {
@@ -39,29 +109,10 @@ export async function createInterruptionActionPlan(payload: {
   interruptionId: string
 }): Promise<{ ok: true; plan: InterruptionActionPlanView } | { ok: false; message: string }> {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return { ok: false, message: "You need to be signed in." }
+    const ctx = await loadActionPlanContext(payload.businessId, payload.interruptionId)
+    if (!ctx) return { ok: false, message: "Could not find that pull." }
 
-    const business = await fetchBusinessForCurrentUser(supabase)
-    if (!business || business.id !== payload.businessId) {
-      return { ok: false, message: "No business linked." }
-    }
-
-    const interruption = await fetchOwnerInterruptionById(payload.interruptionId, supabase)
-    if (!interruption || interruption.business_id !== payload.businessId) {
-      return { ok: false, message: "Could not find that pull." }
-    }
-
-    const [historyRows, standards, modules, profiles, profile] = await Promise.all([
-      listOwnerInterruptionsForBusinessSince(payload.businessId, utcDaysAgoMidnightIso(20), supabase),
-      listSopsForBusiness(payload.businessId, undefined, supabase),
-      listTrainingModulesForBusiness(payload.businessId, supabase),
-      fetchProfilesForCurrentBusiness(supabase),
-      fetchCurrentProfile(supabase),
-    ])
+    const { interruption, historyRows, standards, modules, profiles, isOwner, supabase } = ctx
 
     const loggerProfile = profiles.find((p) => p.id === interruption.logged_by) ?? null
     const analysis = analyzeInterruptionForActionPlan({
@@ -73,14 +124,13 @@ export async function createInterruptionActionPlan(payload: {
     })
 
     const affectedPeople = resolveAffectedPeople({
-      profiles: profiles.filter((p) => p.business_id === business.id || p.id === business.owner_id),
-      businessOwnerId: business.owner_id,
+      profiles: profiles.filter((p) => p.business_id === ctx.business.id || p.id === ctx.business.owner_id),
+      businessOwnerId: ctx.business.owner_id,
       loggerId: interruption.logged_by,
       loggerRole: loggerProfile?.role ?? null,
       inferredRoles: analysis.inferredRoles,
     })
 
-    const isOwner = isWorkspaceOwner(user.id, business, profile)
     let draftStandardId: string | null = null
     let draftModuleId: string | null = null
 
@@ -99,6 +149,8 @@ export async function createInterruptionActionPlan(payload: {
       })
       if (module.ok) draftModuleId = module.id
     }
+
+    const patternKey = normalizeSummaryKey(interruption.summary)
 
     const inserted = await insertInterruptionActionPlan(
       {
@@ -120,6 +172,7 @@ export async function createInterruptionActionPlan(payload: {
           inferredRoles: analysis.inferredRoles,
           relatedStandard: analysis.relatedStandard,
           relatedModule: analysis.relatedModule,
+          patternKey,
         } as Json,
       },
       supabase
@@ -131,12 +184,7 @@ export async function createInterruptionActionPlan(payload: {
 
     return {
       ok: true,
-      plan: buildInterruptionActionPlanView({
-        plan: inserted,
-        relatedStandard: analysis.relatedStandard,
-        relatedModule: analysis.relatedModule,
-        isOwner,
-      }),
+      plan: viewFromContext(ctx, inserted),
     }
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Something went wrong." }
@@ -163,11 +211,35 @@ export async function publishInterruptionActionPlan(
       return { ok: false, message: "Approve the fix plan before publishing." }
     }
 
+    const ctx = await loadActionPlanContext(gate.business.id, existing.interruption_id)
+    if (!ctx) return { ok: false, message: "Could not load interruption context." }
+
+    const patternKey = normalizeSummaryKey(ctx.interruption.summary)
+    const publishedAt = new Date()
+    const beforeWindowStart = new Date(publishedAt)
+    beforeWindowStart.setUTCDate(beforeWindowStart.getUTCDate() - 14)
+
+    const baselineRepeatCount = ctx.historyRows.filter((row) => {
+      if (normalizeSummaryKey(row.summary) !== patternKey) return false
+      const at = new Date(row.occurred_at)
+      return at >= beforeWindowStart && at <= publishedAt
+    }).length
+
+    const priorPayload =
+      existing.ai_payload && typeof existing.ai_payload === "object" && !Array.isArray(existing.ai_payload)
+        ? (existing.ai_payload as Record<string, unknown>)
+        : {}
+
     const updated = await updateInterruptionActionPlan(
       planId,
       {
         status: "published",
-        published_at: new Date().toISOString(),
+        published_at: publishedAt.toISOString(),
+        ai_payload: {
+          ...priorPayload,
+          patternKey,
+          baselineRepeatCount,
+        } as Json,
       },
       supabase
     )
@@ -175,12 +247,7 @@ export async function publishInterruptionActionPlan(
 
     revalidateInterruptionPaths()
 
-    const view = buildInterruptionActionPlanView({
-      plan: updated,
-      relatedStandard: null,
-      relatedModule: null,
-      isOwner: true,
-    })
+    const view = viewFromContext(ctx, updated)
 
     return {
       ok: true,
@@ -268,16 +335,14 @@ async function updatePlanStatus(
     )
     if (!updated) return { ok: false, message: "Could not approve." }
 
+    const ctx = await loadActionPlanContext(gate.business.id, existing.interruption_id)
+    if (!ctx) return { ok: false, message: "Could not load interruption context." }
+
     revalidateInterruptionPaths()
 
     return {
       ok: true,
-      plan: buildInterruptionActionPlanView({
-        plan: updated,
-        relatedStandard: null,
-        relatedModule: null,
-        isOwner: true,
-      }),
+      plan: viewFromContext(ctx, updated),
     }
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Something went wrong." }
