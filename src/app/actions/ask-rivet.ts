@@ -237,9 +237,14 @@ export async function getAskRivetIntelligenceDashboard(): Promise<AskRivetIntell
 }
 
 export async function getQuestionsPreventedMetrics(): Promise<QuestionsPreventedMetrics | null> {
-  const data = await loadAskMonthData()
-  if (!data) return null
-  return buildQuestionsPreventedMetrics(data.rows, data.standardIdsWithTraining)
+  try {
+    const data = await loadAskMonthData()
+    if (!data) return null
+    return buildQuestionsPreventedMetrics(data.rows, data.standardIdsWithTraining)
+  } catch (error) {
+    console.error("[rivet] getQuestionsPreventedMetrics failed", error)
+    return null
+  }
 }
 
 /** @deprecated Use getQuestionsPreventedMetrics */

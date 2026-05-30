@@ -31,7 +31,7 @@ function resolveHighestOperationalRisk(model: DashboardViewModel): { label: stri
     .filter((f) => f.percent != null)
     .sort((a, b) => (a.percent ?? 100) - (b.percent ?? 100))[0]
   if (factor) {
-    return { label: factor.label, href: factor.detail.fixCta.href }
+    return { label: factor.label, href: factor.detail?.fixCta?.href ?? "/escape-plan" }
   }
 
   return { label: "Nothing flagged yet", href: null }

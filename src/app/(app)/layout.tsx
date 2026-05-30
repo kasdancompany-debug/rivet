@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/dashboard-shell"
 import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
 import { loadWorkspaceAccess } from "@/lib/ops/load-workspace-access"
 import { filterNavForRole } from "@/lib/ops/workspace-permissions"
+import type { WorkspaceRole } from "@/lib/ops/workspace-role-types"
 import { buildWorkspaceAccess } from "@/lib/ops/load-workspace-access"
 import { getSafeInternalNextPath } from "@/lib/auth/safe-next-path"
 import {
@@ -49,11 +50,19 @@ export default async function AppLayout({
       hasWorkspace = Boolean(business)
     }
 
-    const access = await loadWorkspaceAccess(supabase, user.id)
-    const navItems = access ? filterNavForRole(access.role) : undefined
+    let navItems: ReturnType<typeof filterNavForRole> | undefined
+    let workspaceRole: WorkspaceRole | undefined
+
+    try {
+      const access = await loadWorkspaceAccess(supabase, user.id)
+      navItems = access ? filterNavForRole(access.role) : undefined
+      workspaceRole = access?.role
+    } catch (error) {
+      console.error("[rivet] app layout workspace load failed (dev bypass)", error)
+    }
 
     return (
-      <DashboardShell user={user} hasWorkspace={hasWorkspace} navItems={navItems} workspaceRole={access?.role}>
+      <DashboardShell user={user} hasWorkspace={hasWorkspace} navItems={navItems} workspaceRole={workspaceRole}>
         {children}
       </DashboardShell>
     )
@@ -70,16 +79,26 @@ export default async function AppLayout({
     redirect(`/login?next=${encodeURIComponent(next)}`)
   }
 
-  const business = await fetchBusinessForCurrentUser(supabase)
-  const access = await loadWorkspaceAccess(supabase, user.id)
-  const navItems = access ? filterNavForRole(access.role) : undefined
+  let hasWorkspace = false
+  let navItems: ReturnType<typeof filterNavForRole> | undefined
+  let workspaceRole: WorkspaceRole | undefined
+
+  try {
+    const business = await fetchBusinessForCurrentUser(supabase)
+    const access = await loadWorkspaceAccess(supabase, user.id)
+    hasWorkspace = Boolean(business)
+    navItems = access ? filterNavForRole(access.role) : undefined
+    workspaceRole = access?.role
+  } catch (error) {
+    console.error("[rivet] app layout workspace load failed", error)
+  }
 
   return (
     <DashboardShell
       user={user}
-      hasWorkspace={Boolean(business)}
+      hasWorkspace={hasWorkspace}
       navItems={navItems}
-      workspaceRole={access?.role}
+      workspaceRole={workspaceRole}
     >
       {children}
     </DashboardShell>
