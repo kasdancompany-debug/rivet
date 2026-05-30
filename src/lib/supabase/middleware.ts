@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
 
-import { isBillingExemptPath, shouldEnforceBillingGate } from "@/lib/billing/config"
+import { isBillingExemptPath, shouldEnforceBillingGate, shouldRequireOnboardingGates } from "@/lib/billing/config"
 import { workspaceHasRivetAppAccess } from "@/lib/billing/workspace-access"
 import { isDevAuthBypassEnabled } from "@/lib/dev-auth-bypass"
 import {
@@ -113,9 +113,15 @@ export async function updateSession(request: NextRequest) {
   const needsBillingGate =
     Boolean(businessId) && shouldEnforceBillingGate() && !isBillingExemptPath(pathname)
   const needsTemplateGate =
-    Boolean(businessId) && !isApiOrStaticPath(pathname) && !isPathExemptFromTemplateInstall(pathname)
+    Boolean(businessId) &&
+    shouldRequireOnboardingGates() &&
+    !isApiOrStaticPath(pathname) &&
+    !isPathExemptFromTemplateInstall(pathname)
   const needsRealityGate =
-    Boolean(businessId) && !isApiOrStaticPath(pathname) && !isPathExemptFromRealityCheck(pathname)
+    Boolean(businessId) &&
+    shouldRequireOnboardingGates() &&
+    !isApiOrStaticPath(pathname) &&
+    !isPathExemptFromRealityCheck(pathname)
 
   if (needsBillingGate || needsTemplateGate || needsRealityGate) {
     const [billingAccessRes, businessRes, realityRes] = await Promise.all([

@@ -32,6 +32,12 @@ export function isBillingDisabledByFlag(): boolean {
   return v === "1" || v === "true" || v === "yes"
 }
 
+/** Opt-in: paywall runs only when this is true and all billing env vars are set. */
+export function isBillingEnforcementExplicitlyEnabled(): boolean {
+  const v = process.env.RIVET_BILLING_ENFORCED?.trim().toLowerCase()
+  return v === "1" || v === "true" || v === "yes"
+}
+
 /** Env vars that are unset among the billing set. */
 export function missingBillingEnvVars(): RequiredBillingEnvVar[] {
   return REQUIRED_BILLING_ENV_VARS.filter((key) => !envSet(key))
@@ -85,10 +91,21 @@ export function isBillingFullyConfigured(): boolean {
   return getBillingReadiness().status === "ready"
 }
 
-/** Unpaid users are sent to /subscribe only when checkout and webhooks are fully configured. */
+/** Unpaid users are sent to /subscribe only when enforcement is on and checkout is fully configured. */
 export function shouldEnforceBillingGate(): boolean {
   if (isBillingDisabledByFlag()) return false
+  if (!isBillingEnforcementExplicitlyEnabled()) return false
   return getBillingReadiness().status === "ready"
+}
+
+/** Industry template + Reality Check required before the main app (when billing is enforced). */
+export function shouldRequireOnboardingGates(): boolean {
+  return shouldEnforceBillingGate()
+}
+
+/** Open signup — billing and strict onboarding gates are off. */
+export function isOpenAccessMode(): boolean {
+  return !shouldEnforceBillingGate()
 }
 
 export function logBillingReadinessInDevelopment(): void {

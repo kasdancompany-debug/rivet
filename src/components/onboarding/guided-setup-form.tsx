@@ -11,9 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export function GuidedSetupForm({
-  postSetupHref = "/onboarding",
+  postSetupHref = "/dashboard",
 }: {
-  postSetupHref?: "/subscribe" | "/onboarding"
+  postSetupHref?: "/subscribe" | "/onboarding" | "/dashboard"
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -85,7 +85,11 @@ export function GuidedSetupForm({
 
           <div className="flex flex-col gap-3 border-t border-border/40 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              {postSetupHref === "/subscribe" ? COPY.setup.footerHintBeforeCheckout : COPY.setup.footerHint}
+              {postSetupHref === "/subscribe"
+                ? COPY.setup.footerHintBeforeCheckout
+                : postSetupHref === "/dashboard"
+                  ? "Your overview opens next. You can install templates and run the Reality Check anytime from the sidebar."
+                  : COPY.setup.footerHint}
             </p>
             <Button type="button" size="lg" className="h-11 shrink-0 px-8" disabled={pending} onClick={submit}>
               {pending ? COPY.setup.submitting : COPY.setup.submit}

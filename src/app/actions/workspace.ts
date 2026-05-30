@@ -12,6 +12,9 @@ import {
   setDevWorkspaceCookie,
 } from "@/lib/dev-workspace"
 import { COPY } from "@/lib/interface-copy"
+import { markBusinessFounderGrandfathered } from "@/lib/billing/grandfather-founder"
+import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
+import { tryCreateAdminClient } from "@/lib/supabase/try-admin-client"
 
 const INDUSTRY_PACK_IDS = new Set([
   "cafes",
@@ -41,6 +44,27 @@ function workspaceSetupErrorMessage(raw: string | undefined): string {
     return `${message} Apply supabase/migrations/20260621120000_businesses_create_workspace_rpc.sql and 20260622120000_provision_business_workspace.sql on your Supabase project.`
   }
   return message
+}
+
+async function maybeGrandfatherWorkspaceForOpenAccess(businessId: string): Promise<void> {
+  if (shouldEnforceBillingGate()) return
+  const admin = tryCreateAdminClient()
+  if (!admin) return
+  try {
+    await markBusinessFounderGrandfathered(admin, businessId)
+  } catch {
+    /* billing columns may not be migrated yet */
+  }
+}
+
+async function completeNewWorkspace(businessId: string): Promise<{ ok: true; businessId: string }> {
+  await maybeGrandfatherWorkspaceForOpenAccess(businessId)
+  revalidatePath("/", "layout")
+  revalidatePath("/dashboard")
+  revalidatePath("/settings")
+  revalidatePath("/setup")
+  revalidatePath("/subscribe")
+  return { ok: true, businessId }
 }
 
 async function provisionViaAdminClient(
@@ -125,7 +149,7 @@ async function provisionViaAdminClient(
     })
   }
 
-  return { ok: true, businessId }
+  return completeNewWorkspace(businessId)
 }
 
 export async function createWorkspaceForCurrentUser(
@@ -187,12 +211,7 @@ export async function createWorkspaceForCurrentUser(
     )
 
     if (!provisionErr && provisionedId) {
-      revalidatePath("/", "layout")
-      revalidatePath("/dashboard")
-      revalidatePath("/settings")
-      revalidatePath("/setup")
-      revalidatePath("/subscribe")
-      return { ok: true, businessId: provisionedId as string }
+      return completeNewWorkspace(provisionedId as string)
     }
 
     const { data: createdBusinessId, error: legacyErr } = await supabase.rpc(
@@ -238,11 +257,6 @@ export async function createWorkspaceForCurrentUser(
         if (uErr) {
           const adminFallback = await provisionViaAdminClient(user, trimmed, industry)
           if (adminFallback.ok) {
-            revalidatePath("/", "layout")
-            revalidatePath("/dashboard")
-            revalidatePath("/settings")
-            revalidatePath("/setup")
-            revalidatePath("/subscribe")
             return adminFallback
           }
           return { ok: false, message: workspaceSetupErrorMessage(uErr.message) }
@@ -260,11 +274,6 @@ export async function createWorkspaceForCurrentUser(
         if (iErr) {
           const adminFallback = await provisionViaAdminClient(user, trimmed, industry)
           if (adminFallback.ok) {
-            revalidatePath("/", "layout")
-            revalidatePath("/dashboard")
-            revalidatePath("/settings")
-            revalidatePath("/setup")
-            revalidatePath("/subscribe")
             return adminFallback
           }
           return { ok: false, message: workspaceSetupErrorMessage(iErr.message) }
@@ -272,21 +281,11 @@ export async function createWorkspaceForCurrentUser(
         await ensureMembershipAndTeam(displayName)
       }
 
-      revalidatePath("/", "layout")
-      revalidatePath("/dashboard")
-      revalidatePath("/settings")
-      revalidatePath("/setup")
-      revalidatePath("/subscribe")
-      return { ok: true, businessId }
+      return completeNewWorkspace(businessId)
     }
 
     const adminResult = await provisionViaAdminClient(user, trimmed, industry)
     if (adminResult.ok) {
-      revalidatePath("/", "layout")
-      revalidatePath("/dashboard")
-      revalidatePath("/settings")
-      revalidatePath("/setup")
-      revalidatePath("/subscribe")
       return adminResult
     }
 

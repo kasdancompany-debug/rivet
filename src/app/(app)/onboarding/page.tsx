@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 
 import { IndustryTemplateOnboarding } from "@/components/onboarding/industry-template-onboarding"
 import { OwnerOnboardingWizard } from "@/components/onboarding/owner-onboarding-wizard"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
-import { businessHasRivetAppAccess } from "@/lib/billing/rivet-access"
-import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
+import { safeBusinessHasRivetAppAccess } from "@/lib/billing/rivet-access"
+import { shouldEnforceBillingGate, shouldRequireOnboardingGates } from "@/lib/billing/billing-readiness"
 import { fetchBusinessForCurrentUser } from "@/lib/db/queries"
 import { EMOTIONAL_PROMISE } from "@/lib/product-voice"
 import type { RouteFetchLine } from "@/lib/route-reliability/types"
@@ -31,7 +32,7 @@ export default async function OnboardingPage({
   }
 
   if (shouldEnforceBillingGate()) {
-    const hasAccess = await businessHasRivetAppAccess(supabase, business.id, business.owner_id)
+    const hasAccess = await safeBusinessHasRivetAppAccess(supabase, business.id, business.owner_id)
     if (!hasAccess) {
       redirect("/subscribe")
     }
@@ -53,6 +54,13 @@ export default async function OnboardingPage({
     <DashboardRouteShell routePath="/onboarding" fetchLines={fetchLines}>
       <div className="space-y-10 pb-4">
         {showRealityCheck ? <OwnerOnboardingWizard /> : <IndustryTemplateOnboarding businessName={business.name} />}
+        {!shouldRequireOnboardingGates() ? (
+          <p className="text-center text-sm text-muted-foreground">
+            <Link href="/dashboard" className="font-medium text-foreground underline-offset-4 hover:underline">
+              Skip for now — open your overview
+            </Link>
+          </p>
+        ) : null}
       </div>
     </DashboardRouteShell>
   )

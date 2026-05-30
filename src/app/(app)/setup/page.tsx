@@ -3,8 +3,8 @@ import { redirect } from "next/navigation"
 
 import { GuidedSetupForm } from "@/components/onboarding/guided-setup-form"
 import { DashboardRouteShell } from "@/components/route-reliability/dashboard-route-shell"
-import { businessHasRivetAppAccess } from "@/lib/billing/rivet-access"
-import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
+import { safeBusinessHasRivetAppAccess } from "@/lib/billing/rivet-access"
+import { shouldEnforceBillingGate, shouldRequireOnboardingGates } from "@/lib/billing/billing-readiness"
 import {
   fetchBusinessForCurrentUser,
   fetchLatestDependencyAssessment,
@@ -26,17 +26,19 @@ export default async function SetupPage() {
   const business = await fetchBusinessForCurrentUser(supabase)
   if (business) {
     if (shouldEnforceBillingGate()) {
-      const hasAccess = await businessHasRivetAppAccess(supabase, business.id, business.owner_id)
+      const hasAccess = await safeBusinessHasRivetAppAccess(supabase, business.id, business.owner_id)
       if (!hasAccess) {
         redirect("/subscribe")
       }
     }
-    if (!business.template_installed_at) {
-      redirect("/onboarding")
-    }
-    const assessment = await fetchLatestDependencyAssessment(business.id, supabase)
-    if (!assessment) {
-      redirect("/onboarding?phase=reality-check")
+    if (shouldRequireOnboardingGates()) {
+      if (!business.template_installed_at) {
+        redirect("/onboarding")
+      }
+      const assessment = await fetchLatestDependencyAssessment(business.id, supabase)
+      if (!assessment) {
+        redirect("/onboarding?phase=reality-check")
+      }
     }
     redirect("/dashboard")
   }

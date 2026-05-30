@@ -15,6 +15,7 @@ const KEYS = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "NEXT_PUBLIC_SITE_URL",
   "RIVET_BILLING_DISABLED",
+  "RIVET_BILLING_ENFORCED",
 ] as const
 
 describe("billing readiness", () => {
@@ -69,8 +70,16 @@ describe("billing readiness", () => {
     }
     expect(getBillingReadiness().status).toBe("ready")
     expect(isBillingEnforced()).toBe(true)
-    expect(shouldEnforceBillingGate()).toBe(true)
+    expect(shouldEnforceBillingGate()).toBe(false)
     expect(getBillingReadiness().message).toBeNull()
+  })
+
+  it("does not enforce paywall until RIVET_BILLING_ENFORCED is set", () => {
+    for (const k of KEYS) {
+      process.env[k] = "set"
+    }
+    process.env.RIVET_BILLING_ENFORCED = "true"
+    expect(shouldEnforceBillingGate()).toBe(true)
   })
 
   it("includes missing var names in development message", () => {

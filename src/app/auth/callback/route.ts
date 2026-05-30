@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  const next = getSafeInternalNextPath(searchParams.get("next"), "/dashboard")
+  const next = getSafeInternalNextPath(searchParams.get("next"), "/setup")
 
   if (!url || !key || !code) {
     return NextResponse.redirect(

@@ -1,5 +1,6 @@
 import type { TypedSupabaseClient } from "@/types/database"
 
+import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
 import { isFounderPurchaseComplete } from "@/lib/billing/founder-purchase-complete"
 import { workspaceHasRivetAppAccess } from "@/lib/billing/workspace-access"
 
@@ -39,4 +40,19 @@ export async function businessHasRivetAppAccess(
   ownerUserId?: string | null
 ): Promise<boolean> {
   return workspaceHasRivetAppAccess(supabase, businessId, ownerUserId)
+}
+
+/** Billing gate helper — open access and DB errors fail open so signup is not blocked. */
+export async function safeBusinessHasRivetAppAccess(
+  supabase: TypedSupabaseClient,
+  businessId: string,
+  ownerUserId?: string | null
+): Promise<boolean> {
+  if (!shouldEnforceBillingGate()) return true
+  try {
+    return await businessHasRivetAppAccess(supabase, businessId, ownerUserId)
+  } catch (error) {
+    console.error("[rivet] billing access check failed", error)
+    return true
+  }
 }

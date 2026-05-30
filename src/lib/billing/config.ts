@@ -11,6 +11,8 @@ export {
   getBillingReadiness,
   missingBillingEnvVars,
   shouldEnforceBillingGate,
+  shouldRequireOnboardingGates,
+  isOpenAccessMode,
   type BillingReadiness,
   type RequiredBillingEnvVar,
 } from "@/lib/billing/billing-readiness"
