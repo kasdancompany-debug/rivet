@@ -18,8 +18,6 @@ import { LandingPricingSection } from "@/components/marketing/landing-pricing-se
 
 import { LandingCtaCluster } from "@/components/marketing/landing-inline-ctas";
 
-import { Button } from "@/components/ui/button";
-
 import { cn } from "@/lib/utils";
 
 import {
@@ -29,6 +27,7 @@ import {
   LANDING_FOOTER_TAGLINE,
   LANDING_FOOTER_TRUST,
   LANDING_HEADER_SIGN_IN,
+  LANDING_HEADER_SIGN_UP,
   LANDING_HERO,
 } from "@/lib/marketing-landing-copy";
 
@@ -52,15 +51,20 @@ export function RivetLanding({
         >
           <Logo href="/" />
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-md px-3 text-[13px] font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
-            nativeButton={false}
-            render={<Link href={signInHref} />}
-          >
-            {LANDING_HEADER_SIGN_IN}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/signup"
+              className="inline-flex h-8 items-center justify-center rounded-md bg-zinc-950 px-3.5 text-[13px] font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+            >
+              {LANDING_HEADER_SIGN_UP}
+            </Link>
+            <Link
+              href={signInHref}
+              className="inline-flex h-8 items-center justify-center rounded-md px-3 text-[13px] font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+            >
+              {LANDING_HEADER_SIGN_IN}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -79,10 +83,10 @@ export function RivetLanding({
           <div
             className={cn(
               landingContainer,
-              "relative grid gap-8 lg:grid-cols-12 lg:items-center lg:gap-x-10",
+              "relative grid gap-10 xl:grid-cols-12 xl:items-center xl:gap-x-10",
             )}
           >
-            <div className="lg:col-span-4">
+            <div className="relative z-10 min-w-0 xl:col-span-5">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                 {LANDING_HERO.eyebrow}
               </p>
@@ -106,7 +110,7 @@ export function RivetLanding({
               />
             </div>
 
-            <div className="lg:col-span-8">
+            <div className="min-w-0 xl:col-span-7">
               <LandingHeroOperationalViz />
             </div>
           </div>

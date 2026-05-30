@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { LANDING_CTA, LANDING_SCAN_CTA } from "@/lib/marketing-landing-copy";
 import { cn } from "@/lib/utils";
 
@@ -34,15 +34,13 @@ export function LandingCtaCluster({
   const centered = align === "center";
   const scanFirst = primary === "scan";
 
-  const founderButton = (
-    <Button
+  const founderLink = (
+    <Link
       key="founder"
-      size="lg"
-      variant={scanFirst ? "outline" : undefined}
-      nativeButton={false}
-      render={<Link href="/signup" />}
+      href="/signup"
       className={cn(
-        "h-auto min-h-10 w-full max-w-full whitespace-normal rounded-md px-5 py-2.5 text-[13px] font-semibold shadow-none sm:w-fit",
+        buttonVariants({ size: "lg", variant: scanFirst ? "outline" : "default" }),
+        "inline-flex h-auto min-h-10 w-full max-w-sm items-center justify-center gap-2 whitespace-normal rounded-md px-5 py-2.5 text-center text-[13px] font-semibold shadow-none",
         scanFirst
           ? onDark
             ? "border-white/14 bg-transparent text-zinc-300 hover:border-white/22 hover:bg-white/[0.04] hover:text-zinc-100"
@@ -50,23 +48,20 @@ export function LandingCtaCluster({
           : onDark
             ? "bg-white text-zinc-950 hover:bg-zinc-100"
             : "bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200",
-        !scanFirst && "font-semibold",
       )}
     >
       {LANDING_CTA.primary}
-      <ArrowRight className="size-3.5 shrink-0 opacity-50" data-icon="inline-end" />
-    </Button>
+      <ArrowRight className="size-3.5 shrink-0 opacity-50" aria-hidden />
+    </Link>
   );
 
-  const scanButton = (
-    <Button
+  const scanLink = (
+    <Link
       key="scan"
-      size="lg"
-      variant={scanFirst ? undefined : "outline"}
-      nativeButton={false}
-      render={<Link href={`/scan?from=${scanFrom}`} />}
+      href={`/scan?from=${scanFrom}`}
       className={cn(
-        "h-auto min-h-10 w-full max-w-full whitespace-normal rounded-md px-5 py-2.5 text-[13px] font-medium shadow-none sm:w-fit",
+        buttonVariants({ size: "lg", variant: scanFirst ? "default" : "outline" }),
+        "inline-flex h-auto min-h-10 w-full max-w-sm items-center justify-center gap-2 whitespace-normal rounded-md px-5 py-2.5 text-center text-[13px] font-medium shadow-none",
         scanFirst
           ? onDark
             ? "bg-white text-zinc-950 hover:bg-zinc-100"
@@ -78,25 +73,20 @@ export function LandingCtaCluster({
       )}
     >
       {LANDING_CTA.secondary}
-      <ArrowRight className="size-3.5 shrink-0 opacity-50" data-icon="inline-end" />
-    </Button>
+      <ArrowRight className="size-3.5 shrink-0 opacity-50" aria-hidden />
+    </Link>
   );
 
   return (
     <div
       className={cn(
-        "flex w-full max-w-md flex-col gap-2.5",
-        centered && "sm:mx-auto sm:items-center",
+        "flex w-full max-w-sm flex-col gap-3",
+        centered && "mx-auto items-center",
         className,
       )}
     >
-      <div
-        className={cn(
-          "flex w-full flex-col gap-2.5",
-          centered ? "items-center" : "items-stretch sm:items-start",
-        )}
-      >
-        {scanFirst ? [scanButton, founderButton] : [founderButton, scanButton]}
+      <div className={cn("flex w-full flex-col gap-3", centered && "items-center")}>
+        {scanFirst ? [scanLink, founderLink] : [founderLink, scanLink]}
       </div>
 
       {showScanSubline ? (
@@ -104,7 +94,7 @@ export function LandingCtaCluster({
           className={cn(
             "max-w-[40ch] text-[12px] leading-snug",
             onDark ? "text-zinc-600" : "text-zinc-500 dark:text-zinc-500",
-            centered && "sm:text-center",
+            centered && "text-center",
           )}
         >
           {LANDING_SCAN_CTA.subline}
@@ -119,7 +109,7 @@ export function LandingCtaCluster({
           onDark
             ? "text-zinc-500 hover:text-zinc-300"
             : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-300",
-          centered && "sm:mx-auto",
+          centered && "mx-auto",
         )}
       >
         {LANDING_CTA.tertiary}

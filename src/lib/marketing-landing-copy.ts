@@ -23,6 +23,7 @@ export const LANDING_META_DESCRIPTION =
   `${RIVET_PRICING.metaLine} Capture how work runs, standardize it into plays, train the team, and see what still depends on you.`
 
 export const LANDING_HEADER_SIGN_IN = "Sign in" as const
+export const LANDING_HEADER_SIGN_UP = "Sign up" as const
 
 export const LANDING_CTA = {
   primary: RIVET_PRICING.cta,
