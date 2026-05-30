@@ -42,7 +42,7 @@ export function LandingCtaCluster({
       nativeButton={false}
       render={<Link href="/signup" />}
       className={cn(
-        "h-10 w-full rounded-md px-5 text-[13px] font-semibold shadow-none sm:w-auto sm:min-w-[11rem]",
+        "h-auto min-h-10 w-full max-w-full whitespace-normal rounded-md px-5 py-2.5 text-[13px] font-semibold shadow-none sm:w-fit",
         scanFirst
           ? onDark
             ? "border-white/14 bg-transparent text-zinc-300 hover:border-white/22 hover:bg-white/[0.04] hover:text-zinc-100"
@@ -54,7 +54,7 @@ export function LandingCtaCluster({
       )}
     >
       {LANDING_CTA.primary}
-      <ArrowRight className="size-3.5 opacity-50" data-icon="inline-end" />
+      <ArrowRight className="size-3.5 shrink-0 opacity-50" data-icon="inline-end" />
     </Button>
   );
 
@@ -66,7 +66,7 @@ export function LandingCtaCluster({
       nativeButton={false}
       render={<Link href={`/scan?from=${scanFrom}`} />}
       className={cn(
-        "h-10 w-full rounded-md px-5 text-[13px] font-medium shadow-none sm:w-auto sm:min-w-[11rem]",
+        "h-auto min-h-10 w-full max-w-full whitespace-normal rounded-md px-5 py-2.5 text-[13px] font-medium shadow-none sm:w-fit",
         scanFirst
           ? onDark
             ? "bg-white text-zinc-950 hover:bg-zinc-100"
@@ -78,7 +78,7 @@ export function LandingCtaCluster({
       )}
     >
       {LANDING_CTA.secondary}
-      <ArrowRight className="size-3.5 opacity-50" data-icon="inline-end" />
+      <ArrowRight className="size-3.5 shrink-0 opacity-50" data-icon="inline-end" />
     </Button>
   );
 
@@ -86,14 +86,14 @@ export function LandingCtaCluster({
     <div
       className={cn(
         "flex w-full max-w-md flex-col gap-2.5",
-        centered && "sm:mx-auto sm:max-w-none sm:items-center",
+        centered && "sm:mx-auto sm:items-center",
         className,
       )}
     >
       <div
         className={cn(
-          "flex flex-col gap-2 sm:flex-row sm:items-stretch",
-          centered && "sm:justify-center",
+          "flex w-full flex-col gap-2.5",
+          centered ? "items-center" : "items-stretch sm:items-start",
         )}
       >
         {scanFirst ? [scanButton, founderButton] : [founderButton, scanButton]}
