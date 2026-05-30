@@ -14,7 +14,6 @@ import {
 import { COPY } from "@/lib/interface-copy"
 import { markBusinessFounderGrandfathered } from "@/lib/billing/grandfather-founder"
 import { shouldEnforceBillingGate } from "@/lib/billing/billing-readiness"
-import { tryCreateAdminClient } from "@/lib/supabase/try-admin-client"
 
 const INDUSTRY_PACK_IDS = new Set([
   "cafes",
